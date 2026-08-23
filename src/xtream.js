@@ -5,6 +5,13 @@ function cleanServer(server='') {
   return value;
 }
 
+function normalizeAssetUrl(asset='', server='') {
+  const value = String(asset || '').trim();
+  if (!value) return '';
+  try { return new URL(value, `${cleanServer(server)}/`).href; }
+  catch { return value; }
+}
+
 export function buildXtreamApiUrl(server, username, password, action='', params={}) {
   const s = cleanServer(server);
   const qs = new URLSearchParams({username, password});
@@ -76,6 +83,35 @@ async function relayJson(config, action='', params={}, timeoutMs=30000) {
   } finally { clearTimeout(timer); }
 }
 
+export async function fetchXtreamAssetBlob(config, assetUrl, timeoutMs=20000) {
+  const relayUrl = String(config?.relayUrl || '').trim();
+  const relayToken = String(config?.relayToken || '');
+  const url = String(assetUrl || '').trim();
+  if (!relayUrl || !relayToken || !url) throw new Error('Connection Helper artwork relay is not configured.');
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(relayUrl, {
+      method:'POST',
+      headers:{'content-type':'application/json','authorization':`Bearer ${relayToken}`},
+      signal:controller.signal,
+      cache:'force-cache',
+      body:JSON.stringify({mode:'asset', url})
+    });
+    if (!res.ok) {
+      let detail='';
+      try { detail=(await res.json())?.error || ''; } catch {}
+      throw new Error(`Artwork helper returned HTTP ${res.status}${detail?` — ${detail}`:''}`);
+    }
+    const type=String(res.headers.get('content-type') || '');
+    if (!/^image\//i.test(type) && !/application\/octet-stream/i.test(type)) throw new Error('Artwork helper did not return an image.');
+    return await res.blob();
+  } catch (err) {
+    if (err?.name === 'AbortError') throw new Error('Artwork helper timed out.');
+    throw err;
+  } finally { clearTimeout(timer); }
+}
+
 async function getJson(config, action='', params={}) {
   if (String(config.relayUrl || '').trim()) return relayJson(config, action, params);
   return directJson(config, action, params);
@@ -102,21 +138,21 @@ export async function importXtream(config, providerId='xtream') {
   const items = [];
   for (const s of liveStreams || []) items.push({
     id:`${providerId}:live:${s.stream_id}`, providerId, source:'xtream', kind:'live', name:s.name || 'Untitled channel',
-    group:catName(liveCats,s.category_id), logo:s.stream_icon || '', tvgId:s.epg_channel_id || '',
+    group:catName(liveCats,s.category_id), logo:normalizeAssetUrl(s.stream_icon, server), tvgId:s.epg_channel_id || '',
     streamUrl:`${server}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${s.stream_id}.${s.container_extension || 'ts'}`,
-    streamId:s.stream_id, epgChannelId:s.epg_channel_id || '', raw:s
+    streamId:s.stream_id, epgChannelId:s.epg_channel_id || ''
   });
   for (const s of vodStreams || []) items.push({
     id:`${providerId}:movie:${s.stream_id}`, providerId, source:'xtream', kind:'movie', name:s.name || 'Untitled movie',
-    group:catName(vodCats,s.category_id), logo:s.stream_icon || '', year:s.year || '', rating:s.rating || '',
+    group:catName(vodCats,s.category_id), logo:normalizeAssetUrl(s.stream_icon, server), year:s.year || '', rating:s.rating || '',
     tmdbId:s.tmdb || s.tmdb_id || '', imdbId:s.imdb_id || '',
     streamUrl:`${server}/movie/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${s.stream_id}.${s.container_extension || 'mp4'}`,
-    streamId:s.stream_id, raw:s
+    streamId:s.stream_id
   });
   for (const s of series || []) items.push({
     id:`${providerId}:series:${s.series_id}`, providerId, source:'xtream', kind:'series', name:s.name || 'Untitled series',
-    group:catName(seriesCats,s.category_id), logo:s.cover || '', year:s.releaseDate || s.year || '', rating:s.rating || '',
-    tmdbId:s.tmdb || s.tmdb_id || '', imdbId:s.imdb_id || '', streamUrl:'', seriesId:s.series_id, raw:s
+    group:catName(seriesCats,s.category_id), logo:normalizeAssetUrl(s.cover, server), year:s.releaseDate || s.year || '', rating:s.rating || '',
+    tmdbId:s.tmdb || s.tmdb_id || '', imdbId:s.imdb_id || '', streamUrl:'', seriesId:s.series_id
   });
   return {items, categories:{live:liveCats, movie:vodCats, series:seriesCats}};
 }

@@ -46,8 +46,7 @@ export function parseM3U(text, providerId='m3u') {
         tvgId: pending.tvgId,
         tvgName: pending.tvgName,
         streamUrl: line,
-        catchup: pending.catchup,
-        raw: null
+        catchup: pending.catchup
       });
       pending = null;
     }

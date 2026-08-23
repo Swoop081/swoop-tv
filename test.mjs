@@ -1,6 +1,6 @@
 import {parseM3U} from './src/m3u.js';
 import {matchMDBListToCatalog} from './src/mdblist.js';
-import {buildXtreamApiUrl, testXtream} from './src/xtream.js';
+import {buildXtreamApiUrl, testXtream, importXtream, fetchXtreamAssetBlob} from './src/xtream.js';
 import worker from './cloudflare-worker/worker.js';
 
 function assert(condition, message){if(!condition) throw new Error(message)}
@@ -54,5 +54,29 @@ const blockedRequest=new Request('https://relay.example.workers.dev/',{
 const blockedResponse=await worker.fetch(blockedRequest,{SWOOP_PROXY_TOKEN:token});
 assert(blockedResponse.status===400,'Worker private-network guard failed');
 
+
+// Artwork helper client path
+let assetRelayCapture=null;
+globalThis.fetch=async (url,options={})=>{
+  assetRelayCapture={url:String(url),options};
+  return new Response(new Uint8Array([137,80,78,71]),{status:200,headers:{'content-type':'image/png'}});
+};
+const assetBlob=await fetchXtreamAssetBlob({relayUrl:'https://relay.example.workers.dev',relayToken:token},'http://logos.example/channel.png');
+assert(assetBlob.type==='image/png','Artwork client blob type failed');
+assert(JSON.parse(assetRelayCapture.options.body).mode==='asset','Artwork client relay mode failed');
+
+// Worker artwork relay path
+globalThis.fetch=async (url)=>{
+  assetRelayCapture={url:String(url)};
+  return new Response(new Uint8Array([137,80,78,71]),{status:200,headers:{'content-type':'image/png','content-length':'4'}});
+};
+const assetRequest=new Request('https://relay.example.workers.dev/',{
+  method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${token}`,'origin':'https://swoop.example'},
+  body:JSON.stringify({mode:'asset',url:'http://logos.example/channel.png'})
+});
+const assetResponse=await worker.fetch(assetRequest,{SWOOP_PROXY_TOKEN:token});
+assert(assetResponse.status===200,'Worker artwork relay failed');
+assert(assetResponse.headers.get('content-type')==='image/png','Worker artwork content type failed');
+
 globalThis.fetch=realFetch;
-console.log('Swoop TV v0.1.1 tests passed');
+console.log('Swoop TV v0.1.3 tests passed');

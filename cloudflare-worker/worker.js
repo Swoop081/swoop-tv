@@ -67,6 +67,67 @@ function authorized(request, env) {
   return diff === 0;
 }
 
+function normalizePublicAsset(input) {
+  const url = new URL(String(input || '').trim());
+  if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Only HTTP or HTTPS artwork URLs are supported.');
+  if (url.username || url.password) throw new Error('Artwork URLs with embedded credentials are not allowed.');
+  if (isPrivateHostname(url.hostname)) throw new Error('Private/local artwork targets are not allowed.');
+  return url;
+}
+
+function inferredImageType(url, upstreamType='') {
+  const type = String(upstreamType || '').split(';')[0].trim().toLowerCase();
+  if (type.startsWith('image/')) return type;
+  const path = String(url?.pathname || '').toLowerCase();
+  if (/\.png$/.test(path)) return 'image/png';
+  if (/\.jpe?g$/.test(path)) return 'image/jpeg';
+  if (/\.webp$/.test(path)) return 'image/webp';
+  if (/\.gif$/.test(path)) return 'image/gif';
+  if (/\.svg$/.test(path)) return 'image/svg+xml';
+  return type === 'application/octet-stream' ? type : '';
+}
+
+async function fetchPublicAsset(startUrl) {
+  let current = normalizePublicAsset(startUrl);
+  for (let hops=0; hops<4; hops++) {
+    const res = await fetch(current.toString(), {
+      method:'GET',
+      headers:{'Accept':'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8','User-Agent':'SwoopTV-Connection-Helper/0.1.2'},
+      redirect:'manual'
+    });
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('Location');
+      if (!location) throw new Error('Artwork redirect did not include a destination.');
+      current = normalizePublicAsset(new URL(location, current).toString());
+      continue;
+    }
+    if (!res.ok) throw new Error(`Artwork source returned HTTP ${res.status}.`);
+    const contentLength = Number(res.headers.get('Content-Length') || 0);
+    if (contentLength > 4_000_000) throw new Error('Artwork is larger than the 4 MB Swoop limit.');
+    const bytes = await res.arrayBuffer();
+    if (bytes.byteLength > 4_000_000) throw new Error('Artwork is larger than the 4 MB Swoop limit.');
+    const type = inferredImageType(current, res.headers.get('Content-Type'));
+    if (!type) throw new Error('Artwork source did not return a supported image type.');
+    return {bytes, type};
+  }
+  throw new Error('Artwork redirected too many times.');
+}
+
+async function handleAsset(request, body) {
+  let asset;
+  try { asset = await fetchPublicAsset(body?.url); }
+  catch (error) { return json(request, {error:error.message || 'Could not load artwork.'}, 502); }
+  return new Response(asset.bytes, {
+    status:200,
+    headers:{
+      ...corsHeaders(request),
+      'Content-Type':asset.type,
+      'Cache-Control':'public, max-age=86400',
+      'X-Swoop-Asset-Relay':'1'
+    }
+  });
+}
+
 async function handlePost(request, env) {
   if (!String(env.SWOOP_PROXY_TOKEN || '')) {
     return json(request, {error:'Worker is not configured. Set the SWOOP_PROXY_TOKEN secret first.'}, 503);
@@ -76,6 +137,8 @@ async function handlePost(request, env) {
   let body;
   try { body = await request.json(); }
   catch { return json(request, {error:'Request body must be JSON.'}, 400); }
+
+  if (String(body?.mode || '') === 'asset') return handleAsset(request, body);
 
   const username = String(body?.username || '');
   const password = String(body?.password || '');
@@ -119,7 +182,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.1',
+        version:'0.1.2',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16
       });
     }
