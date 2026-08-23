@@ -82,5 +82,25 @@ const assetResponse=await worker.fetch(assetRequest,{SWOOP_PROXY_TOKEN:token});
 assert(assetResponse.status===200,'Worker artwork relay failed');
 assert(assetResponse.headers.get('content-type')==='image/png','Worker artwork content type failed');
 
+
+// Xtream import progress callbacks
+const progressSections=[];
+globalThis.fetch=async (url,options={})=>{
+  const body=JSON.parse(options.body||'{}');
+  const action=body.action||'';
+  const payload={
+    get_live_categories:[{category_id:'1',category_name:'Sports'}],
+    get_live_streams:[{stream_id:11,name:'Arena',category_id:'1',container_extension:'ts'}],
+    get_vod_categories:[{category_id:'2',category_name:'Movies'}],
+    get_vod_streams:[{stream_id:22,name:'Signal Run',category_id:'2',container_extension:'mp4'}],
+    get_series_categories:[{category_id:'3',category_name:'Series'}],
+    get_series:[{series_id:33,name:'Night Shift',category_id:'3'}]
+  }[action]||{};
+  return new Response(JSON.stringify(payload),{status:200,headers:{'content-type':'application/json'}});
+};
+const imported=await importXtream({server:'http://tv.example:8080',username:'demo',password:'secret',relayUrl:'https://relay.example.workers.dev',relayToken:token},'progress-test',info=>progressSections.push(info.section));
+assert(imported.counts.live===1&&imported.counts.movie===1&&imported.counts.series===1,'Xtream import counts failed');
+assert(progressSections.includes('live')&&progressSections.includes('movie')&&progressSections.includes('series'),'Xtream progress callbacks failed');
+
 globalThis.fetch=realFetch;
-console.log('Swoop TV v0.2 tests passed');
+console.log('Swoop TV v0.2.5 tests passed');

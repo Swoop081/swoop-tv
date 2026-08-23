@@ -135,17 +135,25 @@ export async function testXtream(config) {
   return data;
 }
 
-export async function importXtream(config, providerId='xtream') {
+export async function importXtream(config, providerId='xtream', onProgress=()=>{}) {
   const server = cleanServer(config.server);
   const {username, password} = config;
-  const [liveCats, liveStreams, vodCats, vodStreams, seriesCats, series] = await Promise.all([
-    getJson(config, 'get_live_categories').catch(()=>[]),
-    getJson(config, 'get_live_streams').catch(()=>[]),
-    getJson(config, 'get_vod_categories').catch(()=>[]),
-    getJson(config, 'get_vod_streams').catch(()=>[]),
-    getJson(config, 'get_series_categories').catch(()=>[]),
-    getJson(config, 'get_series').catch(()=>[]),
+  const loadSection = async (section, categoryAction, itemAction) => {
+    const [categories, items] = await Promise.all([
+      getJson(config, categoryAction).catch(()=>[]),
+      getJson(config, itemAction).catch(()=>[])
+    ]);
+    try { onProgress({section, count:Array.isArray(items)?items.length:0}); } catch {}
+    return {categories:Array.isArray(categories)?categories:[], items:Array.isArray(items)?items:[]};
+  };
+  const [liveData, vodData, seriesData] = await Promise.all([
+    loadSection('live','get_live_categories','get_live_streams'),
+    loadSection('movie','get_vod_categories','get_vod_streams'),
+    loadSection('series','get_series_categories','get_series')
   ]);
+  const liveCats=liveData.categories, liveStreams=liveData.items;
+  const vodCats=vodData.categories, vodStreams=vodData.items;
+  const seriesCats=seriesData.categories, series=seriesData.items;
   const catName = (cats,id)=>cats.find(c=>String(c.category_id)===String(id))?.category_name || 'Uncategorised';
   const items = [];
   for (const s of liveStreams || []) items.push({
@@ -166,7 +174,7 @@ export async function importXtream(config, providerId='xtream') {
     group:catName(seriesCats,s.category_id), logo:normalizeAssetUrl(s.cover, server), year:s.releaseDate || s.year || '', rating:s.rating || '',
     tmdbId:s.tmdb || s.tmdb_id || '', imdbId:s.imdb_id || '', streamUrl:'', seriesId:s.series_id
   });
-  return {items, categories:{live:liveCats, movie:vodCats, series:seriesCats}};
+  return {items, categories:{live:liveCats, movie:vodCats, series:seriesCats}, counts:{live:liveStreams.length,movie:vodStreams.length,series:series.length}};
 }
 
 export async function fetchXtreamSeriesInfo(config, seriesId) {

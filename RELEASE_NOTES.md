@@ -1,5 +1,35 @@
 # Swoop TV Release Notes
 
+## v0.2.5 — Cinematic Streaming UI — 23 August 2026
+
+- Rebuilds the Swoop presentation around a big, bold cinematic streaming-service layout while retaining Swoop's own purple/teal visual identity.
+- Home now opens with a full-height featured-content hero using provider artwork when available, oversized title typography, metadata and a prominent Play action.
+- Adds a stronger black-first navigation treatment with a larger Swoop wordmark, cleaner text navigation, provider shortcut and profile/settings control.
+- Horizontal content rails are substantially larger, denser and more cinematic; poster rows use tall artwork while Live TV uses wide 16:9 tiles.
+- Cards now have stronger focus/hover expansion, deep shadowing, simplified overlays and a high-visibility red LIVE badge.
+- Adds a connected-library strip with provider name and live/movie/show counts directly beneath the Home hero.
+- Movies, TV Shows and Live TV receive dedicated visual landing heroes, category pills and large content grids rather than utility-style list pages.
+- Search is redesigned around a large streaming-style search field and visual result grid.
+- Settings is rebuilt as large premium cards with provider/library statistics and clearer playback/discovery sections.
+- Provider setup/import progress keeps all v0.2.4 behavior but is visually restyled to match the cinematic application shell.
+- Responsive rules are refreshed for mobile, desktop and TV-sized layouts.
+- No Windows playback tuning changes: v0.2.5 retains the proven v0.2.3 mpv profile and v0.2.1 diagnostics.
+- PWA shell cache bumped to `swoop-tv-v025-shell`; Windows bridge/bootstrap version bumped to 0.2.5.
+
+## v0.2.4 — Provider Setup UX + Import Progress — 23 August 2026
+
+- Redesigns Add/Manage Provider into two clean provider choices: **Xtream Codes first**, then **M3U Playlist**.
+- Xtream shows only provider name, server URL, username/password, native/helper status where relevant, Remember and Connect.
+- M3U shows only provider name, playlist URL or local file, optional XMLTV/EPG URL and Import.
+- Removes the confusing mixed M3U/Xtream presentation that could make the active connection type unclear.
+- Adds a dedicated **PLEASE WAIT** connection/import screen instead of leaving the user on the form with a small status strip.
+- Xtream progress visibly tracks: contacting provider, verifying login, loading Live TV, loading Movies, loading TV Shows and building the Swoop library.
+- Section completion reports actual item counts as each provider catalog section returns.
+- M3U progress tracks reading playlist, parsing channels and building the library.
+- Success and error states are explicit; errors provide a **Back to details** route without clearing the entered form.
+- Keeps the exact proven v0.2.3 Windows mpv playback profile; no playback tuning changes in this release.
+- PWA shell cache bumped to `swoop-tv-v024-shell`; Windows bridge/bootstrap version bumped to 0.2.4.
+
 ## v0.2.3 — Playback Recovery Hotfix — 23 August 2026
 
 - Restores the exact v0.2.1 Windows-native mpv Live TV launch profile after v0.2.2's aggressive fast-start tuning prevented a previously working real Xtream stream from playing.

@@ -1,44 +1,56 @@
-# Swoop TV v0.2.3 — Playback Recovery Hotfix
+# Swoop TV v0.2.5 — Cinematic Streaming UI
 
-Swoop TV is a content-neutral IPTV player for user-provided sources they are authorised to access. v0.2.3 restores the **proven Windows-native playback profile from v0.2.1** after the aggressive v0.2.2 fast-start experiment prevented some previously working Xtream Live TV streams from playing.
+Swoop TV v0.2.5 is a presentation-first overhaul built on the proven v0.2.4 provider flow and v0.2.3 Windows-native playback profile. The goal is a big, bold, premium streaming-service experience: full-bleed featured artwork, oversized typography, stronger content rails, larger poster art, cinematic content landing pages and a consistent Swoop visual identity across Home, Live TV, Movies, TV Shows, Search, Settings and provider setup.
 
-## What changed
+Swoop TV is a content-neutral IPTV player for user-provided sources they are authorised to access.
 
-- Reverted the Windows Live TV mpv launch arguments to the exact v0.2.1 profile that successfully played the user's real Xtream stream.
-- Removed the v0.2.2 forced `low-latency`, reduced probe, forced MPEG-TS demuxer, 2-second cache and 8-second network-timeout changes from the default path.
-- Keeps the v0.2.1 native launch diagnostics: `--force-window=immediate`, `--keep-open=yes`, `%LOCALAPPDATA%\SwoopTV\mpv-latest.log`, exit-code reporting and redacted log tails.
-- Keeps native provider-to-device playback through mpv, including HTTP Xtream streams and raw `.ts`.
-- Keeps the loopback-only bridge and existing installed mpv 0.41.0; no new mpv download is required.
-- PWA/local shell cache bumped to `swoop-tv-v023-shell`.
+## UI overhaul
+
+- Full-height cinematic Home hero sourced from the connected provider catalog where artwork is available.
+- Oversized featured title, metadata and prominent **Play** action.
+- New black-first Swoop visual system with purple/teal identity accents rather than a generic dashboard look.
+- Larger Netflix-style horizontal rails with stronger poster emphasis and scale-on-focus behavior for mouse, keyboard and TV remotes.
+- Live TV uses large landscape tiles rather than small utility rows.
+- Movies and TV Shows receive dedicated cinematic landing heroes plus large poster grids.
+- Search gets an oversized streaming-style search surface and visual result grid.
+- Settings is redesigned as premium cards with large stats and clearer hierarchy.
+- Provider setup and import progress retain the v0.2.4 separation/progress behavior but inherit the darker, bolder visual language.
+- Responsive mobile/TV layouts remain supported.
+
+## Functionality retained
+
+- Separate Xtream and M3U setup flows with dedicated PLEASE WAIT import progress.
+- Windows local bridge for Xtream/M3U transport.
+- Proven v0.2.3 mpv playback profile and v0.2.1 launch diagnostics.
+- Provider artwork/channel logos and artwork relay support.
+- MDBList custom-row foundation.
+- Hosted PWA/browser mode remains available for compatible sources.
 
 ## Windows test
 
-1. Close every old Swoop TV window and the old **Swoop TV Windows Bridge** console.
+1. Close any older Swoop TV window and **Swoop TV Windows Bridge** console.
 2. Extract this ZIP to a normal folder.
 3. Double-click **`START-SWOOP-TV-WINDOWS.cmd`**.
-4. Reconnect the same Xtream provider if required.
-5. Play the same Live TV channel that worked in v0.2.1.
-6. Confirm reliable playback first. Do not judge startup optimization from v0.2.3 yet; this release is the recovery baseline.
+4. Your existing provider/mpv setup can be reused.
+5. Check Home, Live TV, Movies, TV Shows, Search and Provider setup presentation.
+6. Confirm the same channel that played in v0.2.4 still launches in mpv.
 
 Useful mpv keys: **F** fullscreen, **Space** pause, **Esc/Q** close, **Up/Down** volume.
 
-## Startup-speed plan
-
-The v0.2.2 experiment changed several demuxer/cache/probe options simultaneously, so it was impossible to know which one caused the compatibility failure. Starting from v0.2.3, startup optimization should be introduced one lever at a time against a known-working stream. The goal remains single-digit-second Live TV startup, but playback reliability is now the hard gate for every tuning change.
-
-## Architecture
+## Playback architecture
 
 Windows native playback remains:
 
 `Swoop UI → local loopback bridge → mpv → IPTV provider`
 
-The actual video stays provider-to-device and is not proxied through Cloudflare. The hosted browser/PWA path remains available for browser-compatible sources.
+v0.2.5 intentionally does **not** retune mpv startup behavior. UI work is isolated from the known-working playback baseline.
 
 ## Current limitations
 
-- mpv opens in a separate native window rather than being visually embedded in Swoop.
+- mpv still opens in a separate native window rather than being visually embedded in Swoop.
 - TV-series episode loading, EPG/TV Guide, real Continue Watching and My List remain for later builds.
-- Windows distribution is still a portable CMD/PowerShell foundation rather than a signed installer.
+- The hero currently uses available provider poster/artwork rather than a separate backdrop metadata service.
+- Windows distribution remains a portable CMD/PowerShell foundation rather than a signed installer.
 
 ## Legal model
 

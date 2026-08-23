@@ -21,55 +21,177 @@ function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt
 function activeCatalog(){return state.catalog.length?state.catalog:demoCatalog}
 function items(kind){return activeCatalog().filter(x=>x.kind===kind)}
 function card(item,poster=false,opts={}){
-  const fallback=item.demoColor||`linear-gradient(135deg,hsl(${Math.abs(hash(item.name))%360} 42% 38%),#0e1526)`;
+  const fallback=item.demoColor||`linear-gradient(135deg,hsl(${Math.abs(hash(item.name))%360} 44% 34%),#080b12)`;
   const sub=item.kind==='live'?(item.group||'Live TV'):[item.year,item.rating?`★ ${item.rating}`:''].filter(Boolean).join('  ·  ');
   const art=item.logo?`<img class="card-art" data-swoop-art="${esc(item.logo)}" alt="" loading="lazy">`:'';
-  return `<button class="card ${poster?'poster':''}" data-play="${esc(item.id)}" style="--card-bg:${fallback}" aria-label="${esc(item.name)}">
-    <div class="card-bg"></div>${art}<div class="card-shade"></div>${item.kind==='live'?`<div class="badge"><span class="live-dot"></span>LIVE</div>`:''}
+  const liveBadge=item.kind==='live'?`<div class="badge"><span class="live-dot"></span>LIVE</div>`:'';
+  return `<button class="card ${poster?'poster':'landscape'} ${item.kind==='live'?'live-card':''}" data-play="${esc(item.id)}" style="--card-bg:${fallback}" aria-label="${esc(item.name)}">
+    <div class="card-bg"></div>${art}<div class="card-shade"></div>${liveBadge}
     <div class="card-copy"><div class="card-title">${esc(item.name)}</div><div class="card-sub">${esc(sub)}</div></div>
     ${opts.progress?`<div class="progress"><i style="width:${opts.progress}%"></i></div>`:''}</button>`;
 }
 function hash(s=''){let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h)+s.charCodeAt(i)|0;return h}
-function nav(){const pages=[['home','⌂','Home'],['live','◉','Live TV'],['movies','▰','Movies'],['series','▦','TV Shows'],['search','⌕','Search']];return `
-  <header class="topbar"><div class="brand"><i class="brand-mark"></i>SWOOP TV</div>
+function nav(){
+  const pages=[['home','⌂','Home'],['live','◉','Live TV'],['movies','▰','Movies'],['series','▦','TV Shows'],['search','⌕','Search']];
+  return `<header class="topbar"><button class="brand" data-page="home" aria-label="Swoop TV Home"><i class="brand-mark">S</i><span>SWOOP</span><b>TV</b></button>
   <nav class="desktop-nav">${pages.map(([p,,label])=>`<button class="nav-btn ${state.page===p?'active':''}" data-page="${p}">${label}</button>`).join('')}</nav>
-  <div class="top-actions"><button class="icon-btn" data-page="search" aria-label="Search">⌕</button><button class="icon-btn" data-modal="provider"><span class="label-hide">＋ Provider</span></button><button class="icon-btn" data-page="settings" aria-label="Settings">⚙</button></div></header>
-  <nav class="bottom-nav">${pages.map(([p,icon,label])=>`<button class="${state.page===p?'active':''}" data-page="${p}"><span>${icon}</span>${label}</button>`).join('')}</nav>`}
-function rail(title,data,poster=false,meta=''){if(!data.length)return'';return `<section class="section"><div class="section-head"><h2>${esc(title)}</h2><span class="section-meta">${esc(meta)}</span></div><div class="rail">${data.map((x,i)=>card(x,poster,{progress:title==='Continue Watching'?(28+i*11)%86:0})).join('')}</div></section>`}
+  <div class="top-actions"><button class="icon-btn search-action" data-page="search" aria-label="Search">⌕</button><button class="top-provider" data-modal="provider">＋ Add Provider</button><button class="profile-btn" data-page="settings" aria-label="Settings">S</button></div></header>
+  <nav class="bottom-nav">${pages.map(([p,icon,label])=>`<button class="${state.page===p?'active':''}" data-page="${p}"><span>${icon}</span>${label}</button>`).join('')}</nav>`;
+}
+function rail(title,data,poster=false,meta=''){
+  if(!data.length)return'';
+  return `<section class="section ${poster?'poster-section':'landscape-section'}"><div class="section-head"><div><h2>${esc(title)}</h2>${meta?`<span class="section-meta">${esc(meta)}</span>`:''}</div><span class="rail-arrow">›</span></div><div class="rail">${data.map((x,i)=>card(x,poster,{progress:title==='Continue Watching'?(28+i*11)%86:0})).join('')}</div></section>`;
+}
+function featureItem(){
+  const cat=activeCatalog();
+  return cat.find(x=>x.kind==='movie'&&x.logo)||cat.find(x=>x.kind==='series'&&x.logo)||cat.find(x=>x.kind==='movie')||cat.find(x=>x.kind==='series')||cat.find(x=>x.kind==='live')||null;
+}
+function hero(feature,providerName){
+  if(!feature)return'';
+  const isLive=feature.kind==='live';
+  const typeLabel=isLive?'LIVE TV':feature.kind==='movie'?'FEATURED MOVIE':'FEATURED SERIES';
+  const meta=[feature.year,feature.rating?`★ ${feature.rating}`:'',feature.group].filter(Boolean);
+  const art=feature.logo?`<img class="hero-backdrop" data-swoop-art="${esc(feature.logo)}" alt="" loading="eager"><img class="hero-poster" data-swoop-art="${esc(feature.logo)}" alt="" loading="eager">`:'';
+  return `<section class="hero">
+    <div class="hero-media">${art}<div class="hero-fallback" style="--hero-fallback:${feature.demoColor||'linear-gradient(135deg,#1d2a44,#080a0e)'}"></div></div>
+    <div class="hero-vignette"></div>
+    <div class="hero-content">
+      <div class="hero-brandline"><span class="swoop-mini">S</span><span>${esc(typeLabel)}</span></div>
+      <h1>${esc(feature.name)}</h1>
+      <div class="hero-meta">${meta.map(x=>`<span>${esc(x)}</span>`).join('')}<span class="hero-source">${esc(providerName)}</span></div>
+      <p>${isLive?`Watch ${esc(feature.name)} live from your connected TV provider.`:`Part of your connected ${esc(providerName)} library. Start watching instantly with Swoop's native playback engine.`}</p>
+      <div class="cta-row hero-actions"><button class="btn play-btn" data-play="${esc(feature.id)}"><span>▶</span> Play</button><button class="btn secondary hero-secondary" data-page="${isLive?'live':feature.kind==='movie'?'movies':'series'}"><span>ⓘ</span> Browse ${isLive?'Live TV':feature.kind==='movie'?'Movies':'TV Shows'}</button></div>
+    </div>
+  </section>`;
+}
 function home(){
   const cat=activeCatalog(), live=cat.filter(x=>x.kind==='live'), movies=cat.filter(x=>x.kind==='movie'), shows=cat.filter(x=>x.kind==='series');
   const providerName=state.provider?.name||'Demo Library';
-  return `<main><section class="hero"><div class="hero-art"></div><div class="hero-content"><div class="eyebrow">${state.catalog.length?'YOUR LIBRARY IS READY':'SWOOP TV v0.2.3'}</div><h1>Your TV.<br>Your way.</h1><p>${state.catalog.length?`${esc(providerName)} is connected. Browse live channels, movies and series from one cinematic interface.`:'Connect an M3U playlist or Xtream provider to replace this demo catalog with your own authorised TV library.'}</p><div class="cta-row"><button class="btn accent" data-modal="provider">${state.catalog.length?'Manage Provider':'Add TV Provider'}</button><button class="btn secondary" data-page="live">Open Live TV</button></div></div></section>
-  <div class="content">${rail('Live Now',live.slice(0,12),false,`${live.length} channels`)}${rail('Continue Watching',[...movies,...shows].slice(0,8),true)}${state.mdblistRows.map(r=>rail(r.name,r.items,true,`${r.items.length} available`)).join('')}${rail('Movies',[...movies].slice(0,12),true,`${movies.length} titles`)}${rail('TV Shows',[...shows].slice(0,12),true,`${shows.length} series`)}</div></main>`;
+  const feature=featureItem();
+  const groups=[...new Set([...movies,...shows].map(x=>x.group).filter(Boolean))].slice(0,6);
+  return `<main class="home-main">${hero(feature,providerName)}
+    <div class="content home-content">
+      <div class="library-strip"><div><span class="library-dot"></span><strong>${state.catalog.length?esc(providerName):'Demo Library'}</strong><span>${live.length.toLocaleString()} live · ${movies.length.toLocaleString()} movies · ${shows.length.toLocaleString()} shows</span></div><button class="library-manage" data-modal="provider">${state.catalog.length?'Manage Provider':'Connect Provider'} →</button></div>
+      ${rail('Live Now',live.slice(0,14),false,`${live.length.toLocaleString()} channels`)}
+      ${rail('Movies',movies.slice(0,14),true,`${movies.length.toLocaleString()} titles`)}
+      ${state.mdblistRows.map(r=>rail(r.name,r.items.slice(0,14),true,`${r.items.length.toLocaleString()} available`)).join('')}
+      ${rail('TV Shows',shows.slice(0,14),true,`${shows.length.toLocaleString()} series`)}
+      ${groups.length?`<section class="section genre-section"><div class="section-head"><div><h2>Browse your library</h2><span class="section-meta">Popular categories from your provider</span></div></div><div class="genre-row">${groups.map((g,i)=>`<div class="genre-tile" style="--genre-hue:${(Math.abs(hash(g))+i*31)%360}"><span>${esc(g)}</span></div>`).join('')}</div></section>`:''}
+    </div></main>`;
 }
 function page(kind,title){
-  const arr=items(kind), limit=viewLimits[kind]||120, shown=arr.slice(0,limit);
-  const cards=kind==='live'
-    ?shown.map((x,i)=>`<button class="channel-card" data-play="${esc(x.id)}"><div class="channel-logo"><span>${esc((x.name||'?').slice(0,2).toUpperCase())}</span>${x.logo?`<img class="channel-logo-img" data-swoop-art="${esc(x.logo)}" alt="" loading="lazy">`:''}</div><div><div class="channel-now">${esc(x.name)}</div><div class="channel-next">${esc(x.group||'Live TV')} · Select to play</div></div><div class="channel-num">${String(i+1).padStart(3,'0')}</div></button>`).join('')
-    :shown.map(x=>card(x,true)).join('');
-  return `<main class="page"><div class="page-title-row"><div><h1>${title}</h1><div class="subtle">${state.catalog.length?`${arr.length} items from ${esc(state.provider?.name||'your provider')}`:'Demo content — connect a provider to populate your library.'}</div></div><button class="btn secondary" data-modal="provider">＋ Provider</button></div>${arr.length?`<div class="${kind==='live'?'channel-grid':'grid'}">${cards}</div>${shown.length<arr.length?`<div class="load-more-wrap"><button class="btn secondary" data-load-more="${kind}">Load more · showing ${shown.length} of ${arr.length}</button></div>`:''}`:empty('No content yet','Connect a TV provider to populate this section.')}</main>`
+  const arr=items(kind), limit=viewLimits[kind]||120, shown=arr.slice(0,limit), providerName=state.provider?.name||'Demo Library';
+  const lead=arr.find(x=>x.logo)||arr[0];
+  const groups=[...new Set(arr.map(x=>x.group).filter(Boolean))].slice(0,8);
+  const leadArt=lead?.logo?`<img data-swoop-art="${esc(lead.logo)}" class="page-hero-art" alt="" loading="eager">`:'';
+  const cards=shown.map(x=>card(x,kind!=='live')).join('');
+  return `<main class="page cinematic-page">
+    <section class="page-hero ${kind==='live'?'live-page-hero':''}">${leadArt}<div class="page-hero-shade"></div><div class="page-hero-copy"><div class="eyebrow">${kind==='live'?'WATCH NOW':kind==='movie'?'ON DEMAND':'BINGE-WORTHY'}</div><h1>${esc(title)}</h1><p>${state.catalog.length?`${arr.length.toLocaleString()} ${kind==='live'?'channels':kind==='movie'?'movies':'series'} from ${esc(providerName)}.`:'Demo content — connect a provider to populate your library.'}</p>${lead?`<button class="btn play-btn page-feature-play" data-play="${esc(lead.id)}">▶ Play ${esc(lead.name)}</button>`:''}</div></section>
+    <div class="page-content">
+      <div class="page-toolbar"><div class="category-pills">${groups.map(g=>`<span>${esc(g)}</span>`).join('')}</div><button class="btn secondary compact-btn" data-modal="provider">＋ Provider</button></div>
+      ${arr.length?`<div class="content-grid ${kind==='live'?'live-content-grid':'poster-content-grid'}">${cards}</div>${shown.length<arr.length?`<div class="load-more-wrap"><button class="btn secondary" data-load-more="${kind}">Load more · showing ${shown.length.toLocaleString()} of ${arr.length.toLocaleString()}</button></div>`:''}`:empty('No content yet','Connect a TV provider to populate this section.')}
+    </div></main>`;
 }
-function empty(title,copy){return `<div class="empty"><h3>${esc(title)}</h3><p>${esc(copy)}</p><button class="btn accent" data-modal="provider">Add TV Provider</button></div>`}
-function searchPage(){return `<main class="page"><div class="page-title-row"><div><h1>Search</h1><div class="subtle">Search channels, movies and TV shows.</div></div><div class="searchbox"><input id="searchInput" autofocus placeholder="Search Swoop TV…" /></div></div><div id="searchResults" class="grid"></div></main>`}
-function settingsPage(){const counts={live:items('live').length,movie:items('movie').length,series:items('series').length};return `<main class="page"><div class="page-title-row"><div><h1>Settings</h1><div class="subtle">Provider, discovery and local-device configuration.</div></div></div><div class="settings-list">
-  <section class="setting-card"><h3>Provider</h3><div class="kv"><span>Connected source</span><span>${esc(state.provider?.name||'Demo mode')}</span></div><div class="kv"><span>Catalog</span><span>${counts.live} live · ${counts.movie} movies · ${counts.series} series</span></div><div class="cta-row"><button class="btn secondary" data-modal="provider">Manage provider</button>${state.catalog.length?'<button class="btn danger" data-action="disconnect">Disconnect</button>':''}</div></section>
-  <section class="setting-card"><h3>MDBList discovery rows</h3><p class="form-hint">Connect an MDBList API key and list to create a Swoop TV row containing only titles that also exist in your imported catalog.</p><div class="cta-row"><button class="btn secondary" data-modal="mdblist">Add MDBList row</button></div>${state.mdblistRows.length?state.mdblistRows.map((r,i)=>`<div class="kv"><span>${esc(r.name)}</span><span>${r.items.length} matched · <button class="nav-btn" data-remove-row="${i}">Remove</button></span></div>`).join(''):''}</section>
-  ${NATIVE_WINDOWS?`<section class="setting-card native-ready"><h3>Windows native playback</h3><div class="kv"><span>Native bridge</span><span>Ready</span></div><div class="kv"><span>Playback engine</span><span>mpv 0.41.0</span></div><p class="form-hint">This Windows build sends Xtream API requests through the local Swoop bridge and opens Live TV and VOD in the native mpv engine. HTTP streams, MPEG-TS and codecs that Chrome rejects can be handled outside the browser sandbox. Video still goes directly from your provider to this PC.</p></section>`:`<section class="setting-card"><h3>Browser connection helper</h3><div class="kv"><span>Xtream API relay</span><span>${state.settings.xtreamRelayUrl?esc(state.settings.xtreamRelayUrl):'Not configured'}</span></div><p class="form-hint">If an Xtream login works in another IPTV app but the browser says “Failed to fetch”, configure the included Cloudflare Worker in the provider screen. Only Xtream API/catalog requests use the helper; video remains provider-to-device.</p></section>`}
-  <section class="setting-card"><h3>Privacy & playback architecture</h3><p class="form-hint">Swoop TV does not bundle content. ${NATIVE_WINDOWS?'The Windows build uses a loopback-only local bridge for provider API calls and launches the bundled-on-first-run native playback engine.':'Imported stream URLs play directly from your provider whenever the browser/device supports them.'} Xtream stream URLs may contain provider credentials and are stored locally with the imported catalog. Login fields are retained only when you enable Remember during import.</p></section>
+function empty(title,copy){return `<div class="empty"><div class="empty-mark">S</div><h3>${esc(title)}</h3><p>${esc(copy)}</p><button class="btn accent" data-modal="provider">Add TV Provider</button></div>`}
+function searchPage(){return `<main class="page search-page"><div class="search-hero"><div class="eyebrow">FIND SOMETHING GREAT</div><h1>Search Swoop</h1><div class="searchbox searchbox-large"><span>⌕</span><input id="searchInput" autofocus placeholder="Movies, TV shows, live channels…" /></div></div><div class="page-content"><div id="searchResults" class="content-grid search-results"></div></div></main>`}
+function settingsPage(){const counts={live:items('live').length,movie:items('movie').length,series:items('series').length};return `<main class="page settings-page"><div class="settings-hero"><div class="eyebrow">SWOOP TV</div><h1>Settings</h1><p>Manage your provider, discovery rows and playback environment.</p></div><div class="page-content settings-list">
+  <section class="setting-card setting-card-feature"><div class="setting-icon">TV</div><div class="setting-main"><h3>TV Provider</h3><p>${esc(state.provider?.name||'Demo mode')}</p><div class="setting-stats"><span><strong>${counts.live.toLocaleString()}</strong> Live</span><span><strong>${counts.movie.toLocaleString()}</strong> Movies</span><span><strong>${counts.series.toLocaleString()}</strong> Shows</span></div><div class="cta-row"><button class="btn secondary" data-modal="provider">Manage Provider</button>${state.catalog.length?'<button class="btn danger" data-action="disconnect">Disconnect</button>':''}</div></div></section>
+  <section class="setting-card"><div class="setting-icon">MDB</div><div class="setting-main"><h3>MDBList Discovery</h3><p>Create custom Swoop rows from MDBList titles that are available in your provider library.</p><div class="cta-row"><button class="btn secondary" data-modal="mdblist">Add MDBList Row</button></div>${state.mdblistRows.length?state.mdblistRows.map((r,i)=>`<div class="kv"><span>${esc(r.name)}</span><span>${r.items.length} matched · <button class="nav-btn" data-remove-row="${i}">Remove</button></span></div>`).join(''):''}</div></section>
+  ${NATIVE_WINDOWS?`<section class="setting-card native-ready"><div class="setting-icon">▶</div><div class="setting-main"><h3>Windows Native Playback</h3><p>Native bridge ready · mpv 0.41.0. Live TV and VOD play outside the browser sandbox for broader IPTV compatibility.</p></div></section>`:`<section class="setting-card"><div class="setting-icon">↗</div><div class="setting-main"><h3>Browser Connection Helper</h3><p>${state.settings.xtreamRelayUrl?esc(state.settings.xtreamRelayUrl):'Not configured'} · Used only for Xtream API/catalog requests when the browser blocks direct access.</p></div></section>`}
+  <section class="setting-card"><div class="setting-icon">◈</div><div class="setting-main"><h3>Privacy & Architecture</h3><p>Swoop TV does not bundle content. ${NATIVE_WINDOWS?'The Windows build uses a loopback-only local bridge for provider API calls and native playback.':'Imported streams play directly from your provider whenever the browser/device supports them.'} Xtream stream URLs can contain provider credentials and are stored locally with the catalog.</p></div></section>
   </div></main>`}
 function render(){let body;if(state.page==='home')body=home();else if(state.page==='live')body=page('live','Live TV');else if(state.page==='movies')body=page('movie','Movies');else if(state.page==='series')body=page('series','TV Shows');else if(state.page==='search')body=searchPage();else body=settingsPage();$app.innerHTML=`<div class="app-shell">${nav()}${body}${modal?modalHtml():''}${playerItem?playerHtml():''}</div>`;bind();if(state.page==='search')runSearch('');hydrateArtwork()}
 function providerModal(){
+  const connected=state.provider?.name?`<div class="provider-current"><span class="provider-current-dot"></span><div><strong>${esc(state.provider.name)}</strong><span>${state.provider.type==='xtream'?'Xtream Codes':'M3U Playlist'} currently connected</span></div></div>`:'';
   const helper=NATIVE_WINDOWS
-    ?`<div class="helper-box native-helper"><div class="helper-body"><strong>Windows Native Bridge active</strong><p class="form-hint">No Cloudflare Helper URL or token is needed in the Windows app. Swoop sends Xtream API requests through its loopback-only local bridge and hands video directly to the native player.</p></div></div>`
-    :`<details class="helper-box" ${state.settings.xtreamRelayUrl?'open':''}><summary>Browser Connection Helper <span>use this for “Failed to fetch”</span></summary><div class="helper-body"><p class="form-hint">Some Xtream servers block browser API requests or only offer HTTP. Deploy the included <strong>cloudflare-worker</strong> once, then paste its Worker URL and secret token here. The helper relays metadata/API JSON only — never the video stream.</p><div class="field"><label>Connection Helper URL</label><input name="relayUrl" type="url" value="${esc(state.settings.xtreamRelayUrl||'')}" placeholder="https://swoop-xtream-relay.yourname.workers.dev"></div><div class="field"><label>Helper token</label><input name="relayToken" type="password" value="${esc(state.settings.xtreamRelayToken||'')}" autocomplete="off" placeholder="Your SWOOP_PROXY_TOKEN"></div></div></details>`;
-  return `<div class="modal-backdrop" data-close-modal><div class="modal" data-modal-card><div class="modal-head"><h2>Add TV Provider</h2><button class="icon-btn" data-close>✕</button></div><div class="modal-body"><div class="tabs"><button class="active" data-provider-tab="m3u">M3U Playlist</button><button data-provider-tab="xtream">Xtream</button></div>
-  <form id="m3uForm" class="form-grid"><div class="field"><label>Provider name</label><input name="name" value="My TV" required></div><div class="field"><label>M3U playlist URL</label><input name="url" type="url" placeholder="http://provider.example/playlist.m3u"></div><div class="field"><label>Or choose an M3U file</label><input name="file" type="file" accept=".m3u,.m3u8,text/plain,application/x-mpegURL"></div><div class="field"><label>Optional XMLTV / EPG URL</label><input name="epgUrl" type="url" placeholder="http://provider.example/epg.xml"></div><p class="form-hint">${NATIVE_WINDOWS?'The Windows bridge can fetch HTTP/HTTPS playlist URLs without browser CORS restrictions.':'Browser URL imports require the playlist server to allow cross-origin requests. Local M3U files work without CORS.'}</p><button class="btn accent" type="submit">Import M3U</button></form>
-  <form id="xtreamForm" class="form-grid" hidden><div class="field"><label>Provider name</label><input name="name" value="My TV" required></div><div class="field"><label>Server URL</label><input name="server" type="url" placeholder="http://provider.example:port" required></div><div class="split"><div class="field"><label>Username</label><input name="username" autocomplete="username" required></div><div class="field"><label>Password</label><input name="password" type="password" autocomplete="current-password" required></div></div>
-  ${helper}
-  <label class="form-hint remember-row"><input type="checkbox" name="remember"> Remember provider login fields on this device (local browser storage is not encrypted).</label><p class="form-hint">${NATIVE_WINDOWS?'HTTP and HTTPS Xtream servers are supported by the Windows bridge. Native video playback goes directly from your provider to this PC.':'With no Helper URL, Swoop TV connects directly. If a Helper URL is present, Xtream API/catalog calls use it automatically. Video streams still play directly from your IPTV provider.'} Imported Xtream stream URLs may themselves contain provider credentials and are stored locally with the catalog.</p><button class="btn accent" type="submit">Connect Xtream</button></form><div id="providerStatus"></div></div></div></div>`}
+    ?`<div class="provider-note native-note"><div class="provider-note-icon">✓</div><div><strong>Windows Native Bridge ready</strong><span>HTTP and HTTPS Xtream servers are supported. No Cloudflare details are needed in this Windows app.</span></div></div>`
+    :`<details class="helper-box compact-helper" ${state.settings.xtreamRelayUrl?'open':''}><summary>Connection Helper <span>only if direct login fails</span></summary><div class="helper-body"><p class="form-hint">Use your Swoop Connection Helper when a working Xtream account is blocked by browser CORS or mixed-content rules. It relays catalog/API requests only, never video.</p><div class="field"><label>Connection Helper URL</label><input name="relayUrl" type="url" value="${esc(state.settings.xtreamRelayUrl||'')}" placeholder="https://your-worker.workers.dev"></div><div class="field"><label>Helper token</label><input name="relayToken" type="password" value="${esc(state.settings.xtreamRelayToken||'')}" autocomplete="off" placeholder="SWOOP_PROXY_TOKEN"></div></div></details>`;
+  return `<div class="modal-backdrop" data-close-modal><div class="modal provider-modal" data-modal-card>
+    <div class="modal-head provider-modal-head"><div><div class="eyebrow">TV PROVIDER</div><h2>${state.provider?'Manage Provider':'Add Provider'}</h2><p>Choose how your TV service was supplied. Swoop will only show the fields required for that connection type.</p></div><button class="icon-btn" data-close aria-label="Close">✕</button></div>
+    <div class="modal-body provider-modal-body">
+      ${connected}
+      <div id="providerSetup">
+        <div class="provider-methods" aria-label="Provider type">
+          <button type="button" class="provider-method active" data-provider-tab="xtream"><span class="provider-method-icon">X</span><span><strong>Xtream Codes</strong><small>Server URL + username + password</small></span><span class="provider-method-check">✓</span></button>
+          <button type="button" class="provider-method" data-provider-tab="m3u"><span class="provider-method-icon">M3U</span><span><strong>M3U Playlist</strong><small>Playlist URL or local M3U file</small></span><span class="provider-method-check">✓</span></button>
+        </div>
+
+        <form id="xtreamForm" class="provider-form">
+          <div class="provider-form-intro"><div><div class="eyebrow">XTREAM CODES</div><h3>Connect your TV service</h3><p>Enter the same Xtream details you use in another IPTV player.</p></div><span class="provider-badge">Recommended</span></div>
+          <div class="field"><label>Provider name</label><input name="name" value="${esc(state.provider?.type==='xtream'?state.provider?.name||'My TV':'My TV')}" placeholder="My TV" required></div>
+          <div class="field"><label>Server URL</label><input name="server" type="url" value="${esc(state.provider?.type==='xtream'?state.provider?.server||'':'')}" placeholder="http://provider.example:port" required></div>
+          <div class="split"><div class="field"><label>Username</label><input name="username" value="${esc(state.provider?.type==='xtream'?state.provider?.username||'':'')}" autocomplete="username" required></div><div class="field"><label>Password</label><input name="password" type="password" value="${esc(state.provider?.type==='xtream'?state.provider?.password||'':'')}" autocomplete="current-password" required></div></div>
+          ${helper}
+          <label class="remember-row provider-remember"><input type="checkbox" name="remember" ${state.provider?.username?'checked':''}><span><strong>Remember login on this device</strong><small>Credentials are stored locally and are not encrypted by the browser.</small></span></label>
+          <button class="btn accent provider-primary" type="submit"><span>Connect Xtream</span><span>→</span></button>
+        </form>
+
+        <form id="m3uForm" class="provider-form" hidden>
+          <div class="provider-form-intro"><div><div class="eyebrow">M3U PLAYLIST</div><h3>Import your playlist</h3><p>Use either a playlist URL or a local M3U/M3U8 file.</p></div></div>
+          <div class="field"><label>Provider name</label><input name="name" value="${esc(state.provider?.type==='m3u'?state.provider?.name||'My TV':'My TV')}" placeholder="My TV" required></div>
+          <div class="field"><label>M3U playlist URL</label><input name="url" type="url" placeholder="http://provider.example/get.php?... "></div>
+          <div class="provider-or"><span>or</span></div>
+          <div class="field"><label>Choose M3U file</label><input name="file" type="file" accept=".m3u,.m3u8,text/plain,application/x-mpegURL"></div>
+          <div class="field"><label>TV guide / XMLTV URL <span class="optional">Optional</span></label><input name="epgUrl" type="url" value="${esc(state.provider?.type==='m3u'?state.provider?.epgUrl||'':'')}" placeholder="http://provider.example/epg.xml"></div>
+          <div class="provider-note"><div class="provider-note-icon">i</div><div><strong>${NATIVE_WINDOWS?'Windows import ready':'Playlist import'}</strong><span>${NATIVE_WINDOWS?'The Windows bridge can fetch HTTP or HTTPS playlist URLs directly.':'Local files work immediately. URL imports require the playlist server to allow browser requests.'}</span></div></div>
+          <button class="btn accent provider-primary" type="submit"><span>Import M3U</span><span>→</span></button>
+        </form>
+      </div>
+
+      <section id="providerProgress" class="provider-progress" hidden aria-live="polite" aria-busy="true">
+        <div class="provider-progress-top"><div class="provider-spinner" aria-hidden="true"></div><div><div id="providerProgressKicker" class="eyebrow">PLEASE WAIT</div><h3 id="providerProgressTitle">Connecting to your provider…</h3><p id="providerProgressDetail">Swoop is preparing your TV library. Keep this window open.</p></div></div>
+        <div class="provider-progress-bar"><span id="providerProgressBar"></span></div>
+        <div id="providerProgressSteps" class="provider-progress-steps"></div>
+        <div id="providerProgressSummary" class="provider-progress-summary"></div>
+        <div class="provider-progress-actions"><button type="button" class="btn secondary" data-provider-progress-back hidden>Back to details</button></div>
+      </section>
+      <div id="providerStatus" aria-live="polite"></div>
+    </div>
+  </div></div>`
+}
 function mdblistModal(){return `<div class="modal-backdrop" data-close-modal><div class="modal" data-modal-card><div class="modal-head"><h2>Add MDBList Row</h2><button class="icon-btn" data-close>✕</button></div><div class="modal-body"><form id="mdblistForm" class="form-grid"><div class="field"><label>Row name in Swoop TV</label><input name="rowName" value="My MDBList" required></div><div class="field"><label>MDBList API key</label><input name="apiKey" type="password" value="${esc(state.settings.mdblistApiKey||'')}" required></div><div class="field"><label>List ID</label><input name="listId" placeholder="e.g. 12345"></div><div class="divider"></div><p class="form-hint">Or identify the list by username + list slug/name.</p><div class="split"><div class="field"><label>Username</label><input name="username" placeholder="username"></div><div class="field"><label>List name / slug</label><input name="listName" placeholder="best-action-movies"></div></div><button class="btn accent" type="submit">Fetch & Match Catalog</button></form><div id="mdbStatus"></div></div></div></div>`}
 function modalHtml(){return modal==='provider'?providerModal():mdblistModal()}
 function setStatus(id,msg,type='info'){const el=document.querySelector(id);if(el)el.innerHTML=`<div class="status ${type}">${esc(msg)}</div>`}
+function providerProgressStart(kind,providerName){
+  const setup=document.querySelector('#providerSetup'), panel=document.querySelector('#providerProgress'), status=document.querySelector('#providerStatus');
+  if(setup)setup.hidden=true;if(panel)panel.hidden=false;if(status)status.innerHTML='';
+  const steps=kind==='xtream' ? [
+    ['contact','Contacting provider'],['auth','Verifying Xtream login'],['live','Loading Live TV'],['movie','Loading Movies'],['series','Loading TV Shows'],['save','Building Swoop library']
+  ]:[['read','Reading playlist'],['parse','Parsing channels'],['save','Building Swoop library']];
+  const box=document.querySelector('#providerProgressSteps');if(box)box.innerHTML=steps.map(([id,label],i)=>`<div class="provider-progress-step" data-progress-step="${id}"><span class="step-indicator">${i+1}</span><span>${esc(label)}</span><strong></strong></div>`).join('');
+  const title=document.querySelector('#providerProgressTitle');if(title)title.textContent=`Connecting to ${providerName||'your provider'}…`;
+  const detail=document.querySelector('#providerProgressDetail');if(detail)detail.textContent=kind==='xtream'?'Swoop is checking your account, then loading Live TV, Movies and TV Shows. Large libraries can take a little while.':'Swoop is reading your playlist and preparing the channels for your library.';
+  const summary=document.querySelector('#providerProgressSummary');if(summary)summary.innerHTML='<strong>Please wait.</strong> Keep Swoop open while this finishes.';
+  providerProgressUpdate({step:steps[0][0],progress:5});
+}
+function providerProgressUpdate({step='',progress=0,title='',detail='',stepDetail='',done=false,error=false}={}){
+  const bar=document.querySelector('#providerProgressBar');if(bar)bar.style.width=`${Math.max(0,Math.min(100,progress))}%`;
+  if(title){const el=document.querySelector('#providerProgressTitle');if(el)el.textContent=title}
+  if(detail){const el=document.querySelector('#providerProgressDetail');if(el)el.textContent=detail}
+  document.querySelectorAll('[data-progress-step]').forEach(el=>{
+    const active=el.dataset.progressStep===step; if(active)el.classList.add('active');else el.classList.remove('active');
+    if(done&&!error)el.classList.add('done');
+  });
+  if(step){const active=document.querySelector(`[data-progress-step="${step}"]`);if(active){active.classList.add(error?'error':'active');const strong=active.querySelector('strong');if(strong&&stepDetail)strong.textContent=stepDetail}}
+}
+function providerProgressMark(step,detail=''){
+  const el=document.querySelector(`[data-progress-step="${step}"]`);if(el){el.classList.remove('active');el.classList.add('done');const indicator=el.querySelector('.step-indicator');if(indicator)indicator.textContent='✓';const strong=el.querySelector('strong');if(strong)strong.textContent=detail}
+}
+function providerProgressSuccess(message){
+  providerProgressUpdate({progress:100,title:'Your library is ready',detail:message});
+  document.querySelectorAll('[data-progress-step]').forEach(el=>{el.classList.remove('active');el.classList.add('done');const i=el.querySelector('.step-indicator');if(i)i.textContent='✓'});
+  const kicker=document.querySelector('#providerProgressKicker');if(kicker)kicker.textContent='CONNECTED';
+  const spinner=document.querySelector('.provider-spinner');if(spinner){spinner.classList.add('success');spinner.textContent='✓'}
+  const summary=document.querySelector('#providerProgressSummary');if(summary)summary.innerHTML='<strong>Done.</strong> Opening Swoop TV…';
+}
+function providerProgressError(message){
+  providerProgressUpdate({progress:100,title:'Could not finish connecting',detail:message,error:true});
+  const kicker=document.querySelector('#providerProgressKicker');if(kicker)kicker.textContent='CONNECTION ISSUE';
+  const spinner=document.querySelector('.provider-spinner');if(spinner){spinner.classList.add('error');spinner.textContent='!'}
+  const summary=document.querySelector('#providerProgressSummary');if(summary)summary.innerHTML='<strong>Your details have not been cleared.</strong> Go back, check them and try again.';
+  const back=document.querySelector('[data-provider-progress-back]');if(back)back.hidden=false;
+}
+function providerProgressBack(){const setup=document.querySelector('#providerSetup'),panel=document.querySelector('#providerProgress');if(setup)setup.hidden=false;if(panel)panel.hidden=true;const back=document.querySelector('[data-provider-progress-back]');if(back)back.hidden=true}
 function toast(msg){clearTimeout(toastTimer);document.querySelector('.toast')?.remove();const el=document.createElement('div');el.className='toast';el.textContent=msg;document.body.appendChild(el);toastTimer=setTimeout(()=>el.remove(),2200)}
 function findItem(id){return activeCatalog().find(x=>x.id===id)}
 function playerHtml(){
@@ -229,9 +351,53 @@ function bind(){
   document.querySelector('[data-action="disconnect"]')?.addEventListener('click',()=>{state.catalog=[];state.provider=null;state.mdblistRows=[];sessionRelay={url:'',token:''};sessionXtream={server:'',username:'',password:'',relayUrl:'',relayToken:''};clearState();render();toast('Provider disconnected');});
   document.querySelectorAll('[data-remove-row]').forEach(el=>el.onclick=()=>{state.mdblistRows.splice(Number(el.dataset.removeRow),1);persist();render()});
   const search=document.querySelector('#searchInput');if(search)search.oninput=e=>runSearch(e.target.value);
-  document.querySelectorAll('[data-provider-tab]').forEach(el=>el.onclick=()=>{document.querySelectorAll('[data-provider-tab]').forEach(x=>x.classList.toggle('active',x===el));document.querySelector('#m3uForm').hidden=el.dataset.providerTab!=='m3u';document.querySelector('#xtreamForm').hidden=el.dataset.providerTab!=='xtream';});
-  document.querySelector('#m3uForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),file=fd.get('file'),url=String(fd.get('url')||'').trim();try{setStatus('#providerStatus','Reading playlist…');let text;if(file&&file.size)text=await file.text();else if(url){if(NATIVE_WINDOWS)text=await nativeFetchText(url);else{const r=await fetch(url);if(!r.ok)throw new Error(`Playlist returned HTTP ${r.status}`);text=await r.text()}}else throw new Error('Choose an M3U file or enter a playlist URL.');const providerId=`m3u-${Date.now()}`,cat=parseM3U(text,providerId);if(!cat.length)throw new Error('No playable entries were found in that M3U playlist.');state.catalog=cat;state.provider={id:providerId,type:'m3u',name:String(fd.get('name')||'M3U Provider'),epgUrl:String(fd.get('epgUrl')||'')};state.mdblistRows=[];persist();setStatus('#providerStatus',`Imported ${cat.length} items. Opening Swoop TV…`,'ok');setTimeout(()=>{modal=null;state.page='home';render();},500)}catch(err){setStatus('#providerStatus',err.message||String(err),'err')}});
-  document.querySelector('#xtreamForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),relayUrl=String(fd.get('relayUrl')||'').trim(),relayToken=String(fd.get('relayToken')||''),cfg={server:String(fd.get('server')).trim(),username:String(fd.get('username')),password:String(fd.get('password')),relayUrl,relayToken};try{setStatus('#providerStatus',NATIVE_WINDOWS?'Testing Xtream account through the Windows native bridge…':relayUrl?'Testing Xtream account through Swoop Connection Helper…':'Testing Xtream account directly…');const profile=await testXtream(cfg);if(String(profile?.user_info?.auth)==='0')throw new Error('Xtream account was not authorised.');setStatus('#providerStatus','Connected. Importing live TV, movies and series…');const providerId=`xtream-${Date.now()}`;const result=await importXtream(cfg,providerId);if(!result.items.length)throw new Error('Connected, but the provider returned an empty catalog.');state.catalog=result.items;const remember=Boolean(fd.get('remember'));sessionRelay={url:relayUrl,token:relayToken};sessionXtream={...cfg};state.settings.xtreamRelayUrl=relayUrl;state.settings.xtreamRelayToken=remember?relayToken:'';state.provider={id:providerId,type:'xtream',name:String(fd.get('name')||'Xtream Provider'),server:cfg.server,connection:NATIVE_WINDOWS?'windows-native':relayUrl?'helper':'direct',relayUrl, ...(remember?{username:cfg.username,password:cfg.password,relayToken}:{})};state.mdblistRows=[];persist();setStatus('#providerStatus',`Imported ${result.items.length} items${NATIVE_WINDOWS?' through the Windows native bridge':relayUrl?' through the Connection Helper':''}. Opening Swoop TV…`,'ok');setTimeout(()=>{modal=null;state.page='home';render();},500)}catch(err){setStatus('#providerStatus',err.message||String(err),'err')}});
+  document.querySelectorAll('[data-provider-tab]').forEach(el=>el.onclick=()=>{document.querySelectorAll('[data-provider-tab]').forEach(x=>x.classList.toggle('active',x===el));document.querySelector('#m3uForm').hidden=el.dataset.providerTab!=='m3u';document.querySelector('#xtreamForm').hidden=el.dataset.providerTab!=='xtream';document.querySelector('#providerStatus').innerHTML='';});document.querySelector('[data-provider-progress-back]')?.addEventListener('click',providerProgressBack);
+  document.querySelector('#m3uForm')?.addEventListener('submit',async e=>{
+    e.preventDefault();const fd=new FormData(e.currentTarget),file=fd.get('file'),url=String(fd.get('url')||'').trim(),name=String(fd.get('name')||'M3U Provider');
+    providerProgressStart('m3u',name);
+    try{
+      providerProgressUpdate({step:'read',progress:12,title:`Reading ${name}…`,detail:file&&file.size?'Swoop is reading the M3U file from this device.':'Swoop is downloading the playlist from your provider.'});
+      let text;
+      if(file&&file.size)text=await file.text();
+      else if(url){if(NATIVE_WINDOWS)text=await nativeFetchText(url);else{const r=await fetch(url);if(!r.ok)throw new Error(`Playlist returned HTTP ${r.status}`);text=await r.text()}}
+      else throw new Error('Choose an M3U file or enter a playlist URL.');
+      providerProgressMark('read','Complete');providerProgressUpdate({step:'parse',progress:55,title:'Parsing channels…',detail:'Swoop is reading channel names, groups, logos and stream addresses.'});
+      await new Promise(r=>setTimeout(r,40));
+      const providerId=`m3u-${Date.now()}`,cat=parseM3U(text,providerId);if(!cat.length)throw new Error('No playable entries were found in that M3U playlist.');
+      providerProgressMark('parse',`${cat.length.toLocaleString()} items`);providerProgressUpdate({step:'save',progress:86,title:'Building your Swoop library…',detail:`Preparing ${cat.length.toLocaleString()} imported items for browsing.`});
+      state.catalog=cat;state.provider={id:providerId,type:'m3u',name,epgUrl:String(fd.get('epgUrl')||'')};state.mdblistRows=[];persist();
+      providerProgressMark('save','Ready');providerProgressSuccess(`Imported ${cat.length.toLocaleString()} items from ${name}.`);setTimeout(()=>{modal=null;state.page='home';render();},1100)
+    }catch(err){providerProgressError(err.message||String(err))}
+  });
+  document.querySelector('#xtreamForm')?.addEventListener('submit',async e=>{
+    e.preventDefault();const fd=new FormData(e.currentTarget),relayUrl=String(fd.get('relayUrl')||'').trim(),relayToken=String(fd.get('relayToken')||''),name=String(fd.get('name')||'Xtream Provider'),cfg={server:String(fd.get('server')).trim(),username:String(fd.get('username')),password:String(fd.get('password')),relayUrl,relayToken};
+    providerProgressStart('xtream',name);
+    try{
+      providerProgressUpdate({step:'contact',progress:7,title:`Contacting ${name}…`,detail:NATIVE_WINDOWS?'Using the Windows Native Bridge to reach your Xtream server.':relayUrl?'Using the Swoop Connection Helper to reach your Xtream server.':'Connecting directly to your Xtream server.'});
+      const profile=await testXtream(cfg);providerProgressMark('contact','Reached');
+      providerProgressUpdate({step:'auth',progress:18,title:'Verifying your Xtream login…',detail:'Checking that the account is active and authorised.'});
+      if(String(profile?.user_info?.auth)==='0')throw new Error('Xtream account was not authorised.');
+      providerProgressMark('auth','Authorised');
+      providerProgressUpdate({step:'live',progress:26,title:'Loading your provider library…',detail:'Live TV, Movies and TV Shows are being loaded. Large subscriptions can take a little while.'});
+      const providerId=`xtream-${Date.now()}`;
+      const completedSections=new Set();
+      const result=await importXtream(cfg,providerId,info=>{
+        if(info?.section){
+          completedSections.add(info.section);providerProgressMark(info.section,`${Number(info.count||0).toLocaleString()} items`);
+          const next=['live','movie','series'].find(x=>!completedSections.has(x))||'save';
+          const progress=next==='live'?30:next==='movie'?47:next==='series'?64:80;
+          const nextLabel=next==='live'?'Live TV':next==='movie'?'Movies':next==='series'?'TV Shows':'your Swoop library';
+          providerProgressUpdate({step:next,progress,title:next==='save'?'Provider catalog loaded — preparing Swoop…':`Loading ${nextLabel}…`,detail:next==='save'?'Swoop is now building the local library and indexes.':'The remaining sections are still loading. You can leave this window open.'});
+        }
+      });
+      if(!result.items.length)throw new Error('Connected, but the provider returned an empty catalog.');
+      providerProgressUpdate({step:'save',progress:88,title:'Building your Swoop library…',detail:'Saving the catalog and preparing it for Home, Live TV, Movies, TV Shows and Search.'});
+      const remember=Boolean(fd.get('remember'));sessionRelay={url:relayUrl,token:relayToken};sessionXtream={...cfg};state.settings.xtreamRelayUrl=relayUrl;state.settings.xtreamRelayToken=remember?relayToken:'';state.catalog=result.items;state.provider={id:providerId,type:'xtream',name,server:cfg.server,connection:NATIVE_WINDOWS?'windows-native':relayUrl?'helper':'direct',relayUrl,...(remember?{username:cfg.username,password:cfg.password,relayToken}:{})};state.mdblistRows=[];persist();
+      providerProgressMark('save','Ready');
+      const counts=result.counts||{live:result.items.filter(x=>x.kind==='live').length,movie:result.items.filter(x=>x.kind==='movie').length,series:result.items.filter(x=>x.kind==='series').length};
+      providerProgressSuccess(`${counts.live.toLocaleString()} live channels · ${counts.movie.toLocaleString()} movies · ${counts.series.toLocaleString()} TV shows`);setTimeout(()=>{modal=null;state.page='home';render();},1300)
+    }catch(err){providerProgressError(err.message||String(err))}
+  });
   document.querySelector('#mdblistForm')?.addEventListener('submit',async e=>{e.preventDefault();if(!state.catalog.length){setStatus('#mdbStatus','Import an IPTV catalog first so Swoop TV has something to match against.','err');return}const fd=new FormData(e.currentTarget),apiKey=String(fd.get('apiKey')||'').trim();try{setStatus('#mdbStatus','Fetching MDBList and matching it against your provider catalog…');const payload=await getMDBListItems({apiKey,listId:String(fd.get('listId')||'').trim(),username:String(fd.get('username')||'').trim(),listName:String(fd.get('listName')||'').trim()});const matched=matchMDBListToCatalog(payload,state.catalog);state.settings.mdblistApiKey=apiKey;state.mdblistRows.push({name:String(fd.get('rowName')||'MDBList'),items:matched});persist();setStatus('#mdbStatus',`Matched ${matched.length} titles from this MDBList to your provider catalog.`,'ok');setTimeout(()=>{modal=null;state.page='home';render()},650)}catch(err){setStatus('#mdbStatus',err.message||String(err),'err')}});
 }
 
