@@ -1,16 +1,33 @@
 # Swoop TV Release Notes
 
+## v0.3.0 — True TMDb Backdrops + Cinematic Detail — 23 August 2026
+
+- Fixed title-detail heroes that remained mostly black while only showing a vertical poster even when TMDb had wide backdrops.
+- TMDb metadata service now fetches full title details with `append_to_response=images`.
+- Added ranked TMDb backdrop selection and cached backdrop galleries.
+- Added TMDb title-logo support.
+- Movie/TV detail pages now prefer full-bleed cinematic backdrops and only use the large vertical poster as a fallback when no real backdrop exists.
+- Rebalanced title-detail gradients/vignettes so backdrop artwork is clearly visible.
+- Metadata artwork schema bumped so old cached metadata is refreshed once.
+- Swoop Connection + Metadata Worker updated to v0.1.5.
+- Provider persistence and Windows/mpv playback are unchanged.
+
+## v0.2.9 — Durable Provider Persistence — 23 August 2026
+
+- Fixed provider/Xtream credentials disappearing after refresh on large IPTV libraries.
+- Root cause: the app stored the complete catalog and provider settings in one `localStorage` payload; large providers can exceed localStorage quota and make the entire save fail.
+- Added separate durable provider-profile storage.
+- Added IndexedDB storage for the large catalog and other bulk caches.
+- Xtream **Keep me signed in on this device** is enabled by default for a new provider.
+- M3U now has a separate **Remember this playlist on this device** option and restores URL/EPG fields.
+- Added a **Restoring Swoop** startup state while the saved catalog is loaded.
+- Provider setup waits for durable catalog persistence before reporting success.
+- Existing v0.2.8 data migrates automatically when readable.
+- Disconnect clears the saved provider profile.
+- Windows native playback behavior is unchanged.
+
 ## v0.2.8 — Cinematic Metadata + Home Appearance — 23 August 2026
 
-- Added owner-managed TMDb metadata/artwork integration through the Swoop Cloudflare Worker (`TMDB_API_TOKEN`).
-- Added automatic full-width movie/TV backdrops and improved poster fallback for Home/detail presentation.
-- Added persistent Home background colour picker, hex input and three presets inside Customize Home.
-- Added a large live Home appearance preview inside Customize Home.
-- Improved MDBList/provider matching by stripping common IPTV prefixes/quality labels/year suffixes, using media-specific matching and conservative fuzzy fallback.
-- Top 20 rows now combine the primary popularity list with the current streaming chart when more playable matches are needed.
-- Added Romance, Adventure, Fantasy, Mystery, Western, War, Music/Musical movie rows plus Action/Adventure, Sci-Fi/Fantasy, Mystery, Thriller, Animation and Family/Kids TV rows.
-- Existing dynamic provider-category rows remain selectable.
-- Invalidates the old v0.2.7 discovery cache once so new matching runs immediately.
-- Swoop Connection Helper updated to v0.1.4 with a narrow TMDb metadata route and metadata health status.
-- Windows bridge/bootstrap and PWA shell cache bumped to v0.2.8.
-- Windows native playback profile is unchanged from the proven compatibility baseline.
+- Added TMDb metadata/backdrop enrichment through the owner-managed Swoop metadata service.
+- Added Home background colour controls.
+- Improved discovery title matching and expanded selectable Home categories.

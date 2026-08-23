@@ -152,15 +152,21 @@ assert(vodWorkerResponse.status===200,'Worker VOD info allowlist failed');
 // Swoop owner-managed TMDb metadata endpoint.
 globalThis.fetch=async (url,options={})=>{
   const u=String(url);
-  assert(u.includes('api.themoviedb.org/3/search/movie'),'TMDb search endpoint failed');
   assert(String(options?.headers?.Authorization||'').startsWith('Bearer '),'TMDb bearer token missing');
-  return new Response(JSON.stringify({results:[{id:77,title:'Michael',release_date:'2026-01-01',overview:'Backdrop test',vote_average:7.8,poster_path:'/poster.jpg',backdrop_path:'/backdrop.jpg'}]}),{status:200,headers:{'content-type':'application/json'}});
+  if(u.includes('api.themoviedb.org/3/search/movie')) return new Response(JSON.stringify({results:[{id:77,title:'Michael',release_date:'2026-01-01'}]}),{status:200,headers:{'content-type':'application/json'}});
+  if(u.includes('api.themoviedb.org/3/movie/77')) {
+    assert(u.includes('append_to_response=images'),'TMDb images were not appended to details');
+    return new Response(JSON.stringify({id:77,title:'Michael',release_date:'2026-01-01',overview:'Backdrop test',vote_average:7.8,poster_path:'/poster.jpg',backdrop_path:'/fallback.jpg',images:{backdrops:[{file_path:'/best-backdrop.jpg',width:1920,height:1080,aspect_ratio:1.7778,vote_average:8.6,vote_count:20},{file_path:'/other.jpg',width:1280,height:720,aspect_ratio:1.7778,vote_average:5.0,vote_count:3}],logos:[{file_path:'/logo.png',width:900,height:280,iso_639_1:'en',vote_average:8.0}]}}),{status:200,headers:{'content-type':'application/json'}});
+  }
+  throw new Error(`Unexpected TMDb URL ${u}`);
 };
 const metadataReq=new Request('https://relay.example.workers.dev/',{method:'POST',headers:{'content-type':'application/json','origin':'http://127.0.0.1:38673'},body:JSON.stringify({mode:'metadata',mediaType:'movie',title:'TOP - Michael (2026)',year:'2026'})});
 const metadataRes=await worker.fetch(metadataReq,{SWOOP_PROXY_TOKEN:token,TMDB_API_TOKEN:'tmdb-test-token'});
 assert(metadataRes.status===200,'Worker metadata request failed');
 const metadataJson=await metadataRes.json();
-assert(metadataJson.metadata?.backdrop==='https://image.tmdb.org/t/p/original/backdrop.jpg','TMDb backdrop mapping failed');
+assert(metadataJson.metadata?.backdrop==='https://image.tmdb.org/t/p/original/best-backdrop.jpg','TMDb backdrop mapping failed');
+assert(metadataJson.metadata?.backdrops?.length>=2,'TMDb backdrop gallery mapping failed');
+assert(metadataJson.metadata?.titleLogo==='https://image.tmdb.org/t/p/w500/logo.png','TMDb title logo mapping failed');
 
 globalThis.fetch=realFetch;
-console.log('Swoop TV v0.2.8 tests passed');
+console.log('Swoop TV v0.3.0 tests passed');

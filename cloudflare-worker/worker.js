@@ -20,7 +20,7 @@ const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 function tmdbHeaders(env) {
   const token=String(env.TMDB_API_TOKEN || '').trim();
   if (!token) throw new Error('TMDb metadata is not configured on the Swoop service.');
-  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.2.8'};
+  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.3.0'};
 }
 
 function safeYear(value='') { const m=String(value||'').match(/(?:19|20)\d{2}/); return m?m[0]:''; }
@@ -40,10 +40,34 @@ async function tmdbFetch(path, env, params={}) {
   return res.json();
 }
 
+function imageScore(image={}) {
+  const width=Number(image.width||0), height=Number(image.height||0), ratio=Number(image.aspect_ratio||0);
+  const vote=Number(image.vote_average||0), votes=Math.min(Number(image.vote_count||0),50);
+  const ratioPenalty=Math.abs((ratio||1.7777778)-1.7777778)*12;
+  return (width/500)+(height/900)+(vote*1.4)+(votes*.08)-ratioPenalty;
+}
+function bestBackdropPaths(item) {
+  const images=Array.isArray(item?.images?.backdrops)?item.images.backdrops:[];
+  const unique=new Map();
+  for(const image of images){if(image?.file_path&&!unique.has(image.file_path))unique.set(image.file_path,image)}
+  const sorted=[...unique.values()].sort((a,b)=>imageScore(b)-imageScore(a));
+  if(item?.backdrop_path&&!unique.has(item.backdrop_path))sorted.push({file_path:item.backdrop_path,width:0,height:0,vote_average:0,vote_count:0,aspect_ratio:1.7777778});
+  return sorted.map(x=>x.file_path).filter(Boolean).slice(0,12);
+}
+function bestTitleLogo(item) {
+  const logos=Array.isArray(item?.images?.logos)?item.images.logos:[];
+  const ranked=[...logos].filter(x=>x?.file_path).sort((a,b)=>{
+    const langA=(a.iso_639_1==='en'?2:a.iso_639_1==null?1:0),langB=(b.iso_639_1==='en'?2:b.iso_639_1==null?1:0);
+    return (langB-langA)||(Number(b.vote_average||0)-Number(a.vote_average||0))||(Number(b.width||0)-Number(a.width||0));
+  });
+  return ranked[0]?.file_path||'';
+}
 function metadataFromTmdb(item,type='movie') {
   if(!item)return null;
   const title=type==='tv'?(item.name||item.original_name):(item.title||item.original_title);
   const date=type==='tv'?item.first_air_date:item.release_date;
+  const backdrops=bestBackdropPaths(item);
+  const backdrop=backdrops[0]||item.backdrop_path||'';
   return {
     tmdbId:item.id?String(item.id):'',
     title:title||'',
@@ -51,7 +75,9 @@ function metadataFromTmdb(item,type='movie') {
     plot:item.overview||'',
     rating:item.vote_average?Number(item.vote_average).toFixed(1):'',
     poster:tmdbImage(item.poster_path,'w500'),
-    backdrop:tmdbImage(item.backdrop_path,'original')
+    backdrop:tmdbImage(backdrop,'original'),
+    backdrops:backdrops.map(path=>tmdbImage(path,'original')),
+    titleLogo:tmdbImage(bestTitleLogo(item),'w500')
   };
 }
 
@@ -61,20 +87,27 @@ async function handleMetadata(request, env, body) {
   const tmdbId=String(body?.tmdbId||'').trim(),imdbId=String(body?.imdbId||'').trim();
   const title=cleanSearchTitle(body?.title||''),year=safeYear(body?.year||body?.title||'');
   try{
-    let item=null;
-    if(tmdbId){ item=await tmdbFetch(`/${type}/${encodeURIComponent(tmdbId)}`,env,{language:'en-AU'}); }
+    let match=null;
+    if(tmdbId){ match={id:tmdbId}; }
     else if(imdbId&&/^tt\d+$/i.test(imdbId)){
       const found=await tmdbFetch(`/find/${encodeURIComponent(imdbId)}`,env,{external_source:'imdb_id',language:'en-AU'});
-      item=(type==='tv'?found.tv_results:found.movie_results)?.[0]||null;
+      match=(type==='tv'?found.tv_results:found.movie_results)?.[0]||null;
     }
-    if(!item&&title){
+    if(!match&&title){
       const params={query:title,language:'en-AU',include_adult:'false'};
       if(year)params[type==='tv'?'first_air_date_year':'year']=year;
       let found=await tmdbFetch(`/search/${type}`,env,params);
       if(!found?.results?.length&&year){delete params[type==='tv'?'first_air_date_year':'year'];found=await tmdbFetch(`/search/${type}`,env,params);}
-      item=found?.results?.[0]||null;
+      match=found?.results?.[0]||null;
     }
-    if(!item)return json(request,{metadata:null},200);
+    if(!match?.id)return json(request,{metadata:null},200);
+    // Fetch full details plus TMDb's complete artwork set in one request. Search
+    // results alone may omit a backdrop even when the title has many backdrops.
+    const item=await tmdbFetch(`/${type}/${encodeURIComponent(match.id)}`,env,{
+      language:'en-AU',
+      append_to_response:'images',
+      include_image_language:'en,null'
+    });
     return new Response(JSON.stringify({metadata:metadataFromTmdb(item,type)}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=21600'}});
   }catch(error){return json(request,{error:error.message||'Could not load TMDb metadata.'},502)}
 }
@@ -250,7 +283,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.4',
+        version:'0.1.5',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim())
       });
