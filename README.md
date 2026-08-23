@@ -1,39 +1,24 @@
-# Swoop TV v0.3.0 — True TMDb Backdrops + Cinematic Detail
+# Swoop TV v0.3.1 — Backdrop Visibility + Title Logo Cleanup
 
-This build fixes the title-detail presentation shown in v0.2.9 where a vertical provider/TMDb poster could be visible on the right while the rest of the hero remained mostly black even though TMDb had proper wide backdrops for the title.
+This hotfix fixes the detail-screen rendering bug where TMDb backdrops were already being returned by the metadata service but were hidden behind Swoop's fallback background layer.
 
 ## What changed
 
-- Swoop now fetches **full TMDb title details + the complete image set** in one request using TMDb `append_to_response=images`.
-- Movie and TV image results include **backdrops, posters and title logos**.
-- Swoop ranks available backdrops for wide cinematic presentation and stores a small backdrop gallery for each enriched title.
-- The best TMDb backdrop becomes the primary full-width artwork for:
-  - movie detail heroes
-  - TV-show detail heroes
-  - Home/collection hero presentation when that title is featured
-- When a real wide backdrop exists, the large vertical poster is no longer shown as the dominant right-side detail artwork.
-- If TMDb has no usable backdrop, Swoop still falls back to provider artwork/poster presentation.
-- TMDb title logos are retained where available and can appear in the detail hero.
-- The detail-page vignette was rebalanced so the artwork remains visible while the left-side text stays readable.
-- Old v0.2.8/v0.2.9 metadata cache entries are invalidated once so titles are re-enriched with the new artwork schema.
-- Provider persistence and the proven Windows/mpv playback profile are unchanged.
-
-## One-time Cloudflare update required
-
-The Swoop metadata Worker has changed from v0.1.4 to **v0.1.5**.
-
-1. Open `cloudflare-worker/worker.js` from this package.
-2. In Cloudflare, open the existing `swoop-tv-connection` Worker and choose **Edit code**.
-3. Replace the existing Worker code with the new file and deploy it.
-4. Keep both existing secrets:
-   - `SWOOP_PROXY_TOKEN`
-   - `TMDB_API_TOKEN`
-5. Visit the Worker URL and confirm it reports `version: "0.1.5"` and `metadataConfigured: true`.
-
-No end user needs a TMDb account or API key.
+- Genuine TMDb backdrops now render visibly across movie and TV-show detail heroes.
+- The fallback gradient is explicitly kept behind the backdrop instead of covering it.
+- Vignette/legibility layers remain above the artwork so text is readable without hiding the image.
+- When TMDb provides a proper title-logo image, Swoop now uses the logo as the hero title treatment and removes the duplicate giant text title.
+- If no TMDb title logo exists, Swoop still shows the normal text title.
+- Title logos are slightly larger for a more premium streaming-service presentation.
+- Provider persistence, discovery, TMDb metadata fetching, Cloudflare Worker behavior and the proven Windows/mpv playback profile are unchanged.
 
 ## Updating Swoop
 
-Close the current Swoop app and Windows Bridge, extract this package, then run `START-SWOOP-TV-WINDOWS.cmd`.
+No Cloudflare Worker update is required if you already deployed the v0.3.0 Worker (`version: "0.1.5"`, `metadataConfigured: true`).
 
-The first time a title is opened or selected for a hero, Swoop will refresh its TMDb metadata and cache the new cinematic artwork locally.
+1. Close the current Swoop app and the Swoop TV Windows Bridge window.
+2. Extract this package.
+3. Run `START-SWOOP-TV-WINDOWS.cmd`.
+4. Open a movie or TV-show detail page that has TMDb artwork.
+
+Because the underlying TMDb metadata is already cached correctly, the backdrop should become visible immediately once this UI fix is running.

@@ -212,7 +212,7 @@ body,.home-main,.cinematic-page,.settings-page,.mylist-page,.search-page,.guide-
 .restore-card h1{font-size:clamp(34px,5vw,64px);line-height:.98;margin:12px 0 20px}
 .restore-card p{font-size:18px;line-height:1.6;color:var(--muted);max-width:650px;margin:0 auto}
 
-/* v0.3.0 — true TMDb cinematic backdrops */
+/* v0.3.1 — backdrop visibility + title-logo hierarchy */
 .detail-hero{min-height:760px;background:var(--swoop-bg,#050505)}
 .detail-backdrop{inset:-3%;width:106%;height:106%;object-position:center 30%;filter:saturate(1.12) contrast(1.02);transform:scale(1.015)}
 .detail-backdrop.loaded{opacity:.88}
@@ -232,3 +232,13 @@ body,.home-main,.cinematic-page,.settings-page,.mylist-page,.search-page,.guide-
   .detail-text-title-with-logo{font-size:clamp(38px,12vw,62px)!important}
   .detail-backdrop{object-position:62% 22%}
 }
+
+
+/* v0.3.1 — keep the fallback behind genuine cinematic artwork. */
+.detail-media{z-index:0}
+.detail-fallback{z-index:0}
+.detail-backdrop{z-index:1}
+.detail-media:after{z-index:2}
+.detail-vignette{z-index:3}
+.detail-title-logo{max-width:min(580px,44vw);max-height:220px;margin-bottom:22px}
+@media(max-width:700px){.detail-title-logo{max-width:78vw;max-height:150px}}

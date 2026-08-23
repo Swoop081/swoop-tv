@@ -169,4 +169,4 @@ assert(metadataJson.metadata?.backdrops?.length>=2,'TMDb backdrop gallery mappin
 assert(metadataJson.metadata?.titleLogo==='https://image.tmdb.org/t/p/w500/logo.png','TMDb title logo mapping failed');
 
 globalThis.fetch=realFetch;
-console.log('Swoop TV v0.3.0 tests passed');
+console.log('Swoop TV v0.3.1 tests passed');

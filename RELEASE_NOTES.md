@@ -1,5 +1,14 @@
 # Swoop TV Release Notes
 
+## v0.3.1 — Backdrop Visibility + Title Logo Cleanup — 23 August 2026
+
+- Fixes a detail-screen stacking bug where the local fallback background was rendered after, and therefore on top of, a valid TMDb backdrop. TMDb backdrops were being fetched but visually hidden behind the fallback layer.
+- The detail media stack now explicitly keeps the fallback at the bottom, cinematic backdrop above it, then vignette/legibility layers above the artwork.
+- When TMDb supplies a proper title-logo image, Swoop now uses that as the title treatment and removes the duplicate large text movie/show name from the hero.
+- Text title remains as the fallback for titles without a TMDb logo.
+- Slightly increases title-logo sizing for a more premium streaming-service presentation.
+- No provider, persistence, discovery, Cloudflare metadata, or Windows/mpv playback behavior changes.
+
 ## v0.3.0 — True TMDb Backdrops + Cinematic Detail — 23 August 2026
 
 - Fixed title-detail heroes that remained mostly black while only showing a vertical poster even when TMDb had wide backdrops.
