@@ -164,14 +164,16 @@ export async function importXtream(config, providerId='xtream', onProgress=()=>{
   });
   for (const s of vodStreams || []) items.push({
     id:`${providerId}:movie:${s.stream_id}`, providerId, source:'xtream', kind:'movie', name:s.name || 'Untitled movie',
-    group:catName(vodCats,s.category_id), logo:normalizeAssetUrl(s.stream_icon, server), year:s.year || '', rating:s.rating || '',
+    group:catName(vodCats,s.category_id), logo:normalizeAssetUrl(s.stream_icon, server), backdrop:normalizeAssetUrl(Array.isArray(s.backdrop_path)?s.backdrop_path[0]:s.backdrop_path, server), year:s.year || '', rating:s.rating || '',
+    plot:s.plot || s.description || '', genre:s.genre || '', duration:s.duration || '',
     tmdbId:s.tmdb || s.tmdb_id || '', imdbId:s.imdb_id || '',
     streamUrl:`${server}/movie/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${s.stream_id}.${s.container_extension || 'mp4'}`,
     streamId:s.stream_id
   });
   for (const s of series || []) items.push({
     id:`${providerId}:series:${s.series_id}`, providerId, source:'xtream', kind:'series', name:s.name || 'Untitled series',
-    group:catName(seriesCats,s.category_id), logo:normalizeAssetUrl(s.cover, server), year:s.releaseDate || s.year || '', rating:s.rating || '',
+    group:catName(seriesCats,s.category_id), logo:normalizeAssetUrl(s.cover, server), backdrop:normalizeAssetUrl(Array.isArray(s.backdrop_path)?s.backdrop_path[0]:s.backdrop_path, server), year:s.releaseDate || s.year || '', rating:s.rating || '',
+    plot:s.plot || s.description || '', genre:s.genre || '', duration:s.episode_run_time || '',
     tmdbId:s.tmdb || s.tmdb_id || '', imdbId:s.imdb_id || '', streamUrl:'', seriesId:s.series_id
   });
   return {items, categories:{live:liveCats, movie:vodCats, series:seriesCats}, counts:{live:liveStreams.length,movie:vodStreams.length,series:series.length}};
@@ -179,6 +181,15 @@ export async function importXtream(config, providerId='xtream', onProgress=()=>{
 
 export async function fetchXtreamSeriesInfo(config, seriesId) {
   return getJson(config, 'get_series_info', {series_id:seriesId});
+}
+
+
+export async function fetchXtreamVodInfo(config, vodId) {
+  return getJson(config, 'get_vod_info', {vod_id:vodId});
+}
+
+export async function fetchXtreamShortEpg(config, streamId, limit=12) {
+  return getJson(config, 'get_short_epg', {stream_id:streamId, epg_limit:limit});
 }
 
 export function buildXtreamSeriesStreamUrl(config, episode) {

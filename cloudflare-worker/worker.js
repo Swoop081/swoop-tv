@@ -4,6 +4,7 @@ const ALLOWED_ACTIONS = new Set([
   'get_live_streams',
   'get_vod_categories',
   'get_vod_streams',
+  'get_vod_info',
   'get_series_categories',
   'get_series',
   'get_series_info',
@@ -11,7 +12,7 @@ const ALLOWED_ACTIONS = new Set([
   'get_simple_data_table'
 ]);
 
-const ALLOWED_PARAMS = new Set(['series_id', 'stream_id', 'epg_limit']);
+const ALLOWED_PARAMS = new Set(['series_id', 'vod_id', 'stream_id', 'epg_limit']);
 
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '*';
@@ -182,7 +183,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.2',
+        version:'0.1.3',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16
       });
     }

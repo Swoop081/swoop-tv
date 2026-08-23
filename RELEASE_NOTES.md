@@ -1,5 +1,18 @@
 # Swoop TV Release Notes
 
+## v0.2.6 — Streaming Library Experience — 23 August 2026
+
+- Adds full-screen cinematic Movie/Series detail pages with provider metadata, synopsis, backdrop treatment, Play and My List.
+- Adds on-demand Xtream movie metadata through `get_vod_info`; the included Connection Helper is bumped to v0.1.3 and allows `vod_id`.
+- Adds real Xtream season/episode loading through `get_series_info`, season selectors, episode cards and series episode stream URL playback.
+- Adds functional persistent My List plus a dedicated My List page and Home rail.
+- Replaces the fake Continue Watching progress row with real recently launched movies/episodes. Exact mpv playback-position synchronisation remains future work.
+- Adds a dedicated premium TV Guide with rolling three-hour timeline, NOW marker, progressive Xtream `get_short_epg` loading and M3U XMLTV parsing.
+- Adds richer imported provider metadata/backdrop fields when supplied by Xtream.
+- Adds stronger hover/focus detail affordances and functional genre/category discovery links.
+- Keeps the exact proven v0.2.3 Windows mpv compatibility playback profile; no playback tuning changes in this version.
+- Windows bridge/bootstrap version bumped to 0.2.6; PWA shell cache bumped to `swoop-tv-v026-shell`.
+
 ## v0.2.5 — Cinematic Streaming UI — 23 August 2026
 
 - Rebuilds the Swoop presentation around a big, bold cinematic streaming-service layout while retaining Swoop's own purple/teal visual identity.

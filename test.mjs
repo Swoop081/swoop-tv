@@ -1,6 +1,6 @@
 import {parseM3U} from './src/m3u.js';
 import {matchMDBListToCatalog} from './src/mdblist.js';
-import {buildXtreamApiUrl, buildXtreamSeriesStreamUrl, testXtream, importXtream, fetchXtreamAssetBlob} from './src/xtream.js';
+import {buildXtreamApiUrl, buildXtreamSeriesStreamUrl, testXtream, importXtream, fetchXtreamAssetBlob, fetchXtreamVodInfo, fetchXtreamShortEpg} from './src/xtream.js';
 import worker from './cloudflare-worker/worker.js';
 
 function assert(condition, message){if(!condition) throw new Error(message)}
@@ -102,5 +102,31 @@ const imported=await importXtream({server:'http://tv.example:8080',username:'dem
 assert(imported.counts.live===1&&imported.counts.movie===1&&imported.counts.series===1,'Xtream import counts failed');
 assert(progressSections.includes('live')&&progressSections.includes('movie')&&progressSections.includes('series'),'Xtream progress callbacks failed');
 
+
+// Detail metadata + EPG helper calls
+const detailActions=[];
+globalThis.fetch=async (url,options={})=>{
+  const body=JSON.parse(options.body||'{}');
+  detailActions.push(body);
+  if(body.action==='get_vod_info') return new Response(JSON.stringify({info:{plot:'Test plot'}}),{status:200,headers:{'content-type':'application/json'}});
+  if(body.action==='get_short_epg') return new Response(JSON.stringify({epg_listings:[{title:'VGVzdA==',start_timestamp:100,stop_timestamp:200}]}),{status:200,headers:{'content-type':'application/json'}});
+  return new Response('{}',{status:200,headers:{'content-type':'application/json'}});
+};
+const vodInfo=await fetchXtreamVodInfo({server:'http://tv.example:8080',username:'demo',password:'secret',relayUrl:'https://relay.example.workers.dev',relayToken:token},22);
+assert(vodInfo.info.plot==='Test plot','Xtream VOD detail fetch failed');
+const epgInfo=await fetchXtreamShortEpg({server:'http://tv.example:8080',username:'demo',password:'secret',relayUrl:'https://relay.example.workers.dev',relayToken:token},11,8);
+assert(Array.isArray(epgInfo.epg_listings),'Xtream EPG fetch failed');
+assert(detailActions.some(x=>x.action==='get_vod_info'&&String(x.params?.vod_id)==='22'),'VOD detail action/param failed');
+assert(detailActions.some(x=>x.action==='get_short_epg'&&String(x.params?.stream_id)==='11'),'EPG action/param failed');
+
+// Connection Helper allowlist supports VOD detail metadata.
+globalThis.fetch=async (url)=>new Response(JSON.stringify({info:{plot:'Worker detail'}}),{status:200,headers:{'content-type':'application/json'}});
+const vodWorkerRequest=new Request('https://relay.example.workers.dev/',{
+  method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${token}`},
+  body:JSON.stringify({server:'http://tv.example:8080',username:'demo',password:'secret',action:'get_vod_info',params:{vod_id:22}})
+});
+const vodWorkerResponse=await worker.fetch(vodWorkerRequest,{SWOOP_PROXY_TOKEN:token});
+assert(vodWorkerResponse.status===200,'Worker VOD info allowlist failed');
+
 globalThis.fetch=realFetch;
-console.log('Swoop TV v0.2.5 tests passed');
+console.log('Swoop TV v0.2.6 tests passed');

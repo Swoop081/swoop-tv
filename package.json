@@ -1,6 +1,6 @@
 {
   "name": "swoop-tv",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "private": true,
   "type": "module",
   "scripts": {"test": "node test.mjs"}
