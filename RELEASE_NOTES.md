@@ -1,5 +1,18 @@
 # Swoop TV Release Notes
 
+## v0.3.2 — Rotating Top 5 Home Hero — 23 August 2026
+
+- Replaces the permanently fixed Home feature with an automatic 10-title hero carousel.
+- Hero pool is built from current Top 5 Movies + current Top 5 TV Shows and interleaved for variety.
+- Automatic rotation interval is 8 seconds and pauses while Home is not actively viewable.
+- Added manual previous/next buttons and 10-position hero indicators.
+- Top 20 Movie and Top 20 TV discovery feeds now refresh for hero use even when their Home rows are disabled.
+- Missing web-ranked positions fall back through Trending, Top Rated, New & Recent, then provider catalog titles.
+- Home hero now uses TMDb title logos when present, avoiding a duplicate giant text title.
+- Fixes Home hero artwork stacking so real backdrop/poster art is not covered by the fallback layer.
+- Expands Home hero metadata enrichment to the full 10-title rotation pool.
+- Provider persistence, Cloudflare Worker v0.1.5 and Windows/mpv playback are unchanged.
+
 ## v0.3.1 — Backdrop Visibility + Title Logo Cleanup — 23 August 2026
 
 - Fixes a detail-screen stacking bug where the local fallback background was rendered after, and therefore on top of, a valid TMDb backdrop. TMDb backdrops were being fetched but visually hidden behind the fallback layer.

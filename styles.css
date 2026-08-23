@@ -242,3 +242,19 @@ body,.home-main,.cinematic-page,.settings-page,.mylist-page,.search-page,.guide-
 .detail-vignette{z-index:3}
 .detail-title-logo{max-width:min(580px,44vw);max-height:220px;margin-bottom:22px}
 @media(max-width:700px){.detail-title-logo{max-width:78vw;max-height:150px}}
+
+
+/* v0.3.2 — rotating Top 5 movie / TV-show Home hero */
+.hero-media .hero-fallback{z-index:0}
+.hero-media .hero-backdrop,.hero-media .hero-poster{z-index:1}
+.hero-rotating{animation:hero-swoop-in .52s ease both}
+@keyframes hero-swoop-in{from{opacity:.45}to{opacity:1}}
+.hero-title-logo{display:block;width:min(520px,42vw);max-height:230px;object-fit:contain;object-position:left center;margin:0 0 22px;filter:drop-shadow(0 6px 28px rgba(0,0,0,.5));opacity:0;transition:opacity .25s ease}
+.hero-title-logo.loaded{opacity:1}
+.hero-rotation-controls{position:absolute;z-index:7;right:4.6vw;bottom:96px;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:999px;background:rgba(8,8,10,.46);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(14px)}
+.hero-rotation-controls>button{width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.08);color:#fff;font-size:24px;line-height:1;cursor:pointer;display:grid;place-items:center;transition:background .2s,transform .2s}
+.hero-rotation-controls>button:hover,.hero-rotation-controls>button:focus-visible{background:rgba(255,255,255,.2);transform:scale(1.06)}
+.hero-rotation-dots{display:flex;align-items:center;gap:5px}
+.hero-rotation-dots button{width:18px;height:4px;padding:0;border:0;border-radius:999px;background:rgba(255,255,255,.26);cursor:pointer;transition:width .2s,background .2s}
+.hero-rotation-dots button.active{width:34px;background:#fff}
+@media(max-width:700px){.hero-title-logo{width:min(360px,76vw);max-height:150px;margin-bottom:15px}.hero-rotation-controls{right:18px;bottom:74px;padding:6px 8px}.hero-rotation-controls>button{width:30px;height:30px}.hero-rotation-dots button{width:10px}.hero-rotation-dots button.active{width:22px}}
