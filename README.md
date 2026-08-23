@@ -1,27 +1,49 @@
-# Swoop TV v0.3.2 — Rotating Top 5 Home Hero
+# Swoop TV v0.7.1 — Profile Theme Engine
 
-This build turns the Home hero into an automatic premium streaming carousel instead of leaving one movie permanently featured.
+Swoop TV is a content-neutral IPTV player for user-provided, authorised Xtream Codes and M3U sources. v0.7.1 adds profile-linked full-interface themes while preserving the multi-provider unified library, premium discovery, profiles and Windows-native playback from v0.7.0.
 
-## What changed
+## What changed in v0.7.1
 
-- Home now rotates automatically through **10 featured titles**: the current **Top 5 Movies** and **Top 5 TV Shows**.
-- Movie and TV-show positions are interleaved for variety: Movie #1, Show #1, Movie #2, Show #2, and so on.
-- The hero advances every **8 seconds** while Home is visible. Rotation pauses while a modal, detail page, player, or hidden browser tab is active.
-- Added subtle previous/next controls and position indicators so mouse, keyboard and TV-remote users can move through the hero manually.
-- Swoop now refreshes the Top 20 Movie and Top 20 TV feeds even if those rows are hidden, because the Home hero depends on their current Top 5.
-- If web discovery is not available yet, the hero fills missing positions from Trending, Top Rated, New & Recent, then the connected provider library so it still rotates.
-- The Home hero now uses a TMDb title-logo image when one is available instead of duplicating it with a giant text title.
-- Fixed the Home hero media stack so the fallback colour/gradient sits behind real backdrop/poster artwork rather than covering it.
-- The first 10 hero candidates are included in metadata enrichment so their TMDb backdrop/title-logo artwork can load progressively.
-- Provider persistence, Cloudflare metadata service and the proven Windows/mpv playback profile are unchanged.
+Every household profile can now choose its own complete Swoop presentation. A theme changes much more than an accent colour: Home hero layout, navigation treatment, buttons, cards, rails, badges, focus states, detail/Settings surfaces, provider progress presentation and TV Guide styling all respond to the selected theme.
 
-## Updating Swoop
+Four launch themes are included:
 
-No Cloudflare Worker update is required if you already deployed the v0.3.0/v0.3.1 Worker (`version: "0.1.5"`, `metadataConfigured: true`).
+- **Chill** — black/red, cinematic and minimal.
+- **Prime Time** — clean navy/blue modern streaming presentation.
+- **Rewind** — bold blue/yellow nostalgic video-store presentation with shelf-like rails and retro marquee details.
+- **Vice** — neon pink/cyan/purple, sunset gradients and Miami-night energy.
 
-1. Close the current Swoop app and the Swoop TV Windows Bridge.
-2. Extract this package.
-3. Run `START-SWOOP-TV-WINDOWS.cmd`.
-4. Open Home and leave it visible; the featured hero should advance every 8 seconds.
+The themes are original Swoop designs inspired by broad streaming/video-store/neon visual traditions; they do not include third-party logos, artwork or branding.
 
-For the most accurate Top 5 ranking, keep MDBList discovery configured. The hero can still fall back to the connected provider library while web rankings are unavailable.
+## Profile-linked appearance
+
+Theme selection lives inside **Edit Profile** and **Customize Home**. Switching profiles immediately switches the full visual theme while keeping the shared provider library connected.
+
+Each profile continues to retain its own Home row order, Smart Home setting and viewing personalisation. The existing Home background colour control is now an **optional override** on top of the selected theme. Turn the override off to return to that theme's intended base colour.
+
+Existing profiles migrate to **Chill** automatically. If an older profile had a custom non-black Home background, Swoop preserves it as a background override when possible.
+
+## Multi-provider and playback
+
+All v0.7.0 multi-provider features remain intact: Provider Manager, unified Movies/TV/Live library, source stacking, provider priority, provider filters, cross-provider EPG, household profiles, Continue Watching and recommendations.
+
+The proven Windows mpv compatibility/buffering profile has not been changed in v0.7.1.
+
+## Windows native launch
+
+1. Extract the ZIP completely.
+2. Run `START-SWOOP-TV-WINDOWS.cmd`.
+3. Keep the Swoop TV Windows Bridge window open during development builds.
+4. Existing mpv installations under `%LOCALAPPDATA%\SwoopTV` are reused.
+
+## Browser/PWA
+
+The static app remains deployable to Cloudflare Pages or GitHub Pages. The Cloudflare Connection + Metadata Worker remains v0.1.6; no Worker update is required from v0.7.0.
+
+## Privacy
+
+Swoop does not supply IPTV content. Stream/catalog data comes from providers configured by the user. Profile themes and profile personalisation are stored locally on the device in this development build.
+
+## Development status
+
+v0.7.1 remains a development build. The next planned milestone remains native packaging: a proper Windows installer/application shell with the local bridge hidden from end users, followed by Android TV / Google TV / Fire TV adaptation.

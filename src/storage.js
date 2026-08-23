@@ -1,6 +1,7 @@
 const STATE_KEY='swoop-tv-state-v029';
 const LEGACY_KEY='swoop-tv-v01';
 const PROFILE_KEY='swoop-tv-provider-profile-v1';
+const PROVIDERS_KEY='swoop-tv-provider-profiles-v2';
 const DB_NAME='swoop-tv-storage';
 const DB_VERSION=1;
 const STORE='data';
@@ -70,6 +71,30 @@ export async function loadBulkState(){
   try{return await idbGet('bulk')}catch{return null}
 }
 
+
+export function loadProviderProfiles(){
+  try{
+    const current=safeParse(localStorage.getItem(PROVIDERS_KEY));
+    if(Array.isArray(current))return current;
+    const legacy=safeParse(localStorage.getItem(PROFILE_KEY));
+    return legacy?[legacy]:[];
+  }catch{return []}
+}
+
+export function saveProviderProfiles(profiles=[]){
+  try{
+    const clean=Array.isArray(profiles)?profiles.map(p=>({...p,savedAt:p?.savedAt||Date.now()})):[];
+    localStorage.setItem(PROVIDERS_KEY,JSON.stringify(clean));
+    if(clean.length===1)localStorage.setItem(PROFILE_KEY,JSON.stringify(clean[0]));
+    else localStorage.removeItem(PROFILE_KEY);
+    return true;
+  }catch{return false}
+}
+
+export function clearProviderProfiles(){
+  try{localStorage.removeItem(PROVIDERS_KEY);localStorage.removeItem(PROFILE_KEY)}catch{}
+}
+
 export function loadProviderProfile(){
   try{return safeParse(localStorage.getItem(PROFILE_KEY))||null}catch{return null}
 }
@@ -96,6 +121,6 @@ export async function saveBulkState(state){
 
 export function clearState(){
   try{localStorage.removeItem(STATE_KEY);localStorage.removeItem(LEGACY_KEY)}catch{}
-  clearProviderProfile();
+  clearProviderProfiles();
   idbDelete('bulk');
 }

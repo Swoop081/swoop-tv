@@ -34,8 +34,8 @@ export async function nativeRequest(path, payload = null, {expect='json', timeou
   } finally { clearTimeout(timer); }
 }
 
-export async function nativePlay(item) {
-  return nativeRequest('/native/play', {url:item.streamUrl,title:item.name||'Swoop TV',kind:item.kind||'video'}, {timeoutMs:15000});
+export async function nativePlay(item, {startSeconds=0}={}) {
+  return nativeRequest('/native/play', {url:item.streamUrl,title:item.name||'Swoop TV',kind:item.kind||'video',startSeconds:Number(startSeconds||0)}, {timeoutMs:15000});
 }
 
 export async function nativeStop() {
@@ -44,6 +44,10 @@ export async function nativeStop() {
 
 export async function nativeDiagnostics() {
   return nativeRequest('/native/diagnostics', {}, {timeoutMs:10000});
+}
+
+export async function nativeControl(command, value=null) {
+  return nativeRequest('/native/control', {command,value}, {timeoutMs:10000});
 }
 
 export async function nativeFetchText(url) {
@@ -56,4 +60,8 @@ export async function nativeStatus() {
   const res=await fetch('/native/status',{cache:'no-store'});
   if(!res.ok)return null;
   return res.json();
+}
+
+export async function nativeSwitchLive(item) {
+  return nativeControl('load-url', {url:item?.streamUrl||'', title:item?.name||'Swoop TV'});
 }

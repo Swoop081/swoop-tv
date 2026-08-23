@@ -20,7 +20,7 @@ const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 function tmdbHeaders(env) {
   const token=String(env.TMDB_API_TOKEN || '').trim();
   if (!token) throw new Error('TMDb metadata is not configured on the Swoop service.');
-  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.3.0'};
+  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.0'};
 }
 
 function safeYear(value='') { const m=String(value||'').match(/(?:19|20)\d{2}/); return m?m[0]:''; }
@@ -62,12 +62,40 @@ function bestTitleLogo(item) {
   });
   return ranked[0]?.file_path||'';
 }
+function pickCertification(item,type='movie') {
+  const preferred=['AU','US','GB','CA'];
+  if(type==='tv'){
+    const rows=Array.isArray(item?.content_ratings?.results)?item.content_ratings.results:[];
+    for(const code of preferred){const hit=rows.find(x=>x.iso_3166_1===code&&x.rating);if(hit)return hit.rating}
+    return rows.find(x=>x.rating)?.rating||'';
+  }
+  const rows=Array.isArray(item?.release_dates?.results)?item.release_dates.results:[];
+  for(const code of preferred){const country=rows.find(x=>x.iso_3166_1===code);const hit=country?.release_dates?.find(x=>x.certification);if(hit)return hit.certification}
+  for(const country of rows){const hit=country?.release_dates?.find(x=>x.certification);if(hit)return hit.certification}
+  return '';
+}
+function bestTrailer(item){
+  const videos=Array.isArray(item?.videos?.results)?item.videos.results:[];
+  const ranked=[...videos].filter(x=>x?.site==='YouTube'&&x?.key).sort((a,b)=>{
+    const typeScore=x=>x.type==='Trailer'?5:x.type==='Teaser'?3:1;
+    const langScore=x=>x.iso_639_1==='en'?3:x.iso_639_1==null?1:0;
+    return (Number(Boolean(b.official))-Number(Boolean(a.official)))||(typeScore(b)-typeScore(a))||(langScore(b)-langScore(a))||(Number(b.size||0)-Number(a.size||0));
+  });
+  const v=ranked[0];return v?{key:v.key,name:v.name||'Official Trailer',type:v.type||'Trailer'}:null;
+}
+function simplifiedRecommendations(item,type='movie'){
+  const list=Array.isArray(item?.recommendations?.results)?item.recommendations.results:[];
+  return list.slice(0,24).map(x=>({tmdbId:x.id?String(x.id):'',title:type==='tv'?(x.name||x.original_name||''):(x.title||x.original_title||''),year:safeYear(type==='tv'?x.first_air_date:x.release_date),poster:tmdbImage(x.poster_path,'w342'),backdrop:tmdbImage(x.backdrop_path,'w780'),rating:x.vote_average?Number(x.vote_average).toFixed(1):''})).filter(x=>x.tmdbId&&x.title);
+}
 function metadataFromTmdb(item,type='movie') {
   if(!item)return null;
   const title=type==='tv'?(item.name||item.original_name):(item.title||item.original_title);
   const date=type==='tv'?item.first_air_date:item.release_date;
   const backdrops=bestBackdropPaths(item);
   const backdrop=backdrops[0]||item.backdrop_path||'';
+  const cast=(Array.isArray(item?.credits?.cast)?item.credits.cast:[]).slice(0,10).map(x=>({name:x.name||'',character:x.character||'',profile:tmdbImage(x.profile_path,'w185')})).filter(x=>x.name);
+  const director=type==='movie'?(Array.isArray(item?.credits?.crew)?item.credits.crew:[]).filter(x=>x.job==='Director').slice(0,3).map(x=>x.name).filter(Boolean).join(', '):(Array.isArray(item?.created_by)?item.created_by:[]).map(x=>x.name).filter(Boolean).join(', ');
+  const trailer=bestTrailer(item);
   return {
     tmdbId:item.id?String(item.id):'',
     title:title||'',
@@ -77,7 +105,15 @@ function metadataFromTmdb(item,type='movie') {
     poster:tmdbImage(item.poster_path,'w500'),
     backdrop:tmdbImage(backdrop,'original'),
     backdrops:backdrops.map(path=>tmdbImage(path,'original')),
-    titleLogo:tmdbImage(bestTitleLogo(item),'w500')
+    titleLogo:tmdbImage(bestTitleLogo(item),'w500'),
+    genres:(Array.isArray(item.genres)?item.genres:[]).map(x=>x.name).filter(Boolean),
+    runtime:type==='movie'?(item.runtime?`${item.runtime} min`:''):(Array.isArray(item.episode_run_time)&&item.episode_run_time[0]?`${item.episode_run_time[0]} min`:''),
+    certification:pickCertification(item,type),
+    cast,
+    director,
+    trailerKey:trailer?.key||'',
+    trailerName:trailer?.name||'',
+    recommendations:simplifiedRecommendations(item,type)
   };
 }
 
@@ -105,7 +141,7 @@ async function handleMetadata(request, env, body) {
     // results alone may omit a backdrop even when the title has many backdrops.
     const item=await tmdbFetch(`/${type}/${encodeURIComponent(match.id)}`,env,{
       language:'en-AU',
-      append_to_response:'images',
+      append_to_response:type==='tv'?'images,credits,videos,recommendations,content_ratings':'images,credits,videos,recommendations,release_dates',
       include_image_language:'en,null'
     });
     return new Response(JSON.stringify({metadata:metadataFromTmdb(item,type)}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=21600'}});
@@ -283,7 +319,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.5',
+        version:'0.1.6',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim())
       });

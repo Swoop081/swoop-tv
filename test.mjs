@@ -1,7 +1,12 @@
+import fs from 'node:fs';
 import {parseM3U} from './src/m3u.js';
 import {matchMDBListToCatalog, normalizeMediaTitle, getMDBListOfficialItems, getMDBListStreamingChart} from './src/mdblist.js';
 import {buildXtreamApiUrl, buildXtreamSeriesStreamUrl, testXtream, importXtream, fetchXtreamAssetBlob, fetchXtreamVodInfo, fetchXtreamShortEpg} from './src/xtream.js';
 import worker from './cloudflare-worker/worker.js';
+import {buildMovieStackIndex, collapseMovieSources, cleanDisplayTitle, rankSources, sourceTraits} from './src/sourceStack.js';
+import {makeProfile, normalizeProfile, profileAllowsMedia, profileGenreAffinity, smartRankRows} from './src/profiles.js';
+import {buildLiveStackIndex, selectLiveSource} from './src/liveStack.js';
+import {SWOOP_THEMES, themeById} from './src/themes.js';
 
 function assert(condition, message){if(!condition) throw new Error(message)}
 
@@ -33,6 +38,44 @@ const chartPayload=await getMDBListStreamingChart({apiKey:'test-key',mediaType:'
 assert(discoveryUrl.includes('/justwatch/streaming-charts/show'),'MDBList JustWatch show chart endpoint failed');
 assert(Array.isArray(chartPayload),'MDBList streaming chart payload failed');
 globalThis.fetch=discoveryRealFetch;
+
+
+// Confident multi-source movie stacking.
+const duplicateCatalog=[
+  {id:'br-amz',kind:'movie',name:'AMZ - Blade Runner 2049 (2017)',year:'2017',logo:'https://img.example/br2049.jpg',streamUrl:'http://one/movie.mp4',group:'Popular Movies 4K'},
+  {id:'br-nf',kind:'movie',name:'NF - Blade Runner 2049 (2017)',year:'2017',logo:'https://img.example/br2049.jpg',streamUrl:'http://two/movie.mp4',group:'Popular Movies'},
+  {id:'br-en',kind:'movie',name:'EN - Blade Runner 2049 (2017)',year:'2017',logo:'https://img.example/br2049.jpg',streamUrl:'http://three/movie.mp4',group:'English Movies'},
+  {id:'br-old',kind:'movie',name:'EN - Blade Runner (1982)',year:'1982',logo:'https://img.example/br1982.jpg',streamUrl:'http://four/movie.mp4',group:'English Movies'}
+];
+const stackIndex=buildMovieStackIndex(duplicateCatalog);
+assert(stackIndex.stacked.length===2,'Movie source stacking should collapse three confident duplicates into one title');
+const brStack=stackIndex.bySourceId.get('br-amz');
+assert(brStack?._stacked&&brStack.sourceCount===3,'Stacked movie source count failed');
+assert(brStack.name==='Blade Runner 2049','Stacked movie clean title failed');
+assert(stackIndex.bySourceId.get('br-old').id==='br-old','Different release year must not be stacked');
+assert(collapseMovieSources(duplicateCatalog,duplicateCatalog).length===2,'Collapsed display list failed');
+assert(cleanDisplayTitle({name:'NF - Blade Runner 2049 (2017)'})==='Blade Runner 2049','Source-prefix display cleanup failed');
+assert(normalizeMediaTitle('AMZ - Blade Runner 2049 (2017)')==='blade runner 2049','AMZ prefix normalization failed');
+
+const rankedSources=rankSources([
+  {id:'s1080',kind:'movie',name:'NF - Sample Movie 1080p H.264',group:'Movies'},
+  {id:'s4k',kind:'movie',name:'AMZ - Sample Movie 4K Dolby Vision HEVC Atmos',group:'Movies 4K'}
+]);
+assert(rankedSources[0].id==='s4k','Smart source ranking should prefer the stronger 4K/Dolby Vision source');
+const smartTraits=sourceTraits(rankedSources[0]);
+assert(smartTraits.quality==='4K'&&smartTraits.hdr==='Dolby Vision'&&smartTraits.codec==='HEVC'&&smartTraits.audio==='Atmos','Smart source technical badges failed');
+
+
+// v0.6.0 household profile model + Kids restrictions + smart row order.
+const p1=makeProfile({id:'p1',name:'Justin',avatar:'cyan',myList:['m1'],profileSettings:{homeRows:['continue','action-movies'],backgroundColor:'#050505',smartHomeOrder:true}});
+const p2=normalizeProfile({id:'p2',name:'Kids',avatar:'kids',kids:true,profileSettings:{homeRows:['family-movies'],smartHomeOrder:true}});
+assert(p1.myList[0]==='m1'&&p2.kids===true,'Profile creation/normalization failed');
+assert(profileAllowsMedia(p2,{name:'Family Adventure',group:'Kids',certification:'PG'})===true,'Kids profile should allow family PG content');
+assert(profileAllowsMedia(p2,{name:'Late Night',group:'Adult XXX'})===false,'Kids profile explicit-category filter failed');
+assert(profileAllowsMedia(p2,{name:'Crime Film',certification:'MA15+'})===false,'Kids profile mature-certification filter failed');
+const affinity=profileGenreAffinity([{id:'a'},{id:'b'}],id=>({id,genre:id==='a'?'Action':'Action'}),item=>new Set([item.genre.toLowerCase()]));
+const rankedRows=smartRankRows([{id:'comedy-movies',label:'Comedy Movies'},{id:'action-movies',label:'Action Movies'}],affinity);
+assert(rankedRows[0].id==='action-movies','Smart profile Home ranking failed');
 
 const api=buildXtreamApiUrl('http://tv.example:8080/player_api.php','user name','p@ss','get_series_info',{series_id:22});
 assert(api.startsWith('http://tv.example:8080/player_api.php?'),'Xtream URL base failed');
@@ -156,7 +199,7 @@ globalThis.fetch=async (url,options={})=>{
   if(u.includes('api.themoviedb.org/3/search/movie')) return new Response(JSON.stringify({results:[{id:77,title:'Michael',release_date:'2026-01-01'}]}),{status:200,headers:{'content-type':'application/json'}});
   if(u.includes('api.themoviedb.org/3/movie/77')) {
     assert(u.includes('append_to_response=images'),'TMDb images were not appended to details');
-    return new Response(JSON.stringify({id:77,title:'Michael',release_date:'2026-01-01',overview:'Backdrop test',vote_average:7.8,poster_path:'/poster.jpg',backdrop_path:'/fallback.jpg',images:{backdrops:[{file_path:'/best-backdrop.jpg',width:1920,height:1080,aspect_ratio:1.7778,vote_average:8.6,vote_count:20},{file_path:'/other.jpg',width:1280,height:720,aspect_ratio:1.7778,vote_average:5.0,vote_count:3}],logos:[{file_path:'/logo.png',width:900,height:280,iso_639_1:'en',vote_average:8.0}]}}),{status:200,headers:{'content-type':'application/json'}});
+    return new Response(JSON.stringify({id:77,title:'Michael',release_date:'2026-01-01',overview:'Backdrop test',vote_average:7.8,runtime:122,genres:[{name:'Drama'}],poster_path:'/poster.jpg',backdrop_path:'/fallback.jpg',images:{backdrops:[{file_path:'/best-backdrop.jpg',width:1920,height:1080,aspect_ratio:1.7778,vote_average:8.6,vote_count:20},{file_path:'/other.jpg',width:1280,height:720,aspect_ratio:1.7778,vote_average:5.0,vote_count:3}],logos:[{file_path:'/logo.png',width:900,height:280,iso_639_1:'en',vote_average:8.0}]},credits:{cast:[{name:'Actor One',character:'Lead',profile_path:'/actor.jpg'}],crew:[{name:'Director One',job:'Director'}]},videos:{results:[{site:'YouTube',key:'abc123xyz',type:'Trailer',official:true,name:'Official Trailer'}]},recommendations:{results:[{id:88,title:'Related Film',release_date:'2025-02-02',poster_path:'/r.jpg'}]},release_dates:{results:[{iso_3166_1:'AU',release_dates:[{certification:'M'}]}]}}),{status:200,headers:{'content-type':'application/json'}});
   }
   throw new Error(`Unexpected TMDb URL ${u}`);
 };
@@ -167,6 +210,54 @@ const metadataJson=await metadataRes.json();
 assert(metadataJson.metadata?.backdrop==='https://image.tmdb.org/t/p/original/best-backdrop.jpg','TMDb backdrop mapping failed');
 assert(metadataJson.metadata?.backdrops?.length>=2,'TMDb backdrop gallery mapping failed');
 assert(metadataJson.metadata?.titleLogo==='https://image.tmdb.org/t/p/w500/logo.png','TMDb title logo mapping failed');
+assert(metadataJson.metadata?.cast?.[0]?.name==='Actor One','TMDb cast mapping failed');
+assert(metadataJson.metadata?.director==='Director One','TMDb director mapping failed');
+assert(metadataJson.metadata?.trailerKey==='abc123xyz','TMDb trailer mapping failed');
+assert(metadataJson.metadata?.recommendations?.[0]?.tmdbId==='88','TMDb recommendations mapping failed');
+assert(metadataJson.metadata?.certification==='M'&&metadataJson.metadata?.runtime==='122 min','TMDb certification/runtime mapping failed');
+
+
+
+// v0.7.1 profile theme engine.
+assert(SWOOP_THEMES.length===4,'Expected four launch themes');
+assert(['chill','prime-time','rewind','vice'].every(id=>themeById(id).id===id),'Theme IDs missing');
+assert(themeById('vice').accent==='#ff4fc3'&&themeById('rewind').accent==='#ffd51f','Theme palettes missing');
+
+// v0.7.0 multi-provider live dedupe + provider-priority source selection.
+const liveMulti=[
+  {id:'p1:l1',providerId:'p1',kind:'live',source:'xtream',name:'FOX Footy HD',group:'Sports',tvgId:'fox-footy',streamUrl:'http://p1/live/1.ts'},
+  {id:'p2:l9',providerId:'p2',kind:'live',source:'xtream',name:'FOX Footy 1080p',group:'Sports',tvgId:'fox-footy',streamUrl:'http://p2/live/9.ts'},
+  {id:'p2:l10',providerId:'p2',kind:'live',source:'xtream',name:'ESPN',group:'Sports',tvgId:'espn',streamUrl:'http://p2/live/10.ts'}
+];
+const liveIndex=buildLiveStackIndex(liveMulti,{p1:0,p2:1});
+assert(liveIndex.stacked.length===2,'Multi-provider live dedupe failed');
+const fox=liveIndex.stacked.find(x=>x.sourceCount===2);
+assert(fox&&fox._stackConfidence==='EPG channel ID','Live duplicate confidence missing');
+const foxSource=selectLiveSource(fox,{p1:0,p2:1});
+assert(foxSource.streamUrl&&foxSource.id===fox.id,'Live stacked source selection failed');
+const rankedProvider=rankSources([
+  {id:'a',providerId:'p2',name:'Film',kind:'movie'},
+  {id:'b',providerId:'p1',name:'Film',kind:'movie'}
+],'',{p1:0,p2:1});
+assert(rankedProvider[0].id==='b','Movie source provider-priority tie-break failed');
+
+const nativePs=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
+assert(nativePs.includes('--input-ipc-server=')&&nativePs.includes("'/native/control'")&&nativePs.includes("'--start='"),'Windows mpv IPC/resume bridge missing');
+assert(nativePs.includes('swoop-progress.lua')&&nativePs.includes('mpv-playback-state.json')&&nativePs.includes("mp.commandv('seek'"),'Windows durable progress/resume sidecar missing');
+assert(nativePs.includes("'load-url'")&&nativePs.includes("@('loadfile',$switchUrl,'replace')"),'Windows in-process live channel switching missing');
+assert(nativePs.includes("'--cache-secs=15'")&&nativePs.includes("'--demuxer-readahead-secs=20'")&&!nativePs.includes("'--profile=low-latency'"),'Proven compatibility playback profile must remain unchanged');
+const appSource=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+assert(appSource.includes('Recommended For You')&&appSource.includes('UP NEXT')&&appSource.includes('Loading Now & Next'),'Personalization/Up Next/live UI missing');
+assert(appSource.includes('if(pos<10)return 0')&&!appSource.includes('pct>0&&pct<95?pos:0'),'Resume must accept a saved time position even when IPTV duration/percentage is unavailable');
+assert(appSource.includes('SMART SOURCE SELECTION')&&appSource.includes('Play Recommended')&&appSource.includes('sourceChoiceItem')&&appSource.includes('playableFromSource'),'Smart multi-source chooser UI/flow missing');
+assert(appSource.includes('QUICK GUIDE')&&appSource.includes('switchLiveChannel')&&appSource.includes('Favourite Channels')&&appSource.includes('backgroundLiveBar'),'Premium Live TV hub/player UI missing');
+assert(appSource.includes('Who’s watching?')&&appSource.includes('profilePickerPage')&&appSource.includes('switchProfile')&&appSource.includes('Kids profile'),'Household profile UI/flow missing');
+assert(appSource.includes('Because You Watched')&&appSource.includes('smartHomeOrder'),'Per-profile smart Home personalization missing');
+assert(appSource.includes('xtream-${Math.abs(hash(`${cfg.server}|${cfg.username}`))}')&&appSource.includes('m3u-${Math.abs(hash(`${url||name}`))}'),'Stable provider identity for profile continuity missing');
+assert(appSource.includes('Profile Theme Engine')||appSource.includes('Choose a Swoop theme')||appSource.includes('themePickerHtml'),'Profile-linked theme UI missing');
+assert(appSource.includes("PROFILE_SETTING_KEYS=['themeId','backgroundColor','backgroundOverride'"),'Theme persistence keys missing');
 
 globalThis.fetch=realFetch;
-console.log('Swoop TV v0.3.2 tests passed');
+assert(appSource.includes('Provider Manager')&&appSource.includes('Refresh All')&&appSource.includes('providerFiltered'),'Multi-provider manager/filter UI missing');
+assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabledProviders')&&appSource.includes('providerPriorityMap'),'Unified provider catalog/priority logic missing');
+console.log('Swoop TV v0.7.1 tests passed');

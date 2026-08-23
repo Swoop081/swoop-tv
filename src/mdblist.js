@@ -47,7 +47,7 @@ function basicNormalize(s='') {
 
 const IPTV_PREFIXES = new Set([
   'top','new','new release','new releases','movie','movies','film','films','vod','cinema','premiere','premieres',
-  'en','eng','english','us','usa','uk','au','ca','4k','uhd','fhd','hd','sd','hdr','dolby vision','dv','multi','latino'
+  'en','eng','english','us','usa','uk','au','ca','amz','amazon','prime','prime video','nf','netflix','atv','apple tv','apl','dsnp','disney','hmax','max','hbo max','paramount','pmtp','4k','uhd','fhd','hd','sd','hdr','dolby vision','dv','multi','latino'
 ]);
 
 export function normalizeMediaTitle(value='') {

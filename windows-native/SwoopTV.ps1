@@ -16,6 +16,10 @@ $script:MpvProcess = $null
 $script:MpvLastExitCode = $null
 $script:MpvLastLaunch = $null
 $script:MpvLogPath = Join-Path $RuntimeRoot 'mpv-latest.log'
+$script:MpvPipeName = 'swoop-mpv-' + $SessionToken.Substring(0,16)
+$script:MpvLastState = $null
+$script:MpvStatePath = Join-Path $RuntimeRoot 'mpv-playback-state.json'
+$script:MpvProgressScriptPath = Join-Path $RuntimeRoot 'swoop-progress.lua'
 
 function Write-Header([string]$Text) {
   Write-Host ''
@@ -180,7 +184,7 @@ function Invoke-Xtream($Data) {
     }
   }
   $url = $server + '/player_api.php?' + ($pairs -join '&')
-  $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 35 -Headers @{ 'User-Agent'='SwoopTV/0.2 Windows' }
+  $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 35 -Headers @{ 'User-Agent'='SwoopTV/0.5 Windows' }
   return [string]$response.Content
 }
 
@@ -189,16 +193,193 @@ function Invoke-FetchText($Data) {
   $uri = $null
   if (-not [uri]::TryCreate($url,[UriKind]::Absolute,[ref]$uri)) { throw 'URL is invalid.' }
   if ($uri.Scheme -ne 'http' -and $uri.Scheme -ne 'https') { throw 'Only HTTP/HTTPS URLs are supported.' }
-  $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 45 -Headers @{ 'User-Agent'='SwoopTV/0.2 Windows' }
+  $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 45 -Headers @{ 'User-Agent'='SwoopTV/0.5 Windows' }
   return [string]$response.Content
+}
+
+
+function Read-MpvStateFile {
+  if (-not (Test-Path $script:MpvStatePath)) { return $null }
+  try {
+    $raw = Get-Content -Path $script:MpvStatePath -Raw -ErrorAction Stop
+    if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+    return $raw | ConvertFrom-Json
+  } catch { return $null }
+}
+
+function Write-MpvProgressScript([double]$ResumeSeconds) {
+  $statePath = ($script:MpvStatePath -replace '\\','/') -replace "'", "\\'"
+  $resumeText = $ResumeSeconds.ToString([Globalization.CultureInfo]::InvariantCulture)
+  $lua = @"
+local mp = require 'mp'
+local utils = require 'mp.utils'
+local state_file = '$statePath'
+local resume_seconds = tonumber('$resumeText') or 0
+local did_resume = false
+
+local function write_state()
+  local data = {
+    playing = true,
+    timePos = mp.get_property_number('time-pos'),
+    duration = mp.get_property_number('duration'),
+    paused = mp.get_property_bool('pause', false),
+    eofReached = mp.get_property_bool('eof-reached', false),
+    percentPos = mp.get_property_number('percent-pos'),
+    videoFormat = mp.get_property('video-format'),
+    width = mp.get_property_number('video-params/w'),
+    height = mp.get_property_number('video-params/h'),
+    audioCodec = mp.get_property('audio-codec-name')
+  }
+  local f = io.open(state_file, 'w')
+  if f then
+    f:write(utils.format_json(data))
+    f:close()
+  end
+end
+
+mp.register_event('file-loaded', function()
+  if resume_seconds > 0 and not did_resume then
+    did_resume = true
+    mp.add_timeout(0.35, function()
+      mp.commandv('seek', tostring(resume_seconds), 'absolute')
+      write_state()
+    end)
+  end
+end)
+
+mp.add_periodic_timer(1.0, write_state)
+mp.register_event('end-file', write_state)
+mp.register_event('shutdown', write_state)
+"@
+  Set-Content -Path $script:MpvProgressScriptPath -Value $lua -Encoding UTF8
+}
+
+function Invoke-MpvIpc($Command, [int]$TimeoutMs=900) {
+  if (-not $script:MpvProcess) { return $null }
+  try { if ($script:MpvProcess.HasExited) { return $null } } catch { return $null }
+  $client = $null
+  $writer = $null
+  $reader = $null
+  try {
+    $client = [System.IO.Pipes.NamedPipeClientStream]::new('.', $script:MpvPipeName, [System.IO.Pipes.PipeDirection]::InOut)
+    $client.Connect($TimeoutMs)
+    $writer = [System.IO.StreamWriter]::new($client)
+    $writer.AutoFlush = $true
+    $reader = [System.IO.StreamReader]::new($client)
+    $payload = @{ command=$Command } | ConvertTo-Json -Compress -Depth 8
+    $writer.WriteLine($payload)
+    $line = $reader.ReadLine()
+    if ([string]::IsNullOrWhiteSpace($line)) { return $null }
+    return $line | ConvertFrom-Json
+  } catch { return $null }
+  finally {
+    try { if ($reader) { $reader.Dispose() } } catch {}
+    try { if ($writer) { $writer.Dispose() } } catch {}
+    try { if ($client) { $client.Dispose() } } catch {}
+  }
+}
+
+function Get-MpvProperty([string]$Name) {
+  $res = Invoke-MpvIpc @('get_property',$Name)
+  if ($res -and $res.error -eq 'success') { return $res.data }
+  return $null
+}
+
+function Get-MpvPlaybackState {
+  $alive = $false
+  if ($script:MpvProcess) { try { $alive = -not $script:MpvProcess.HasExited } catch {} }
+
+  $timePos = $null
+  $duration = $null
+  $paused = $false
+  $eofReached = $false
+  $percent = $null
+  $videoFormat = $null
+  $width = $null
+  $height = $null
+  $audioCodec = $null
+
+  if ($alive) {
+    $timePos = Get-MpvProperty 'time-pos'
+    $duration = Get-MpvProperty 'duration'
+    $paused = Get-MpvProperty 'pause'
+    $eofReached = Get-MpvProperty 'eof-reached'
+    $percent = Get-MpvProperty 'percent-pos'
+  }
+
+  # Some Windows/mpv builds do not answer the named-pipe query reliably.
+  # The bundled Lua sidecar writes the same state every second, so use it as
+  # the durable fallback (and as the final state after the player exits).
+  $fileState = Read-MpvStateFile
+  if ($fileState) {
+    if ($null -eq $timePos -and $null -ne $fileState.timePos) { $timePos = $fileState.timePos }
+    if ($null -eq $duration -and $null -ne $fileState.duration) { $duration = $fileState.duration }
+    if ($null -eq $percent -and $null -ne $fileState.percentPos) { $percent = $fileState.percentPos }
+    if ($null -eq $paused -and $null -ne $fileState.paused) { $paused = $fileState.paused }
+    if ($null -eq $eofReached -and $null -ne $fileState.eofReached) { $eofReached = $fileState.eofReached }
+    if ($null -ne $fileState.videoFormat) { $videoFormat = [string]$fileState.videoFormat }
+    if ($null -ne $fileState.width) { $width = [double]$fileState.width }
+    if ($null -ne $fileState.height) { $height = [double]$fileState.height }
+    if ($null -ne $fileState.audioCodec) { $audioCodec = [string]$fileState.audioCodec }
+  }
+
+  if (-not $alive -and $null -eq $timePos -and $script:MpvLastState) { return $script:MpvLastState }
+
+  $timeValue = $(if($null -ne $timePos){[double]$timePos}else{$null})
+  $durationValue = $(if($null -ne $duration){[double]$duration}else{$null})
+  $pausedValue = $(if($null -ne $paused){[bool]$paused}else{$false})
+  $eofValue = $(if($null -ne $eofReached){[bool]$eofReached}else{$false})
+  $percentValue = $(if($null -ne $percent){[double]$percent}else{$null})
+  $state = @{
+    playing=$alive
+    timePos=$timeValue
+    duration=$durationValue
+    paused=$pausedValue
+    eofReached=$eofValue
+    percentPos=$percentValue
+    videoFormat=$videoFormat
+    width=$width
+    height=$height
+    audioCodec=$audioCodec
+  }
+  $script:MpvLastState = $state
+  return $state
+}
+
+function Invoke-MpvControl($Data) {
+  $command = [string]$Data.command
+  switch ($command) {
+    'toggle-pause' { $res=Invoke-MpvIpc @('cycle','pause'); break }
+    'pause' { $res=Invoke-MpvIpc @('set_property','pause',$true); break }
+    'resume' { $res=Invoke-MpvIpc @('set_property','pause',$false); break }
+    'seek' { $res=Invoke-MpvIpc @('seek',[double]$Data.value,'relative'); break }
+    'load-url' {
+      $switchUrl = [string]$Data.value.url
+      $switchTitle = [string]$Data.value.title
+      $switchUri = $null
+      if (-not [uri]::TryCreate($switchUrl,[UriKind]::Absolute,[ref]$switchUri)) { throw 'Channel URL is invalid.' }
+      if ($switchUri.Scheme -ne 'http' -and $switchUri.Scheme -ne 'https') { throw 'Channel URL must use HTTP or HTTPS.' }
+      $res=Invoke-MpvIpc @('loadfile',$switchUrl,'replace') 1400
+      if (-not [string]::IsNullOrWhiteSpace($switchTitle)) { $null=Invoke-MpvIpc @('set_property','force-media-title',$switchTitle) 700 }
+      break
+    }
+    default { throw 'Unsupported native player control.' }
+  }
+  return @{ ok=$true; response=$res; playback=(Get-MpvPlaybackState) }
 }
 
 function Stop-Mpv {
   if ($script:MpvProcess) {
     try {
-      if (-not $script:MpvProcess.HasExited) { $script:MpvProcess.Kill() }
-      else { $script:MpvLastExitCode = $script:MpvProcess.ExitCode }
-    } catch {}
+      if (-not $script:MpvProcess.HasExited) {
+        # Give mpv a chance to flush its final playback position before a hard kill.
+        $null = Invoke-MpvIpc @('quit') 500
+        try { $null = $script:MpvProcess.WaitForExit(1400) } catch {}
+        if (-not $script:MpvProcess.HasExited) { $script:MpvProcess.Kill() }
+      } else { $script:MpvLastExitCode = $script:MpvProcess.ExitCode }
+    } catch {
+      try { if (-not $script:MpvProcess.HasExited) { $script:MpvProcess.Kill() } } catch {}
+    }
   }
   $script:MpvProcess = $null
 }
@@ -223,7 +404,7 @@ function Get-MpvDiagnostics {
       }
     } catch {}
   }
-  return @{ ok=$true; playing=$playing; exitCode=$exitCode; launchedAt=$script:MpvLastLaunch; logTail=$tail }
+  return @{ ok=$true; playing=$playing; exitCode=$exitCode; launchedAt=$script:MpvLastLaunch; logTail=$tail; playback=(Get-MpvPlaybackState) }
 }
 
 function Start-Mpv($Data, [string]$MpvPath) {
@@ -237,6 +418,7 @@ function Start-Mpv($Data, [string]$MpvPath) {
   $script:MpvLastExitCode = $null
   $script:MpvLastLaunch = (Get-Date).ToString('o')
   if (Test-Path $script:MpvLogPath) { Remove-Item $script:MpvLogPath -Force -ErrorAction SilentlyContinue }
+  if (Test-Path $script:MpvStatePath) { Remove-Item $script:MpvStatePath -Force -ErrorAction SilentlyContinue }
   $inputConf = Join-Path $RuntimeRoot 'input.conf'
   if (-not (Test-Path $inputConf)) {
     @'
@@ -251,6 +433,10 @@ LEFT seek -10
 '@ | Set-Content -Path $inputConf -Encoding ASCII
   }
   $safeTitle = ($title -replace '[\r\n\"]',' ').Trim()
+  $startSeconds = 0
+  try { $startSeconds = [double]$Data.startSeconds } catch { $startSeconds = 0 }
+  $ipcPath = "\\.\pipe\$($script:MpvPipeName)"
+  Write-MpvProgressScript $startSeconds
   $args = @(
     '--no-terminal',
     '--force-window=immediate',
@@ -261,12 +447,16 @@ LEFT seek -10
     '--demuxer-readahead-secs=20',
     '--network-timeout=25',
     '--osc=yes',
+    ('--input-ipc-server=' + $ipcPath),
+    ('--script=' + $script:MpvProgressScriptPath),
     ('--title=Swoop TV - ' + $safeTitle),
     ('--log-file=' + $script:MpvLogPath),
     ('--input-conf=' + $inputConf),
+    $(if ($startSeconds -gt 0 -and [string]$Data.kind -ne 'live') { '--start=' + [Math]::Floor($startSeconds) } else { $null }),
     '--',
     $url
   )
+  $args = @($args | Where-Object { $null -ne $_ -and [string]$_ -ne '' })
   Write-Host 'Compatibility playback profile active (v0.2.1 proven settings).' -ForegroundColor DarkCyan
   Write-Host ("Launching native playback: " + $safeTitle) -ForegroundColor Cyan
   $script:MpvProcess = Start-Process -FilePath $MpvPath -ArgumentList $args -PassThru
@@ -313,7 +503,7 @@ function Handle-Request($Request, [string]$MpvPath) {
     if ($path -eq '/native/status') {
       $playing = $false
       if ($script:MpvProcess) { try { $playing = -not $script:MpvProcess.HasExited } catch {} }
-      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.3.2'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
+      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.1'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
       return
     }
 
@@ -339,6 +529,11 @@ function Handle-Request($Request, [string]$MpvPath) {
           Send-Json $stream (Get-MpvDiagnostics)
           return
         }
+        '/native/control' {
+          try { Send-Json $stream (Invoke-MpvControl $data) }
+          catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 400 'Bad Request' }
+          return
+        }
         '/native/play' {
           try {
             $pidValue = Start-Mpv $data $MpvPath
@@ -347,8 +542,9 @@ function Handle-Request($Request, [string]$MpvPath) {
           return
         }
         '/native/stop' {
+          $finalState = Get-MpvPlaybackState
           Stop-Mpv
-          Send-Json $stream @{ ok=$true }
+          Send-Json $stream @{ ok=$true; playback=$finalState }
           return
         }
         default {
@@ -368,7 +564,7 @@ function Handle-Request($Request, [string]$MpvPath) {
 
     if ([IO.Path]::GetFileName($full).ToLowerInvariant() -eq 'index.html') {
       $html = Get-Content -Path $full -Raw -Encoding UTF8
-      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.3.2',platform:'windows'};</script>"
+      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.1',platform:'windows'};</script>"
       $html = $html -replace '</head>', ($bootstrap + '</head>')
       Send-Text $stream $html 'text/html; charset=utf-8'
       return
@@ -381,7 +577,7 @@ function Handle-Request($Request, [string]$MpvPath) {
   }
 }
 
-Write-Header 'Swoop TV v0.3.2 — Rotating Top 5 Home Hero'
+Write-Header 'Swoop TV v0.7.1 — Profile Theme Engine'
 Write-Host 'This local bridge keeps IPTV video provider-to-device and launches mpv for playback.'
 Write-Host 'No administrator rights are required.'
 
