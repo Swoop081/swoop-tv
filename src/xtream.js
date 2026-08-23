@@ -1,3 +1,4 @@
+import {nativeInfo, nativeRequest} from './native.js';
 function cleanServer(server='') {
   let value = String(server || '').trim().replace(/\/+$/, '');
   value = value.replace(/\/(?:player_api\.php|get\.php)$/i, '');
@@ -112,7 +113,18 @@ export async function fetchXtreamAssetBlob(config, assetUrl, timeoutMs=20000) {
   } finally { clearTimeout(timer); }
 }
 
+async function nativeJson(config, action='', params={}) {
+  return nativeRequest('/native/xtream', {
+    server:cleanServer(config.server),
+    username:String(config.username || ''),
+    password:String(config.password || ''),
+    action:String(action || ''),
+    params:params || {}
+  }, {timeoutMs:180000});
+}
+
 async function getJson(config, action='', params={}) {
+  if (nativeInfo()) return nativeJson(config, action, params);
   if (String(config.relayUrl || '').trim()) return relayJson(config, action, params);
   return directJson(config, action, params);
 }
@@ -159,4 +171,12 @@ export async function importXtream(config, providerId='xtream') {
 
 export async function fetchXtreamSeriesInfo(config, seriesId) {
   return getJson(config, 'get_series_info', {series_id:seriesId});
+}
+
+export function buildXtreamSeriesStreamUrl(config, episode) {
+  const server=cleanServer(config.server);
+  const id=episode?.id ?? episode?.stream_id ?? episode?.episode_id;
+  if (id === undefined || id === null || id === '') throw new Error('Episode does not contain a stream ID.');
+  const ext=String(episode?.container_extension || episode?.info?.container_extension || 'mp4').replace(/^\./,'');
+  return `${server}/series/${encodeURIComponent(config.username)}/${encodeURIComponent(config.password)}/${id}.${ext}`;
 }

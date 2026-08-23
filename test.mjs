@@ -1,6 +1,6 @@
 import {parseM3U} from './src/m3u.js';
 import {matchMDBListToCatalog} from './src/mdblist.js';
-import {buildXtreamApiUrl, testXtream, importXtream, fetchXtreamAssetBlob} from './src/xtream.js';
+import {buildXtreamApiUrl, buildXtreamSeriesStreamUrl, testXtream, importXtream, fetchXtreamAssetBlob} from './src/xtream.js';
 import worker from './cloudflare-worker/worker.js';
 
 function assert(condition, message){if(!condition) throw new Error(message)}
@@ -17,6 +17,10 @@ assert(matches.length===1&&matches[0].id==='m1','MDBList match failed');
 const api=buildXtreamApiUrl('http://tv.example:8080/player_api.php','user name','p@ss','get_series_info',{series_id:22});
 assert(api.startsWith('http://tv.example:8080/player_api.php?'),'Xtream URL base failed');
 assert(api.includes('username=user+name')&&api.includes('series_id=22'),'Xtream URL query failed');
+
+const episodeUrl=buildXtreamSeriesStreamUrl({server:'http://tv.example:8080',username:'user name',password:'p@ss'},{id:901,container_extension:'mkv'});
+assert(episodeUrl==='http://tv.example:8080/series/user%20name/p%40ss/901.mkv','Xtream series stream URL failed');
+
 
 let relayCapture=null;
 const realFetch=globalThis.fetch;
@@ -79,4 +83,4 @@ assert(assetResponse.status===200,'Worker artwork relay failed');
 assert(assetResponse.headers.get('content-type')==='image/png','Worker artwork content type failed');
 
 globalThis.fetch=realFetch;
-console.log('Swoop TV v0.1.3 tests passed');
+console.log('Swoop TV v0.2 tests passed');
