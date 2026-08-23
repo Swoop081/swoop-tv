@@ -1,5 +1,102 @@
 # Swoop TV Release Notes
 
+## v0.7.4.1 — Settings Navigation Access Hotfix
+
+- Fixes the v0.7.4 oversight where the Settings page existed but had no normal navigation entry.
+- Adds a persistent Settings gear in the desktop top bar.
+- Adds Settings to the mobile bottom navigation and Who’s Watching/profile picker.
+- Makes the existing **Native Catalogue Database** status card directly accessible for SQLite verification.
+- No database schema/query, provider, profile/theme, discovery, or native playback changes.
+
+## v0.7.4.1 — Native Catalogue Database Foundation
+
+### Native large-library architecture
+- Moves the full Windows-native IPTV catalogue out of the browser UI and into a local **SQLite 3.53.4** database under `%LOCALAPPDATA%\SwoopTV`.
+- First native launch downloads the official Windows x64 SQLite tools (about 6.25 MiB) and validates the pinned SHA-256 before extraction.
+- Creates indexed catalogue tables for provider, kind, group, logical identity, TMDb/IMDb identity, cleaned title/year and source score.
+- Adds **FTS5** full-text indexing for fast title/channel/category search.
+- Uses WAL mode, NORMAL synchronous mode, memory temp storage and a bounded SQLite cache for responsive local reads.
+
+### Paged / indexed UI queries
+- Movies, TV Shows and Live TV use native paged queries rather than keeping the full provider dump in browser memory.
+- Adds native category aggregation and FTS5 ranked search.
+- Home local/category rows request only the items needed for the row.
+- Discovery/MDBList candidate matching runs against indexed SQLite records instead of rescanning the entire raw catalogue in JavaScript.
+- My List, Continue Watching, Recent Channels and profile state hydrate only referenced catalogue items.
+- Native duplicate/movie/live logical grouping happens in SQL, with source counts retained for source-stack UI.
+
+### Migration / provider refresh
+- Existing browser-side v0.7.x catalogues migrate into SQLite once after profile selection with visible progress.
+- Provider imports write to SQLite in **2,000-item chunks**.
+- Refreshing/removing a provider updates only that provider's database rows.
+- After a successful native migration, the large browser catalogue is retired while metadata/discovery caches remain separate.
+- Future Windows launches activate SQLite query mode directly and only load small initial windows of Movies, TV Shows and Live TV.
+
+### Settings / compatibility
+- Adds **Settings → Native Catalogue Database** status with raw/logical counts, FTS5 status and page-window information.
+- v0.7.3 Auto/Recommended large-library visual safeguards remain intact.
+- Multi-provider unified library, profiles/themes, dynamic discovery, Smart Sources, premium Live TV, resume/Up Next and EPG remain intact.
+- Proven Windows/mpv playback compatibility/buffering profile is unchanged.
+- Cloudflare Connection + Metadata Worker remains **v0.1.7**; no Worker update is required.
+- PWA shell cache is `swoop-tv-v0741-shell`; Windows bridge/bootstrap reports **v0.7.4.1**.
+
+### Verification
+- JavaScript syntax checks pass.
+- Full automated test suite passes.
+- Added native SQLite/FTS schema, query endpoint, 2,000-item import, browser-catalog retirement and playback-profile regression assertions.
+- SQLite Windows tools version/hash pin is validated against the current official 3.53.4 distribution metadata / package verification.
+- Final ZIP integrity verified before release.
+- Actual Windows PowerShell/SQLite/mpv runtime remains an in-user validation step.
+
+## v0.7.3 — Large Library Performance Pass
+
+- Adds automatic large-library performance mode at 12,000+ enabled catalog items.
+- Home eager-renders five rows, then lazy-mounts later rows as they approach the viewport.
+- Large-library rows render a smaller initial card set; Top 20 remains a full 20.
+- Adds `content-visibility`/containment for off-screen sections.
+- Throttles background metadata enrichment and removes repeated whole-Home re-renders from metadata completion.
+- Adds cached/debounced unified Search.
+- Reduces expensive blur/shadow effects in automatic performance mode while preserving profile theme identity.
+- Adds Settings → Performance with Auto / Recommended and Full Cinematic options.
+- PWA shell cache is `swoop-tv-v073-shell`.
+- Windows bridge/bootstrap reports v0.7.3.
+- Playback compatibility profile is unchanged.
+
+## v0.7.2 — Blended Discovery + Startup Stability
+
+### Discovery
+- Replaces the single-chart Trending implementation with a **blended Swoop ranking**.
+- Adds TMDb daily trending, weekly trending, popular and current-release/airing signals through the owner-managed Swoop metadata service.
+- Worker v0.1.7 can optionally use owner secret `MDBLIST_API_KEY` to add MDBList/JustWatch and supported Trakt/IMDb popularity inputs without requiring end-user accounts.
+- **Trending Now** weights fast-moving daily, Trakt/streaming and weekly activity rather than mirroring one chart.
+- **Top 20** is kept steadier using popular/IMDb/TMDb/streaming inputs.
+- Adds selectable **New & Hot Movies**, **New & Hot TV Shows**, **Popular on Streaming — Movies**, **Popular on Streaming — TV**, **Most Watched This Week — Movies**, **Most Watched This Week — TV** and **Box Office Now** rows.
+- Fast-moving web rows refresh at roughly 90 minutes; steadier rankings retain longer caching.
+- Manual **Refresh discovery now** no longer requires a local MDBList key.
+- A local MDBList key is now described only as an optional requirement for custom personal MDBList rows.
+
+### Large-library stability
+- Fixes a major profile/startup freeze path. Swoop no longer starts restoring a very large IndexedDB catalog while **Who’s Watching?** is still on screen.
+- Library restore begins only after a profile is selected and shows real progress.
+- Durable catalog storage is upgraded from one huge IndexedDB value to **2,000-item catalog chunks** with a manifest and separate metadata/discovery records.
+- Existing single-record v0.7.1 catalogs migrate through a background Web Worker, with catalog data returned to the UI in smaller chunks.
+- Fixes repeated full movie/live duplicate-index rebuilding caused by `activeCatalog()` returning a new filtered array on every call. The active catalog and stack indexes now remain stable until provider/profile context actually changes.
+- Metadata and discovery cache writes no longer rewrite the full IPTV catalog on every enrichment/update.
+
+### Infrastructure
+- Cloudflare Connection + Metadata Worker upgraded to **v0.1.7**.
+- New optional owner secret: `MDBLIST_API_KEY`.
+- Worker health response now exposes `discoveryConfigured` and `mdblistConfigured`.
+- PWA shell cache is `swoop-tv-v072-shell`.
+- Windows bridge/bootstrap reports **v0.7.2**.
+- Proven Windows/mpv playback compatibility profile is unchanged.
+
+### Verification
+- JavaScript syntax checks pass.
+- Full automated test suite passes.
+- Added blended discovery Worker source tests.
+- Added chunked-storage / background-migration / deferred-profile-restore structural assertions.
+
 ## v0.7.1 — Profile Theme Engine
 
 ### New

@@ -7,6 +7,7 @@ import {buildMovieStackIndex, collapseMovieSources, cleanDisplayTitle, rankSourc
 import {makeProfile, normalizeProfile, profileAllowsMedia, profileGenreAffinity, smartRankRows} from './src/profiles.js';
 import {buildLiveStackIndex, selectLiveSource} from './src/liveStack.js';
 import {SWOOP_THEMES, themeById} from './src/themes.js';
+import {prepareNativeCatalogItems} from './src/nativeCatalog.js';
 
 function assert(condition, message){if(!condition) throw new Error(message)}
 
@@ -216,7 +217,41 @@ assert(metadataJson.metadata?.trailerKey==='abc123xyz','TMDb trailer mapping fai
 assert(metadataJson.metadata?.recommendations?.[0]?.tmdbId==='88','TMDb recommendations mapping failed');
 assert(metadataJson.metadata?.certification==='M'&&metadataJson.metadata?.runtime==='122 min','TMDb certification/runtime mapping failed');
 
+// v0.7.2 blended Swoop discovery service: TMDb + owner-managed MDBList signals.
+globalThis.fetch=async (url,options={})=>{
+  const u=String(url);
+  if(u.includes('api.themoviedb.org/3/trending/movie/day'))return new Response(JSON.stringify({results:[{id:501,title:'Hot Today',release_date:'2026-08-20',popularity:99}]}),{status:200});
+  if(u.includes('api.themoviedb.org/3/trending/movie/week'))return new Response(JSON.stringify({results:[{id:502,title:'Hot Week',release_date:'2026-08-01',popularity:88}]}),{status:200});
+  if(u.includes('api.themoviedb.org/3/movie/popular'))return new Response(JSON.stringify({results:[{id:503,title:'Popular Film',release_date:'2026-07-01',popularity:77}]}),{status:200});
+  if(u.includes('api.themoviedb.org/3/movie/now_playing'))return new Response(JSON.stringify({results:[{id:504,title:'Now Playing',release_date:'2026-08-22',popularity:66}]}),{status:200});
+  if(u.includes('api.mdblist.com/justwatch/streaming-charts/movie'))return new Response(JSON.stringify([{title:'Stream Hit',year:2026,tmdb:505}]),{status:200});
+  if(u.includes('api.mdblist.com/lists/official/movies/popular/items'))return new Response(JSON.stringify([{title:'Stable Hit',year:2026,tmdb:506}]),{status:200});
+  if(u.includes('api.mdblist.com/lists/official/movies/trakt-trending/items'))return new Response(JSON.stringify([{title:'Trakt Hit',year:2026,tmdb:507}]),{status:200});
+  if(u.includes('api.mdblist.com/lists/official/movies/trakt-most-watched/items'))return new Response(JSON.stringify([{title:'Watched Hit',year:2026,tmdb:508}]),{status:200});
+  if(u.includes('api.mdblist.com/lists/official/movies/imdb-most-popular/items'))return new Response(JSON.stringify([{title:'IMDb Hit',year:2026,tmdb:509}]),{status:200});
+  if(u.includes('api.mdblist.com/lists/official/movies/trakt-weekend-box-office/items'))return new Response(JSON.stringify([{title:'Box Office Hit',year:2026,tmdb:510}]),{status:200});
+  return new Response(JSON.stringify({error:'not found'}),{status:404});
+};
+const discoveryReq=new Request('https://relay.example.workers.dev/',{method:'POST',headers:{'content-type':'application/json','origin':'http://127.0.0.1:38673'},body:JSON.stringify({mode:'discovery',mediaType:'movie'})});
+const discoveryRes=await worker.fetch(discoveryReq,{TMDB_API_TOKEN:'tmdb-test-token',MDBLIST_API_KEY:'mdb-test-key',SWOOP_PROXY_TOKEN:token});
+assert(discoveryRes.status===200,'Worker discovery request failed');
+const discoveryJson=await discoveryRes.json();
+assert(discoveryJson.enhanced===true,'Owner-managed MDBList discovery flag failed');
+assert(discoveryJson.sources?.tmdbDay?.[0]?.tmdb==='501','TMDb daily trending source failed');
+assert(discoveryJson.sources?.justwatch?.[0]?.tmdb==='505','JustWatch discovery source failed');
+assert(discoveryJson.sources?.traktTrending?.[0]?.tmdb==='507','Trakt trending discovery source failed');
+assert(discoveryJson.sources?.mostWatched?.[0]?.tmdb==='508','Most watched discovery source failed');
+assert(discoveryJson.sources?.boxOffice?.[0]?.tmdb==='510','Box office discovery source failed');
 
+
+
+// v0.7.2 large-library startup/storage stability guards.
+const storageSource=fs.readFileSync(new URL('./src/storage.js',import.meta.url),'utf8');
+const appSource=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+assert(storageSource.includes("bulk-manifest-v2")&&storageSource.includes('CATALOG_CHUNK_SIZE=2000'),'Chunked durable catalog storage missing');
+assert(storageSource.includes("storage-worker.js"),'Legacy bulk background-worker migration missing');
+assert(appSource.includes('activeCatalogSourceRef')&&appSource.includes('activeCatalogCache'),'Stable active-catalog cache missing');
+assert(!/render\(\);\s*restoreDurableLibrary\(\);\s*$/.test(appSource),'Large library must not restore while Who’s Watching is on screen');
 
 // v0.7.1 profile theme engine.
 assert(SWOOP_THEMES.length===4,'Expected four launch themes');
@@ -246,7 +281,6 @@ assert(nativePs.includes('--input-ipc-server=')&&nativePs.includes("'/native/con
 assert(nativePs.includes('swoop-progress.lua')&&nativePs.includes('mpv-playback-state.json')&&nativePs.includes("mp.commandv('seek'"),'Windows durable progress/resume sidecar missing');
 assert(nativePs.includes("'load-url'")&&nativePs.includes("@('loadfile',$switchUrl,'replace')"),'Windows in-process live channel switching missing');
 assert(nativePs.includes("'--cache-secs=15'")&&nativePs.includes("'--demuxer-readahead-secs=20'")&&!nativePs.includes("'--profile=low-latency'"),'Proven compatibility playback profile must remain unchanged');
-const appSource=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
 assert(appSource.includes('Recommended For You')&&appSource.includes('UP NEXT')&&appSource.includes('Loading Now & Next'),'Personalization/Up Next/live UI missing');
 assert(appSource.includes('if(pos<10)return 0')&&!appSource.includes('pct>0&&pct<95?pos:0'),'Resume must accept a saved time position even when IPTV duration/percentage is unavailable');
 assert(appSource.includes('SMART SOURCE SELECTION')&&appSource.includes('Play Recommended')&&appSource.includes('sourceChoiceItem')&&appSource.includes('playableFromSource'),'Smart multi-source chooser UI/flow missing');
@@ -260,4 +294,39 @@ assert(appSource.includes("PROFILE_SETTING_KEYS=['themeId','backgroundColor','ba
 globalThis.fetch=realFetch;
 assert(appSource.includes('Provider Manager')&&appSource.includes('Refresh All')&&appSource.includes('providerFiltered'),'Multi-provider manager/filter UI missing');
 assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabledProviders')&&appSource.includes('providerPriorityMap'),'Unified provider catalog/priority logic missing');
-console.log('Swoop TV v0.7.1 tests passed');
+// v0.7.3 performance guards retained in v0.7.4.
+{
+  const app = fs.readFileSync(new URL('./app.js', import.meta.url), 'utf8');
+  const css = fs.readFileSync(new URL('./styles.css', import.meta.url), 'utf8');
+  assert(/LARGE_LIBRARY_THRESHOLD=12000/.test(app),'Large-library threshold missing');
+  assert(/data-lazy-home-row/.test(app),'Lazy Home row placeholders missing');
+  assert(/mountLazyHomeRows/.test(app),'Lazy Home row mounting missing');
+  assert(/scheduleSearch/.test(app),'Debounced search missing');
+  assert(/data-performance-mode/.test(app),'Performance setting missing');
+  assert(/content-visibility:auto/.test(css),'Off-screen content visibility missing');
+  assert(/data-performance="lean"/.test(css),'Lean visual mode missing');
+}
+
+// v0.7.4 native SQLite catalogue foundation.
+{
+  const prepared=prepareNativeCatalogItems(duplicateCatalog.slice(0,3));
+  assert(prepared.every(x=>x._dbLogicalKey==='title-year:blade runner 2049|2017'),'Native catalogue logical movie identity must preserve confident title+year stacking across provider/source labels');
+  assert(prepared.every(x=>x._dbCleanName==='blade runner 2049'),'Native catalogue cleaned title failed');
+  const sqlitePs=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
+  const nativeModule=fs.readFileSync(new URL('./src/nativeCatalog.js',import.meta.url),'utf8');
+  const swSource=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
+  assert(sqlitePs.includes('sqlite-tools-win-x64-3530400.zip')&&sqlitePs.includes('F46EE2475DE4CBE287E6E5F7D43C838796B14E7379CD216BDBB28D391429F9FC'),'Pinned/verified SQLite Windows runtime missing');
+  assert(sqlitePs.includes('CREATE TABLE IF NOT EXISTS catalog')&&sqlitePs.includes('CREATE VIRTUAL TABLE IF NOT EXISTS catalog_fts USING fts5'),'SQLite catalogue/FTS schema missing');
+  assert(sqlitePs.includes("'/native/catalog/query'")&&sqlitePs.includes("'/native/catalog/search'")&&sqlitePs.includes("'/native/catalog/categories'")&&sqlitePs.includes("'/native/catalog/match'"),'Native catalogue query endpoints missing');
+  assert(sqlitePs.includes('ROW_NUMBER() OVER(PARTITION BY logical_key')&&sqlitePs.includes('COUNT(DISTINCT logical_key)'),'Database-level logical-title grouping missing');
+  assert(sqlitePs.includes('bm25(catalog_fts)'),'FTS5 ranked search missing');
+  assert(sqlitePs.includes('stack:${k}:')&&!sqlitePs.includes('stack:$k:'),'PowerShell native stack ID interpolation guard failed');
+  assert(nativeModule.includes('chunkSize=2000')&&nativeModule.includes('/native/catalog/append'),'Chunked native provider import missing');
+  assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
+  assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
+  assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
+  assert(swSource.includes('swoop-tv-v0741-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.4.1 PWA cache/native module wiring missing');
+  assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
+}
+
+console.log('Swoop TV v0.7.4.1 tests passed');

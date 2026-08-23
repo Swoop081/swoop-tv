@@ -16,6 +16,7 @@ const ALLOWED_PARAMS = new Set(['series_id', 'vod_id', 'stream_id', 'epg_limit']
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
+const MDBLIST_BASE = 'https://api.mdblist.com';
 
 function tmdbHeaders(env) {
   const token=String(env.TMDB_API_TOKEN || '').trim();
@@ -148,6 +149,84 @@ async function handleMetadata(request, env, body) {
   }catch(error){return json(request,{error:error.message||'Could not load TMDb metadata.'},502)}
 }
 
+
+function compactDiscoveryTmdb(payload,type='movie') {
+  const list=Array.isArray(payload?.results)?payload.results:[];
+  return list.slice(0,100).map((x,index)=>({
+    tmdb:x?.id?String(x.id):'',
+    title:type==='tv'?(x?.name||x?.original_name||''):(x?.title||x?.original_title||''),
+    year:safeYear(type==='tv'?x?.first_air_date:x?.release_date),
+    popularity:Number(x?.popularity||0),
+    rating:Number(x?.vote_average||0),
+    rank:index+1
+  })).filter(x=>x.tmdb&&x.title);
+}
+function extractMdbList(payload){
+  if(Array.isArray(payload))return payload;
+  if(!payload||typeof payload!=='object')return[];
+  for(const key of ['items','movies','shows','results','data','list','entries'])if(Array.isArray(payload[key]))return payload[key];
+  if(payload.data&&typeof payload.data==='object')for(const key of ['items','movies','shows','results'])if(Array.isArray(payload.data[key]))return payload.data[key];
+  return[];
+}
+function compactDiscoveryMdb(payload){
+  const list=extractMdbList(payload);
+  return list.slice(0,100).map((raw,index)=>{
+    const x=raw?.movie||raw?.show||raw?.media||raw?.item||raw||{},ids=x.ids||raw?.ids||{};
+    return {
+      tmdb:String(x.tmdb??x.tmdb_id??ids.tmdb??raw?.tmdb??raw?.tmdb_id??''),
+      imdb:String(x.imdb??x.imdb_id??ids.imdb??raw?.imdb??raw?.imdb_id??''),
+      title:x.title||x.name||raw?.title||raw?.name||'',
+      year:safeYear(x.year||x.release_year||raw?.year||raw?.release_year||''),
+      rank:index+1
+    };
+  }).filter(x=>x.title);
+}
+async function mdbFetch(path,env,params={}){
+  const key=String(env.MDBLIST_API_KEY||'').trim();if(!key)throw new Error('MDBList discovery is not configured.');
+  const url=new URL(`${MDBLIST_BASE}${path}`);url.searchParams.set('apikey',key);
+  Object.entries(params).forEach(([k,v])=>{if(v!==undefined&&v!==null&&v!=='')url.searchParams.set(k,String(v))});
+  const res=await fetch(url.toString(),{headers:{'Accept':'application/json','User-Agent':'SwoopTV-Discovery/0.7.4'},cf:{cacheTtl:3600,cacheEverything:true}});
+  if(!res.ok)throw new Error(`MDBList returned HTTP ${res.status}.`);return res.json();
+}
+async function firstMdbOfficial(env,candidates=[]){
+  for(const slug of candidates){try{return compactDiscoveryMdb(await mdbFetch(`/lists/official/${slug}/items`,env))}catch{}}
+  return[];
+}
+async function safeMdb(path,env){try{return compactDiscoveryMdb(await mdbFetch(path,env))}catch{return[]}}
+async function handleDiscovery(request,env,body){
+  if(!String(env.TMDB_API_TOKEN||'').trim())return json(request,{error:'Swoop discovery is not configured yet. Add the TMDB_API_TOKEN secret to the Swoop Worker.'},503);
+  const type=String(body?.mediaType||'movie')==='tv'?'tv':'movie';
+  try{
+    const [day,week,popular,fresh]=await Promise.all([
+      tmdbFetch(`/trending/${type}/day`,env,{language:'en-AU'}),
+      tmdbFetch(`/trending/${type}/week`,env,{language:'en-AU'}),
+      tmdbFetch(type==='tv'?'/tv/popular':'/movie/popular',env,{language:'en-AU',region:'AU'}),
+      tmdbFetch(type==='tv'?'/tv/on_the_air':'/movie/now_playing',env,{language:'en-AU',region:'AU'})
+    ]);
+    const sources={
+      tmdbDay:compactDiscoveryTmdb(day,type),
+      tmdbWeek:compactDiscoveryTmdb(week,type),
+      tmdbPopular:compactDiscoveryTmdb(popular,type),
+      fresh:compactDiscoveryTmdb(fresh,type)
+    };
+    let enhanced=false;
+    if(String(env.MDBLIST_API_KEY||'').trim()){
+      enhanced=true;
+      const prefix=type==='tv'?'shows':'movies',chartType=type==='tv'?'show':'movie';
+      const [justwatch,stable,traktTrending,mostWatched,imdbPopular,boxOffice]=await Promise.all([
+        safeMdb(`/justwatch/streaming-charts/${chartType}`,env),
+        firstMdbOfficial(env,[`${prefix}/popular`]),
+        firstMdbOfficial(env,[`${prefix}/trakt-trending`,`${prefix}/trending`]),
+        firstMdbOfficial(env,[`${prefix}/trakt-most-watched`,`${prefix}/most-watched`,`${prefix}/trakt-watched`]),
+        firstMdbOfficial(env,[`${prefix}/imdb-most-popular`,`${prefix}/imdb-popular`]),
+        type==='movie'?firstMdbOfficial(env,['movies/trakt-weekend-box-office','movies/trakt-boxoffice','movies/boxoffice']):Promise.resolve([])
+      ]);
+      Object.assign(sources,{justwatch,stable,traktTrending,mostWatched,imdbPopular,boxOffice});
+    }
+    return new Response(JSON.stringify({mediaType:type,updatedAt:Date.now(),enhanced,sources}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=1800'}});
+  }catch(error){return json(request,{error:error.message||'Could not load Swoop discovery charts.'},502)}
+}
+
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '*';
   return {
@@ -269,6 +348,7 @@ async function handlePost(request, env) {
   catch { return json(request, {error:'Request body must be JSON.'}, 400); }
 
   if (String(body?.mode || '') === 'metadata') return handleMetadata(request, env, body);
+  if (String(body?.mode || '') === 'discovery') return handleDiscovery(request, env, body);
 
   if (!String(env.SWOOP_PROXY_TOKEN || '')) {
     return json(request, {error:'Worker is not configured. Set the SWOOP_PROXY_TOKEN secret first.'}, 503);
@@ -319,9 +399,11 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.6',
+        version:'0.1.7',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
-        metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim())
+        metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
+        discoveryConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
+        mdblistConfigured:Boolean(String(env.MDBLIST_API_KEY || '').trim())
       });
     }
     if (request.method !== 'POST') return json(request, {error:'Method not allowed.'}, 405);

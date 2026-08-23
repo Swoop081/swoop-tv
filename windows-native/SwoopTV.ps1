@@ -21,6 +21,321 @@ $script:MpvLastState = $null
 $script:MpvStatePath = Join-Path $RuntimeRoot 'mpv-playback-state.json'
 $script:MpvProgressScriptPath = Join-Path $RuntimeRoot 'swoop-progress.lua'
 
+$CatalogDbPath = Join-Path $RuntimeRoot 'swoop-catalog-v1.sqlite3'
+$SqliteRoot = Join-Path $RuntimeRoot 'sqlite-3.53.4'
+$SqliteUrl = 'https://www.sqlite.org/2026/sqlite-tools-win-x64-3530400.zip'
+$SqliteZipSha256 = 'F46EE2475DE4CBE287E6E5F7D43C838796B14E7379CD216BDBB28D391429F9FC'
+$script:SqlitePath = $null
+
+function Ensure-Sqlite {
+  New-Item -ItemType Directory -Force -Path $SqliteRoot | Out-Null
+  $existing = Get-ChildItem -Path $SqliteRoot -Filter 'sqlite3.exe' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($existing) { return $existing.FullName }
+  Write-Header 'First run: installing Swoop local catalogue database'
+  Write-Host 'Downloading official SQLite 3.53.4 tools (about 6 MB). This happens once.' -ForegroundColor Yellow
+  $zipPath = Join-Path $env:TEMP 'swoop-sqlite-3.53.4.zip'
+  if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+  Invoke-WebRequest -Uri $SqliteUrl -OutFile $zipPath -UseBasicParsing
+  $actual = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash.ToUpperInvariant()
+  if ($actual -ne $SqliteZipSha256) {
+    Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+    throw "The SQLite download failed its SHA-256 integrity check. Expected $SqliteZipSha256 but received $actual."
+  }
+  if (Test-Path $SqliteRoot) { Remove-Item $SqliteRoot -Recurse -Force }
+  New-Item -ItemType Directory -Force -Path $SqliteRoot | Out-Null
+  Expand-Archive -Path $zipPath -DestinationPath $SqliteRoot -Force
+  Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+  $sqlite = Get-ChildItem -Path $SqliteRoot -Filter 'sqlite3.exe' -File -Recurse | Select-Object -First 1
+  if (-not $sqlite) { throw 'sqlite3.exe was not found after extraction.' }
+  Write-Host 'Swoop local catalogue database engine installed.' -ForegroundColor Green
+  return $sqlite.FullName
+}
+
+function Sql-Literal([string]$Value) {
+  if ($null -eq $Value) { return "''" }
+  return "'" + ([string]$Value).Replace("'", "''") + "'"
+}
+
+function Invoke-SqliteRaw([string]$Sql) {
+  if (-not $script:SqlitePath) { throw 'SQLite is not ready.' }
+  $output = & $script:SqlitePath $CatalogDbPath $Sql 2>&1 | Out-String
+  if ($LASTEXITCODE -ne 0) { throw ("SQLite failed: " + $output.Trim()) }
+  return $output.Trim()
+}
+
+function Invoke-SqliteJson([string]$Sql) {
+  if (-not $script:SqlitePath) { throw 'SQLite is not ready.' }
+  $output = & $script:SqlitePath '-json' $CatalogDbPath $Sql 2>&1 | Out-String
+  if ($LASTEXITCODE -ne 0) { throw ("SQLite failed: " + $output.Trim()) }
+  if ([string]::IsNullOrWhiteSpace($output)) { return @() }
+  try {
+    $parsed = $output | ConvertFrom-Json
+    if ($parsed -is [System.Array]) { return @($parsed) }
+    return @($parsed)
+  } catch { throw ("SQLite returned invalid JSON: " + $output.Substring(0,[Math]::Min(500,$output.Length))) }
+}
+
+function Initialize-CatalogDb {
+  $schema = @'
+PRAGMA journal_mode=WAL;
+PRAGMA synchronous=NORMAL;
+PRAGMA temp_store=MEMORY;
+PRAGMA cache_size=-24000;
+CREATE TABLE IF NOT EXISTS catalog (
+  item_key TEXT PRIMARY KEY,
+  provider_id TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  name TEXT NOT NULL,
+  display_name TEXT,
+  clean_name TEXT,
+  year INTEGER DEFAULT 0,
+  rating REAL DEFAULT 0,
+  group_name TEXT,
+  logo TEXT,
+  backdrop TEXT,
+  stream_url TEXT,
+  tvg_id TEXT,
+  tmdb_id TEXT,
+  imdb_id TEXT,
+  logical_key TEXT NOT NULL,
+  source_score REAL DEFAULT 0,
+  raw_json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_catalog_kind ON catalog(kind);
+CREATE INDEX IF NOT EXISTS idx_catalog_provider_kind ON catalog(provider_id,kind);
+CREATE INDEX IF NOT EXISTS idx_catalog_group ON catalog(kind,group_name);
+CREATE INDEX IF NOT EXISTS idx_catalog_logical ON catalog(kind,logical_key);
+CREATE INDEX IF NOT EXISTS idx_catalog_tmdb ON catalog(kind,tmdb_id);
+CREATE INDEX IF NOT EXISTS idx_catalog_imdb ON catalog(kind,imdb_id);
+CREATE INDEX IF NOT EXISTS idx_catalog_clean_year ON catalog(kind,clean_name,year);
+CREATE VIRTUAL TABLE IF NOT EXISTS catalog_fts USING fts5(item_key UNINDEXED, provider_id UNINDEXED, kind UNINDEXED, name, clean_name, group_name, tokenize='unicode61 remove_diacritics 2');
+CREATE TABLE IF NOT EXISTS catalog_meta (key TEXT PRIMARY KEY, value TEXT);
+INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('schema','1');
+'@
+  [void](Invoke-SqliteRaw $schema)
+}
+
+function Write-JsonTemp($Object) {
+  $path = Join-Path $env:TEMP ("swoop-catalog-" + [guid]::NewGuid().ToString('N') + '.json')
+  $json = $Object | ConvertTo-Json -Depth 24 -Compress
+  [IO.File]::WriteAllText($path,$json,(New-Object Text.UTF8Encoding($false)))
+  return $path
+}
+
+function Catalog-Begin([string]$ProviderId) {
+  $p = Sql-Literal $ProviderId
+  [void](Invoke-SqliteRaw "BEGIN IMMEDIATE; DELETE FROM catalog WHERE provider_id=$p; DELETE FROM catalog_fts WHERE provider_id=$p; COMMIT;")
+  return @{ ok=$true; providerId=$ProviderId }
+}
+
+function Catalog-Append([string]$ProviderId,$Items) {
+  if (-not $Items) { return @{ok=$true; inserted=0} }
+  $path = Write-JsonTemp @($Items)
+  try {
+    $dbPath = $path.Replace('\','/').Replace("'","''")
+    $p = Sql-Literal $ProviderId
+    $sql = @"
+BEGIN IMMEDIATE;
+INSERT OR REPLACE INTO catalog(item_key,provider_id,item_id,kind,name,display_name,clean_name,year,rating,group_name,logo,backdrop,stream_url,tvg_id,tmdb_id,imdb_id,logical_key,source_score,raw_json)
+SELECT $p || '|' || COALESCE(json_extract(value,'$.id'),''),
+       $p,
+       COALESCE(json_extract(value,'$.id'),''),
+       COALESCE(json_extract(value,'$.kind'),''),
+       COALESCE(json_extract(value,'$.name'),''),
+       COALESCE(json_extract(value,'$._dbDisplayName'),json_extract(value,'$.name'),''),
+       COALESCE(json_extract(value,'$._dbCleanName'),''),
+       COALESCE(CAST(json_extract(value,'$._dbYear') AS INTEGER),0),
+       COALESCE(CAST(json_extract(value,'$.rating') AS REAL),0),
+       COALESCE(json_extract(value,'$.group'),''),
+       COALESCE(json_extract(value,'$.logo'),''),
+       COALESCE(json_extract(value,'$.backdrop'),''),
+       COALESCE(json_extract(value,'$.streamUrl'),''),
+       COALESCE(json_extract(value,'$.tvgId'),json_extract(value,'$.epgChannelId'),''),
+       COALESCE(json_extract(value,'$.tmdbId'),''),
+       COALESCE(json_extract(value,'$.imdbId'),''),
+       COALESCE(json_extract(value,'$._dbLogicalKey'),COALESCE(json_extract(value,'$.kind'),'item') || ':single:' || COALESCE(json_extract(value,'$.id'),'')),
+       COALESCE(CAST(json_extract(value,'$._dbSourceScore') AS REAL),0),
+       json(value)
+FROM json_each(CAST(readfile('$dbPath') AS TEXT));
+DELETE FROM catalog_fts WHERE item_key IN (
+  SELECT $p || '|' || COALESCE(json_extract(value,'$.id'),'') FROM json_each(CAST(readfile('$dbPath') AS TEXT))
+);
+INSERT INTO catalog_fts(item_key,provider_id,kind,name,clean_name,group_name)
+SELECT item_key,provider_id,kind,name,clean_name,group_name FROM catalog WHERE item_key IN (
+  SELECT $p || '|' || COALESCE(json_extract(value,'$.id'),'') FROM json_each(CAST(readfile('$dbPath') AS TEXT))
+);
+COMMIT;
+"@
+    [void](Invoke-SqliteRaw $sql)
+    return @{ok=$true; inserted=@($Items).Count}
+  } finally { Remove-Item $path -Force -ErrorAction SilentlyContinue }
+}
+
+function Catalog-Finish([string]$ProviderId) {
+  [void](Invoke-SqliteRaw "PRAGMA optimize;")
+  $p=Sql-Literal $ProviderId
+  $rows=Invoke-SqliteJson "SELECT kind, COUNT(*) AS raw_count, COUNT(DISTINCT logical_key) AS unique_count FROM catalog WHERE provider_id=$p GROUP BY kind;"
+  return @{ok=$true;providerId=$ProviderId;counts=$rows}
+}
+
+function Catalog-Stats {
+  $totals=Invoke-SqliteJson "SELECT kind, COUNT(*) AS raw_count, COUNT(DISTINCT logical_key) AS unique_count FROM catalog GROUP BY kind;"
+  $providers=Invoke-SqliteJson "SELECT provider_id,kind,COUNT(*) AS raw_count,COUNT(DISTINCT logical_key) AS unique_count FROM catalog GROUP BY provider_id,kind;"
+  $row=Invoke-SqliteJson "SELECT COUNT(*) AS row_count,COUNT(DISTINCT logical_key) AS logical_count FROM catalog;"
+  $rowCount=0;$logicalCount=0;if($row.Count){$rowCount=[int64]$row[0].row_count;$logicalCount=[int64]$row[0].logical_count}
+  return @{ok=$true;database='sqlite';schema=1;path=$CatalogDbPath;rowCount=$rowCount;logicalCount=$logicalCount;totals=$totals;providers=$providers}
+}
+
+function Convert-CatalogRows($Rows,[string]$Kind='') {
+  $out=New-Object System.Collections.Generic.List[object]
+  foreach($r in @($Rows)) {
+    try { $item = [string]$r.raw_json | ConvertFrom-Json } catch { continue }
+    $logical=[string]$r.logical_key;$count=[int]($r.source_count)
+    $item | Add-Member -NotePropertyName '_nativeLogicalKey' -NotePropertyValue $logical -Force
+    $item | Add-Member -NotePropertyName 'sourceCount' -NotePropertyValue $count -Force
+    if ($count -gt 1) {
+      $k=if($Kind){$Kind}else{[string]$item.kind}
+      $item.id="stack:${k}:" + [uri]::EscapeDataString($logical)
+      if ($r.display_name) { $item.name=[string]$r.display_name }
+      $item | Add-Member -NotePropertyName '_nativeStack' -NotePropertyValue $true -Force
+    }
+    $out.Add($item)
+  }
+  return @($out)
+}
+
+function Catalog-Query($Data) {
+  $kind=[string]$Data.kind;if($kind -notin @('movie','series','live')){$kind='movie'}
+  $limit=[Math]::Max(1,[Math]::Min(500,[int]($Data.limit)));if(-not $Data.limit){$limit=120}
+  $offset=[Math]::Max(0,[int]($Data.offset));$where=New-Object System.Collections.Generic.List[string];$where.Add("kind="+(Sql-Literal $kind))
+  if($Data.providerId -and [string]$Data.providerId -ne 'all'){$where.Add("provider_id="+(Sql-Literal ([string]$Data.providerId)))}
+  elseif($Data.providerIds){$allowed=@($Data.providerIds|Where-Object{$_});if($allowed.Count){$where.Add("provider_id IN ("+(($allowed|ForEach-Object{Sql-Literal ([string]$_)}) -join ',')+")")}}
+  if($Data.group){$where.Add("group_name="+(Sql-Literal ([string]$Data.group)))}
+  $whereSql=$where -join ' AND '
+  $sort=[string]$Data.sort
+  $order= switch($sort){'year'{'year DESC, display_name COLLATE NOCASE'} 'rating'{'rating DESC, display_name COLLATE NOCASE'} 'recent'{'year DESC, rating DESC, display_name COLLATE NOCASE'} default {'display_name COLLATE NOCASE'}}
+  $sql=@"
+WITH filtered AS (SELECT * FROM catalog WHERE $whereSql),
+ranked AS (
+ SELECT *, ROW_NUMBER() OVER(PARTITION BY logical_key ORDER BY source_score DESC,name COLLATE NOCASE) AS rn,
+ COUNT(*) OVER(PARTITION BY logical_key) AS source_count
+ FROM filtered
+)
+SELECT raw_json,logical_key,source_count,display_name FROM ranked WHERE rn=1 ORDER BY $order LIMIT $limit OFFSET $offset;
+"@
+  $rows=Invoke-SqliteJson $sql
+  $countRows=Invoke-SqliteJson "SELECT COUNT(DISTINCT logical_key) AS total FROM catalog WHERE $whereSql;"
+  $total=0;if($countRows.Count){$total=[int64]$countRows[0].total}
+  return @{ok=$true;items=(Convert-CatalogRows $rows $kind);total=$total;offset=$offset;limit=$limit}
+}
+
+function Catalog-Categories($Data) {
+  $kind=[string]$Data.kind;if($kind -notin @('movie','series','live')){$kind='movie'}
+  $limit=[Math]::Max(1,[Math]::Min(100,[int]($Data.limit)));if(-not $Data.limit){$limit=40}
+  $where="kind="+(Sql-Literal $kind)+" AND group_name<>''"
+  if($Data.providerId -and [string]$Data.providerId -ne 'all'){$where += " AND provider_id="+(Sql-Literal ([string]$Data.providerId))}
+  elseif($Data.providerIds){$allowed=@($Data.providerIds|Where-Object{$_});if($allowed.Count){$where += " AND provider_id IN ("+(($allowed|ForEach-Object{Sql-Literal ([string]$_)}) -join ',')+")"}}
+  return @{ok=$true;items=(Invoke-SqliteJson "SELECT group_name AS name,COUNT(DISTINCT logical_key) AS count FROM catalog WHERE $where GROUP BY group_name ORDER BY count DESC,name COLLATE NOCASE LIMIT $limit;")}
+}
+
+function Catalog-Search($Data) {
+  $term=([string]$Data.term).Trim();$limit=[Math]::Max(1,[Math]::Min(120,[int]($Data.limit)));if(-not $Data.limit){$limit=80}
+  if([string]::IsNullOrWhiteSpace($term)){return Catalog-Query ([pscustomobject]@{kind='movie';providerId=$Data.providerId;offset=0;limit=$limit;sort='recent'})}
+  $tokens=([regex]::Matches($term.ToLowerInvariant(),'[a-z0-9]+')|ForEach-Object{$_.Value})
+  if(-not $tokens.Count){return @{ok=$true;items=@();total=0}}
+  $fts=($tokens|ForEach-Object{$_+'*'}) -join ' '
+  $ftsSql=Sql-Literal $fts
+  $kinds=@($Data.kinds|Where-Object{$_ -in @('movie','series','live')});if(-not $kinds.Count){$kinds=@('movie','series','live')}
+  $kindSql=($kinds|ForEach-Object{Sql-Literal $_}) -join ','
+  $providerClause='';if($Data.providerId -and [string]$Data.providerId -ne 'all'){$providerClause=" AND c.provider_id="+(Sql-Literal ([string]$Data.providerId))}elseif($Data.providerIds){$allowed=@($Data.providerIds|Where-Object{$_});if($allowed.Count){$providerClause=" AND c.provider_id IN ("+(($allowed|ForEach-Object{Sql-Literal ([string]$_)}) -join ',')+")"}}
+  $sql=@"
+WITH hits AS (
+ SELECT c.*,bm25(catalog_fts) AS text_rank FROM catalog_fts JOIN catalog c ON c.item_key=catalog_fts.item_key
+ WHERE catalog_fts MATCH $ftsSql AND c.kind IN ($kindSql)$providerClause
+), ranked AS (
+ SELECT *,ROW_NUMBER() OVER(PARTITION BY logical_key ORDER BY text_rank ASC,source_score DESC) rn,COUNT(*) OVER(PARTITION BY logical_key) source_count
+ FROM hits
+)
+SELECT raw_json,logical_key,source_count,display_name FROM ranked WHERE rn=1 ORDER BY text_rank ASC LIMIT $limit;
+"@
+  $rows=Invoke-SqliteJson $sql
+  return @{ok=$true;items=(Convert-CatalogRows $rows);total=@($rows).Count}
+}
+
+function Catalog-Sources([string]$LogicalKey) {
+  $key=Sql-Literal $LogicalKey
+  $rows=Invoke-SqliteJson "SELECT raw_json FROM catalog WHERE logical_key=$key ORDER BY source_score DESC,name COLLATE NOCASE;"
+  $out=@();foreach($r in @($rows)){try{$out+=([string]$r.raw_json|ConvertFrom-Json)}catch{}}
+  return @{ok=$true;items=$out}
+}
+
+function Catalog-Get($Data) {
+  $ids=@($Data.ids|Where-Object{$_}|Select-Object -First 250);if(-not $ids.Count){return @{ok=$true;items=@()}}
+  $conditions=New-Object System.Collections.Generic.List[string]
+  $sourceIds=New-Object System.Collections.Generic.List[string]
+  foreach($rawId in $ids){
+    $id=[string]$rawId
+    if($id -match '^stack:(movie|series|live):(.+)$'){
+      $kind=Sql-Literal ([string]$Matches[1])
+      $logical=Sql-Literal ([uri]::UnescapeDataString([string]$Matches[2]))
+      $conditions.Add("(kind=$kind AND logical_key=$logical)")
+    } else { $sourceIds.Add($id) }
+  }
+  if($sourceIds.Count){$in=($sourceIds|ForEach-Object{Sql-Literal $_}) -join ',';$conditions.Add("item_id IN ($in)")}
+  if(-not $conditions.Count){return @{ok=$true;items=@()}}
+  $where=$conditions -join ' OR '
+  $sql=@"
+WITH targets AS (
+ SELECT DISTINCT kind,logical_key FROM catalog WHERE $where
+), ranked AS (
+ SELECT c.*,ROW_NUMBER() OVER(PARTITION BY c.kind,c.logical_key ORDER BY c.source_score DESC,c.name COLLATE NOCASE) rn,
+ COUNT(*) OVER(PARTITION BY c.kind,c.logical_key) source_count
+ FROM catalog c JOIN targets t ON t.kind=c.kind AND t.logical_key=c.logical_key
+)
+SELECT raw_json,logical_key,source_count,display_name FROM ranked WHERE rn=1;
+"@
+  $rows=Invoke-SqliteJson $sql
+  return @{ok=$true;items=(Convert-CatalogRows $rows)}
+}
+
+function Catalog-Match($Data) {
+  $candidates=@($Data.candidates|Select-Object -First 150);if(-not $candidates.Count){return @{ok=$true;items=@()}}
+  $kind=if([string]$Data.mediaType -in @('show','tv','series')){'series'}else{'movie'}
+  $limit=[Math]::Max(1,[Math]::Min(100,[int]$Data.limit));if(-not $Data.limit){$limit=70}
+  $path=Write-JsonTemp $candidates
+  try{
+    $dbPath=$path.Replace('\','/').Replace("'","''")
+    $kindSql=Sql-Literal $kind
+    $providerMatch='';if($Data.providerIds){$allowed=@($Data.providerIds|Where-Object{$_});if($allowed.Count){$providerMatch=" AND c.provider_id IN ("+(($allowed|ForEach-Object{Sql-Literal ([string]$_)}) -join ',')+")"}}
+    $sql=@"
+WITH cand AS (
+ SELECT CAST(key AS INTEGER) AS ord,
+        COALESCE(json_extract(value,'$.tmdb'),'') tmdb,
+        COALESCE(json_extract(value,'$.imdb'),'') imdb,
+        COALESCE(json_extract(value,'$.cleanName'),'') clean_name,
+        COALESCE(CAST(json_extract(value,'$.year') AS INTEGER),0) year
+ FROM json_each(CAST(readfile('$dbPath') AS TEXT))
+), exact_hits AS (
+ SELECT cand.ord,c.*,
+ CASE WHEN cand.tmdb<>'' AND c.tmdb_id=cand.tmdb THEN 0 WHEN cand.imdb<>'' AND lower(c.imdb_id)=lower(cand.imdb) THEN 1 WHEN cand.clean_name<>'' AND c.clean_name=cand.clean_name AND cand.year>0 AND c.year=cand.year THEN 2 ELSE 3 END AS match_rank
+ FROM cand JOIN catalog c ON c.kind=$kindSql$providerMatch AND (
+   (cand.tmdb<>'' AND c.tmdb_id=cand.tmdb) OR
+   (cand.imdb<>'' AND lower(c.imdb_id)=lower(cand.imdb)) OR
+   (cand.clean_name<>'' AND c.clean_name=cand.clean_name AND (cand.year=0 OR c.year=0 OR abs(c.year-cand.year)<=1))
+ )
+), ranked AS (
+ SELECT *,ROW_NUMBER() OVER(PARTITION BY ord ORDER BY match_rank,source_score DESC) rn,COUNT(*) OVER(PARTITION BY logical_key) source_count
+ FROM exact_hits
+)
+SELECT raw_json,logical_key,source_count,display_name FROM ranked WHERE rn=1 ORDER BY ord LIMIT $limit;
+"@
+    $rows=Invoke-SqliteJson $sql
+    return @{ok=$true;items=(Convert-CatalogRows $rows $kind)}
+  } finally {Remove-Item $path -Force -ErrorAction SilentlyContinue}
+}
+
+
 function Write-Header([string]$Text) {
   Write-Host ''
   Write-Host ('=' * 68) -ForegroundColor DarkCyan
@@ -503,7 +818,7 @@ function Handle-Request($Request, [string]$MpvPath) {
     if ($path -eq '/native/status') {
       $playing = $false
       if ($script:MpvProcess) { try { $playing = -not $script:MpvProcess.HasExited } catch {} }
-      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.1'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
+      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.4.1'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
       return
     }
 
@@ -523,6 +838,61 @@ function Handle-Request($Request, [string]$MpvPath) {
         '/native/fetch-text' {
           try { Send-Text $stream (Invoke-FetchText $data) 'text/plain; charset=utf-8' }
           catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 502 'Bad Gateway' }
+          return
+        }
+        '/native/catalog/status' {
+          try { Send-Json $stream (Catalog-Stats) }
+          catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 500 'Internal Server Error' }
+          return
+        }
+        '/native/catalog/begin' {
+          try { Send-Json $stream (Catalog-Begin ([string]$data.providerId)) }
+          catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 400 'Bad Request' }
+          return
+        }
+        '/native/catalog/append' {
+          try { Send-Json $stream (Catalog-Append ([string]$data.providerId) $data.items) }
+          catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 400 'Bad Request' }
+          return
+        }
+        '/native/catalog/finish' {
+          try { Send-Json $stream (Catalog-Finish ([string]$data.providerId)) }
+          catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 400 'Bad Request' }
+          return
+        }
+        '/native/catalog/remove-provider' {
+          try { $pid=Sql-Literal ([string]$data.providerId); [void](Invoke-SqliteRaw "BEGIN IMMEDIATE; DELETE FROM catalog WHERE provider_id=$pid; DELETE FROM catalog_fts WHERE provider_id=$pid; COMMIT; PRAGMA optimize;"); Send-Json $stream @{ok=$true} }
+          catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 400 'Bad Request' }
+          return
+        }
+        '/native/catalog/query' {
+          try { Send-Json $stream (Catalog-Query $data) }
+          catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 400 'Bad Request' }
+          return
+        }
+        '/native/catalog/search' {
+          try { Send-Json $stream (Catalog-Search $data) }
+          catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 400 'Bad Request' }
+          return
+        }
+        '/native/catalog/categories' {
+          try { Send-Json $stream (Catalog-Categories $data) }
+          catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 400 'Bad Request' }
+          return
+        }
+        '/native/catalog/get' {
+          try { Send-Json $stream (Catalog-Get $data) }
+          catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 400 'Bad Request' }
+          return
+        }
+        '/native/catalog/sources' {
+          try { Send-Json $stream (Catalog-Sources ([string]$data.logicalKey)) }
+          catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 400 'Bad Request' }
+          return
+        }
+        '/native/catalog/match' {
+          try { Send-Json $stream (Catalog-Match $data) }
+          catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 400 'Bad Request' }
           return
         }
         '/native/diagnostics' {
@@ -564,7 +934,7 @@ function Handle-Request($Request, [string]$MpvPath) {
 
     if ([IO.Path]::GetFileName($full).ToLowerInvariant() -eq 'index.html') {
       $html = Get-Content -Path $full -Raw -Encoding UTF8
-      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.1',platform:'windows'};</script>"
+      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.4.1',platform:'windows'};</script>"
       $html = $html -replace '</head>', ($bootstrap + '</head>')
       Send-Text $stream $html 'text/html; charset=utf-8'
       return
@@ -577,15 +947,18 @@ function Handle-Request($Request, [string]$MpvPath) {
   }
 }
 
-Write-Header 'Swoop TV v0.7.1 — Profile Theme Engine'
+Write-Header 'Swoop TV v0.7.4.1 — Native Catalogue Database Foundation'
 Write-Host 'This local bridge keeps IPTV video provider-to-device and launches mpv for playback.'
 Write-Host 'No administrator rights are required.'
 
 try {
   $MpvPath = Ensure-Mpv
+  $script:SqlitePath = Ensure-Sqlite
+  Initialize-CatalogDb
+  Write-Host ('SQLite catalogue ready: ' + $CatalogDbPath) -ForegroundColor DarkCyan
 } catch {
   Write-Host ''
-  Write-Host ('Playback engine setup failed: ' + $_.Exception.Message) -ForegroundColor Red
+  Write-Host ('Native runtime setup failed: ' + $_.Exception.Message) -ForegroundColor Red
   Write-Host 'Press Enter to close.'
   [void](Read-Host)
   exit 1
