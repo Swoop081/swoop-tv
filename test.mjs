@@ -1,5 +1,5 @@
 import {parseM3U} from './src/m3u.js';
-import {matchMDBListToCatalog} from './src/mdblist.js';
+import {matchMDBListToCatalog, getMDBListOfficialItems, getMDBListStreamingChart} from './src/mdblist.js';
 import {buildXtreamApiUrl, buildXtreamSeriesStreamUrl, testXtream, importXtream, fetchXtreamAssetBlob, fetchXtreamVodInfo, fetchXtreamShortEpg} from './src/xtream.js';
 import worker from './cloudflare-worker/worker.js';
 
@@ -13,6 +13,19 @@ assert(items[0].kind==='live'&&items[1].kind==='movie','M3U kind failed');
 const catalog=[{id:'m1',kind:'movie',name:'Signal Run',year:'2026',tmdbId:'42'}];
 const matches=matchMDBListToCatalog([{title:'Signal Run',year:2026,tmdb:42}],catalog);
 assert(matches.length===1&&matches[0].id==='m1','MDBList match failed');
+
+
+// Built-in web discovery endpoints + order-preserving matching.
+let discoveryUrl='';
+const discoveryRealFetch=globalThis.fetch;
+globalThis.fetch=async url=>{discoveryUrl=String(url);return new Response(JSON.stringify([{title:'Signal Run',year:2026,tmdb:42}]),{status:200,headers:{'content-type':'application/json'}})};
+const officialPayload=await getMDBListOfficialItems({apiKey:'test-key',slug:'movies/popular'});
+assert(discoveryUrl.includes('/lists/official/movies/popular/items')&&discoveryUrl.includes('apikey=test-key'),'MDBList official Top 20 endpoint failed');
+assert(matchMDBListToCatalog(officialPayload,catalog,{sourceLimit:20,limit:20}).length===1,'MDBList official matching failed');
+const chartPayload=await getMDBListStreamingChart({apiKey:'test-key',mediaType:'show'});
+assert(discoveryUrl.includes('/justwatch/streaming-charts/show'),'MDBList JustWatch show chart endpoint failed');
+assert(Array.isArray(chartPayload),'MDBList streaming chart payload failed');
+globalThis.fetch=discoveryRealFetch;
 
 const api=buildXtreamApiUrl('http://tv.example:8080/player_api.php','user name','p@ss','get_series_info',{series_id:22});
 assert(api.startsWith('http://tv.example:8080/player_api.php?'),'Xtream URL base failed');
@@ -129,4 +142,4 @@ const vodWorkerResponse=await worker.fetch(vodWorkerRequest,{SWOOP_PROXY_TOKEN:t
 assert(vodWorkerResponse.status===200,'Worker VOD info allowlist failed');
 
 globalThis.fetch=realFetch;
-console.log('Swoop TV v0.2.6 tests passed');
+console.log('Swoop TV v0.2.7 tests passed');

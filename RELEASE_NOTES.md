@@ -1,5 +1,21 @@
 # Swoop TV Release Notes
 
+## v0.2.7 — Dynamic Discovery + Customizable Home — 23 August 2026
+
+- Adds **Top 20 Movies** and **Top 20 TV Shows** as ranked, selectable Home rows sourced from MDBList's current Popular Movies / Popular Shows rankings; Swoop scans the ranking and keeps the first 20 titles available from the connected provider library.
+- Adds **Trending Movies** and **Trending TV Shows** using MDBList's JustWatch streaming-chart API and matching the results to playable provider titles.
+- Adds a large **Customize Home** screen: enable/disable rows, reorder them with Up/Down controls, reset defaults, and refresh web discovery on demand.
+- Home is now fully row-driven rather than hard-coded; Continue Watching, My List, Live Now, New/Recent, Top Rated, genres, all Movies/Shows and web discovery are all selectable.
+- Adds many built-in genre/theme rows plus dynamically generated rows for the provider's largest Movie and TV category groups.
+- Category rows use a deterministic daily shuffle so repeated Home visits do not permanently show the same titles in the same order.
+- Web discovery cache refreshes automatically every **4 hours** to keep Home changing without wasting the MDBList free API allowance.
+- Custom MDBList rows now persist their source information and automatically refresh on the same schedule; newly added custom rows are automatically enabled on Home.
+- Home-row selections and custom MDBList definitions are preserved across provider reconnects; the rows are simply rematched against the new provider catalog.
+- Windows-native mode fetches MDBList data through the local loopback bridge to avoid browser CORS problems.
+- Adds ranked Top 20 visual treatment with oversized number badges.
+- Keeps the exact known-working v0.2.3/v0.2.6 Windows mpv compatibility profile; no playback flags are changed.
+- PWA shell cache / Windows bridge/bootstrap version bumped to v0.2.7.
+
 ## v0.2.6 — Streaming Library Experience — 23 August 2026
 
 - Adds full-screen cinematic Movie/Series detail pages with provider metadata, synopsis, backdrop treatment, Play and My List.
