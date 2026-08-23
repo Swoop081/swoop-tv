@@ -1,47 +1,24 @@
-# Swoop TV — Xtream Connection Helper
+# Swoop TV Cloudflare Connection + Metadata Service v0.1.4
 
-This tiny Cloudflare Worker fixes the common browser `Failed to fetch` problem caused by Xtream providers that do not send CORS headers or only expose an HTTP API.
+This Worker has two jobs:
 
-It proxies **Xtream metadata/API JSON only**. It does **not** proxy live TV, movie or episode video streams.
+1. Authenticated Xtream API/artwork relay for browser builds when providers block direct browser access.
+2. Owner-managed cinematic metadata/artwork lookup through TMDb so end users do not need a TMDb API key.
 
-## Why it is needed
+## Required secrets
 
-Native IPTV apps are not subject to browser CORS rules. A valid Xtream account can therefore work in another IPTV app while `player_api.php` is blocked in Chrome/Safari/Edge. The Worker makes that API request server-side and returns the JSON to Swoop TV with browser-safe CORS headers.
+Keep the existing secret:
 
-## Free deployment with Wrangler
+- `SWOOP_PROXY_TOKEN` — long private token used for Xtream relay requests.
 
-1. Have a free Cloudflare account.
-2. Open a terminal in this `cloudflare-worker` folder.
-3. Run `npx wrangler login`.
-4. Create a long private token, then run:
+Add:
 
-   `npx wrangler secret put SWOOP_PROXY_TOKEN`
+- `TMDB_API_TOKEN` — TMDb API Read Access Token from the Swoop owner/developer TMDb account.
 
-   Paste the private token when prompted. Use at least 16 characters; 32+ random characters is recommended.
-5. Deploy with:
+After deployment, visiting the Worker URL should return JSON containing:
 
-   `npx wrangler deploy`
+- `version: "0.1.4"`
+- `configured: true` when `SWOOP_PROXY_TOKEN` is set
+- `metadataConfigured: true` when `TMDB_API_TOKEN` is set
 
-6. Wrangler will return a URL similar to:
-
-   `https://swoop-tv-xtream-relay.<your-subdomain>.workers.dev`
-
-7. In Swoop TV, open **Add TV Provider → Xtream → Browser Connection Helper** and enter:
-   - the Worker URL
-   - the same private `SWOOP_PROXY_TOKEN`
-
-Then connect the Xtream provider normally.
-
-## Dashboard deployment
-
-You can also create a Worker in the Cloudflare dashboard, paste `worker.js`, add a secret named `SWOOP_PROXY_TOKEN`, deploy it, and copy the resulting `workers.dev` URL into Swoop TV.
-
-## Security
-
-- A token is required before the Worker will proxy a request.
-- Only a small allowlist of Xtream `player_api.php` actions is accepted.
-- It refuses localhost and common private-network targets.
-- It cannot be used by Swoop TV to relay video payloads.
-- Keep your Worker token private. Treat it like a password.
-
-If you publish Swoop TV publicly, do not hard-code the Worker token into the source code.
+The TMDb route accepts only movie/TV metadata lookup inputs and returns a compact Swoop metadata object with title, year, plot, rating, poster and backdrop URLs. It does not proxy IPTV video.

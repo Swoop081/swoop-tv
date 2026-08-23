@@ -1,65 +1,42 @@
-# Swoop TV v0.2.7 — Dynamic Discovery + Customizable Home
+# Swoop TV v0.2.8 — Cinematic Metadata + Home Appearance
 
-Swoop TV v0.2.7 adds a live discovery layer on top of the connected IPTV catalog. Home is no longer a fixed set of rails: users can choose which rows appear, change their order, and opt into web-fed Top 20 / Trending rows that refresh automatically.
+Swoop TV v0.2.8 improves Home discovery matching and adds a proper cinematic artwork layer. Provider artwork remains the immediate fallback, while TMDb can supply true movie/TV backdrops and posters through the owner-managed Swoop Cloudflare service. End users do not need their own TMDb account or key.
 
-Swoop TV remains a content-neutral IPTV player. It does not bundle channels, movies or TV shows; web discovery is matched against titles already available from the user's authorised provider.
+## Major changes
 
-## New in v0.2.7
+- **Cinematic Home artwork:** Home hero now prefers a full-width backdrop. If no backdrop exists yet, the provider poster is expanded into a cinematic background rather than leaving a black hero.
+- **TMDb metadata/artwork:** the bundled Cloudflare Worker can retrieve TMDb poster/backdrop metadata using one owner-managed `TMDB_API_TOKEN` secret. The app automatically uses this service; there is no end-user TMDb field.
+- **Background colour picker:** Customize Home now includes a live Home preview, colour picker, hex field and Cinema Black / Charcoal / Midnight presets. The selected background is persisted locally.
+- **Better Top 20 matching:** provider titles are cleaned before matching (for example `TOP -`, `EN -`, `4K -`, release years and quality tags), with fuzzy title fallback and media-type filtering. Top 20 also falls back to the current streaming chart when the primary popularity source does not produce 20 playable matches.
+- **More selectable rows:** adds Romance, Adventure, Fantasy, Mystery, Western, War, Music/Musical, Action & Adventure TV, Sci-Fi & Fantasy TV, Mystery TV, Thriller TV, Animation TV and Family/Kids TV. Provider-supplied Movie and TV category groups remain available automatically.
+- **Discovery cache migration:** v0.2.7 web-row matches are invalidated once so the improved matching runs immediately after upgrade.
+- **Playback unchanged:** the proven v0.2.3/v0.2.1 Windows mpv compatibility profile remains untouched.
 
-- **Top 20 Movies** and **Top 20 TV Shows** are first-class selectable Home rows.
-- **Trending Movies** and **Trending TV Shows** are selectable web-fed rows using MDBList/JustWatch discovery data.
-- Web discovery is matched against the connected Xtream/M3U catalog, so rows only surface titles Swoop can actually open from that provider.
-- Web rows are cached and refresh automatically every **4 hours**, with a manual **Refresh now** control.
-- **Customize Home** is available directly from Home and Settings.
-- Every Home row can be enabled/disabled and reordered with simple Up/Down controls.
-- Large built-in row library includes Continue Watching, My List, Live Now, New & Recent Movies/Shows, Top Rated Movies/Shows, Action, Comedy, Drama, Horror, Thriller, Sci-Fi/Fantasy, Family, Animation, Crime TV, Reality TV, Documentaries and more.
-- Swoop also discovers the provider's largest Movie and TV category groups and exposes them as optional Home rows.
-- Category rows use a deterministic daily shuffle so the same category does not present the exact same titles in the same order every day.
-- **Custom MDBList rows now auto-refresh** instead of remaining a one-time snapshot. New custom rows are automatically enabled on Home and can then be reordered/disabled like any other row.
-- Ranked Top 20 rows use oversized streaming-style number treatment.
-- Windows-native Swoop fetches MDBList JSON through the loopback bridge, avoiding browser CORS limitations.
-- The known-working Windows/mpv playback profile remains unchanged.
+## One-time owner setup for TMDb artwork
 
-## MDBList setup for development
+1. Create/sign in to a TMDb account and obtain an API Read Access Token from TMDb account settings.
+2. In Cloudflare open the existing `swoop-tv-connection` Worker.
+3. Replace its code with `cloudflare-worker/worker.js` from this package and deploy it.
+4. Open **Settings → Variables and Secrets** for that Worker.
+5. Add a new **Secret** named exactly `TMDB_API_TOKEN` and paste the TMDb Read Access Token as its value.
+6. Save/deploy the Worker.
+7. Visit the Worker URL. Its health JSON should report `version: "0.1.4"` and `metadataConfigured: true`.
 
-Open **Home → Customize Home** (or **Settings → Home & Web Discovery**) and paste an MDBList API key once. Choose **Save & Refresh**.
+The existing `SWOOP_PROXY_TOKEN` stays in place. Do not replace it.
 
-The current MDBList free plan documents **1,000 API requests/day**. Swoop's 4-hour cache means the four built-in web rows normally require only a small number of requests per day, plus any custom MDBList rows you enable.
+TMDb attribution is required by TMDb for applications using its API/data. Swoop includes the required attribution notice in Third Party Notices; a production About/Credits surface should include the approved TMDb logo before public release.
 
-The development build stores the MDBList key locally on this device. A public Swoop release should move this to a Swoop-managed server-side discovery service so ordinary end users do not need their own key.
+## Windows use
 
-## Built-in web rows
+Close any older Swoop app and Windows Bridge window, extract this package and run:
 
-- **Top 20 Movies** — the 20 highest-ranked titles Swoop can play from the current MDBList Popular Movies ranking.
-- **Top 20 TV Shows** — the 20 highest-ranked titles Swoop can play from the current MDBList Popular Shows ranking.
-- **Trending Movies** — current JustWatch movie streaming chart through MDBList, matched to the provider library.
-- **Trending TV Shows** — current JustWatch show streaming chart through MDBList, matched to the provider library.
+`START-SWOOP-TV-WINDOWS.cmd`
 
-If an external ranking contains a title that is not available from the connected IPTV provider, Swoop simply omits that title from the playable row.
+The existing mpv installation is reused.
 
-## Windows test
+## Notes
 
-1. Close any older Swoop TV window and the **Swoop TV Windows Bridge** console.
-2. Extract the ZIP to a normal folder.
-3. Double-click **`START-SWOOP-TV-WINDOWS.cmd`**.
-4. Reconnect your provider if required.
-5. On Home, choose **Customize Home**.
-6. Enter your MDBList API key and choose **Save & Refresh**.
-7. Confirm **Top 20 Movies**, **Top 20 TV Shows**, **Trending Movies** and **Trending TV Shows** populate with titles available in your IPTV catalog.
-8. Toggle several genre/provider-category rows and use ↑ / ↓ to change their Home order.
-9. Close and reopen Swoop and confirm the chosen layout persists.
-10. Confirm a previously working live channel/movie still launches in mpv.
-
-Useful mpv keys: **F** fullscreen, **Space** pause, **Esc/Q** close, **Up/Down** volume.
-
-## Current limitations
-
-- Web discovery currently needs an MDBList API key stored locally in the development build.
-- A web trend can only appear as a playable Swoop card when it can be matched to the provider catalog by TMDb ID, IMDb ID, or title/year.
-- Some Xtream providers expose sparse IDs/metadata; those catalogs may match fewer web-ranked titles until Swoop adds a stronger metadata reconciliation layer.
-- mpv still opens as a separate native playback window.
-- Continue Watching still tracks launches rather than exact mpv elapsed position.
-
-## Legal model
-
-Swoop TV includes no television channels, movies or shows. Users are responsible for supplying sources they are authorised to access.
+- TMDb artwork enrichment is intentionally gradual so Home does not issue a huge burst of metadata requests after importing a large IPTV library.
+- Metadata is cached locally for seven days and the Worker/CDN response is cacheable.
+- Top 20 can only show titles that can be matched to something the connected provider actually contains. v0.2.8 substantially broadens that matching without inventing titles the provider cannot play.
+- Swoop TV does not provide or bundle IPTV content. Users must use sources they are authorized to access.

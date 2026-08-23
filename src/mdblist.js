@@ -41,8 +41,37 @@ export async function getMDBListOfficialLists({apiKey}) {
   return fetchJson('/lists/official', apiKey, {append_to_response:'poster'});
 }
 
-function normalizeTitle(s='') {
-  return String(s).toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,' ').trim();
+function basicNormalize(s='') {
+  return String(s).toLowerCase().normalize('NFKD').replace(/[’‘]/g,"'").replace(/[^a-z0-9]+/g,' ').trim();
+}
+
+const IPTV_PREFIXES = new Set([
+  'top','new','new release','new releases','movie','movies','film','films','vod','cinema','premiere','premieres',
+  'en','eng','english','us','usa','uk','au','ca','4k','uhd','fhd','hd','sd','hdr','dolby vision','dv','multi','latino'
+]);
+
+export function normalizeMediaTitle(value='') {
+  let raw=String(value||'').normalize('NFKD').replace(/[’‘]/g,"'").trim();
+  raw=raw.replace(/^\s*[\[(][^\])]{1,18}[\])]\s*/g,'');
+  for(let i=0;i<4;i++){
+    const m=raw.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s-\s)\s*(.+)$/);
+    if(!m)break;
+    const prefix=basicNormalize(m[1]);
+    if(!IPTV_PREFIXES.has(prefix))break;
+    raw=m[2];
+  }
+  raw=raw
+    .replace(/\b(?:2160p|1080p|720p|576p|480p|4k|uhd|fhd|hdr10\+?|hdr|dolby\s*vision|dv|web[- .]?dl|webrip|bluray|brrip|x26[45]|h26[45]|hevc|aac|eac3|ddp?5?1?)\b/gi,' ')
+    .replace(/\s*[\[(](?:19|20)\d{2}[\])]\s*$/,' ')
+    .replace(/\s+-\s+(?:19|20)\d{2}\s*$/,' ');
+  return basicNormalize(raw);
+}
+
+function mediaYear(value='', explicit='') {
+  const fromExplicit=String(explicit||'').match(/(?:19|20)\d{2}/);
+  if(fromExplicit)return Number(fromExplicit[0]);
+  const m=String(value||'').match(/(?:19|20)\d{2}/g);
+  return m?.length?Number(m[m.length-1]):0;
 }
 
 function unwrapEntry(entry) {
@@ -62,29 +91,56 @@ function extractSource(payload) {
   return [];
 }
 
-export function matchMDBListToCatalog(listPayload, catalog=[], {limit=0, sourceLimit=0}={}) {
+function tokenScore(a,b){
+  const A=new Set(String(a).split(' ').filter(Boolean)),B=new Set(String(b).split(' ').filter(Boolean));
+  if(!A.size||!B.size)return 0;
+  let same=0;for(const t of A)if(B.has(t))same++;
+  return same/Math.max(A.size,B.size);
+}
+function bigrams(s){const x=` ${s} `,out=[];for(let i=0;i<x.length-1;i++)out.push(x.slice(i,i+2));return out}
+function diceScore(a,b){if(a===b)return 1;const A=bigrams(a),B=bigrams(b);if(!A.length||!B.length)return 0;const counts=new Map();A.forEach(x=>counts.set(x,(counts.get(x)||0)+1));let hit=0;for(const x of B){const n=counts.get(x)||0;if(n){hit++;counts.set(x,n-1)}}return 2*hit/(A.length+B.length)}
+function fuzzyScore(a,b){if(!a||!b)return 0;if(a===b)return 1;if(Math.min(a.length,b.length)>=5&&(a.includes(b)||b.includes(a)))return .94;return Math.max(tokenScore(a,b),diceScore(a,b));}
+
+export function matchMDBListToCatalog(listPayload, catalog=[], {limit=0, sourceLimit=0, mediaType=''}={}) {
   const extracted = extractSource(listPayload).map(unwrapEntry);
   const source = sourceLimit ? extracted.slice(0, sourceLimit) : extracted;
-  const byTmdb = new Map();
-  const byImdb = new Map();
-  const byTitle = new Map();
-  for (const item of catalog.filter(x=>x.kind==='movie'||x.kind==='series')) {
+  const wantedKind = mediaType==='movie'?'movie':(['series','show','shows','tv'].includes(mediaType)?'series':'');
+  const candidates=catalog.filter(x=>(x.kind==='movie'||x.kind==='series')&&(!wantedKind||x.kind===wantedKind));
+  const byTmdb = new Map(),byImdb = new Map(),byTitle = new Map();
+  const normalizedCandidates=[];
+  for (const item of candidates) {
     if (item.tmdbId) byTmdb.set(String(item.tmdbId), item);
     if (item.imdbId) byImdb.set(String(item.imdbId), item);
-    const k = `${normalizeTitle(item.name)}|${item.year || ''}`;
-    if (!byTitle.has(k)) byTitle.set(k,item);
-    if (!byTitle.has(normalizeTitle(item.name))) byTitle.set(normalizeTitle(item.name),item);
+    const title=normalizeMediaTitle(item.name),year=mediaYear(item.name,item.year);
+    if(title){
+      if(!byTitle.has(`${title}|${year||''}`))byTitle.set(`${title}|${year||''}`,item);
+      if(!byTitle.has(title))byTitle.set(title,item);
+      normalizedCandidates.push({item,title,year});
+    }
   }
   const out=[];
   for (const raw of source) {
     const m = unwrapEntry(raw) || {};
     const ids = m.ids || raw?.ids || {};
-    const tmdb = m.tmdb ?? m.tmdb_id ?? ids.tmdb ?? raw?.tmdb ?? raw?.tmdb_id ?? raw?.id;
+    const tmdb = m.tmdb ?? m.tmdb_id ?? ids.tmdb ?? raw?.tmdb ?? raw?.tmdb_id ?? (typeof raw?.id==='number'?raw.id:'');
     const imdb = m.imdb ?? m.imdb_id ?? ids.imdb ?? raw?.imdb ?? raw?.imdb_id;
-    const title = m.title || m.name || raw?.title || raw?.name || '';
-    const year = m.year || m.release_year || raw?.year || raw?.release_year || '';
-    const hit = (tmdb && byTmdb.get(String(tmdb))) || (imdb && byImdb.get(String(imdb))) || byTitle.get(`${normalizeTitle(title)}|${year}`) || byTitle.get(normalizeTitle(title));
-    if (hit && !out.some(x=>x.id===hit.id)) out.push(hit);
+    const titleRaw = m.title || m.name || raw?.title || raw?.name || '';
+    const title=normalizeMediaTitle(titleRaw),year=mediaYear(titleRaw,m.year||m.release_year||raw?.year||raw?.release_year||'');
+    let hit = (tmdb && byTmdb.get(String(tmdb))) || (imdb && byImdb.get(String(imdb))) || byTitle.get(`${title}|${year||''}`) || byTitle.get(title);
+    if(!hit&&title){
+      let best=null,bestScore=0;
+      for(const c of normalizedCandidates){
+        if(year&&c.year&&Math.abs(year-c.year)>1)continue;
+        const score=fuzzyScore(title,c.title);
+        if(score>bestScore){bestScore=score;best=c.item}
+      }
+      if(bestScore>=.86)hit=best;
+    }
+    if (hit && !out.some(x=>x.id===hit.id)) {
+      if(tmdb&&!hit.tmdbId)hit.tmdbId=String(tmdb);
+      if(imdb&&!hit.imdbId)hit.imdbId=String(imdb);
+      out.push(hit);
+    }
     if (limit && out.length>=limit) break;
   }
   return out;

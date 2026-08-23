@@ -3,15 +3,17 @@ import {parseXMLTV} from './src/xmltv.js';
 import {testXtream, importXtream, fetchXtreamAssetBlob, fetchXtreamSeriesInfo, fetchXtreamVodInfo, fetchXtreamShortEpg, buildXtreamSeriesStreamUrl} from './src/xtream.js';
 import {isNativeWindows, nativePlay, nativeStop, nativeFetchText, nativeDiagnostics} from './src/native.js';
 import {getMDBListItems, getMDBListOfficialItems, getMDBListStreamingChart, matchMDBListToCatalog} from './src/mdblist.js';
+import {fetchTitleMetadata, metadataServiceUrl} from './src/tmdb.js';
 import {loadState, saveState, clearState} from './src/storage.js';
 import {demoCatalog} from './src/demo.js';
 
 const NATIVE_WINDOWS=isNativeWindows();
 const DEFAULT_HOME_ROWS=['continue','mylist','top20-movies','top20-shows','trending-movies','trending-shows','live-now','new-movies','new-shows','action-movies','comedy-movies','drama-shows'];
-const DEFAULT_STATE={page:'home',catalog:[],provider:null,myList:[],favourites:[],continueWatching:[],mdblistRows:[],webDiscovery:{},settings:{mdblistApiKey:'',xtreamRelayUrl:'',xtreamRelayToken:'',homeRows:[...DEFAULT_HOME_ROWS]}};
+const DEFAULT_STATE={page:'home',catalog:[],provider:null,myList:[],favourites:[],continueWatching:[],mdblistRows:[],webDiscovery:{},metadataCache:{},settings:{mdblistApiKey:'',xtreamRelayUrl:'',xtreamRelayToken:'',metadataServiceUrl:'',backgroundColor:'#050505',homeRows:[...DEFAULT_HOME_ROWS]}};
 const loaded=loadState()||{};
-const state=Object.assign({},DEFAULT_STATE,loaded,{settings:{...DEFAULT_STATE.settings,...(loaded.settings||{})},webDiscovery:{...(loaded.webDiscovery||{})}});
+const state=Object.assign({},DEFAULT_STATE,loaded,{settings:{...DEFAULT_STATE.settings,...(loaded.settings||{})},webDiscovery:{...(loaded.webDiscovery||{})},metadataCache:{...(loaded.metadataCache||{})}});
 if(!Array.isArray(state.settings.homeRows)||!state.settings.homeRows.length)state.settings.homeRows=[...DEFAULT_HOME_ROWS];
+if(state.settings.discoverySchemaVersion!==2){state.webDiscovery={};state.settings.discoverySchemaVersion=2;}
 if(!Array.isArray(state.myList)||!state.myList.length) state.myList=Array.isArray(state.favourites)?[...state.favourites]:[];
 if(!Array.isArray(state.continueWatching)) state.continueWatching=[];
 if(!Array.isArray(state.mdblistRows))state.mdblistRows=[];
@@ -20,6 +22,7 @@ if(!loaded.settings?.homeRows&&state.mdblistRows.length)state.settings.homeRows.
 
 let modal=null,toastTimer=null,playerItem=null,activeHls=null;
 let discoveryRefreshing=false,discoveryMessage='';
+const metadataPending=new Set();
 const DISCOVERY_REFRESH_MS=4*60*60*1000;
 let detailItem=null,detailPayload=null,detailLoading=false,detailError='',detailSeason='';
 const detailCache=new Map();
@@ -43,6 +46,35 @@ function items(kind){return activeCatalog().filter(x=>x.kind===kind)}
 function isInMyList(item){return Boolean(item&&state.myList.includes(item.id))}
 function continueEntry(id){return state.continueWatching.find(x=>x?.id===id)}
 function savedItem(id){return activeCatalog().find(x=>x.id===id)||state.continueWatching.find(x=>x?.id===id)?.item||detailEpisodeItems.get(id)||null}
+function visualItem(item){
+  if(!item)return item;
+  const meta=state.metadataCache?.[item.id]||{};
+  return {...item,...(meta||{}),logo:meta.poster||item.logo||'',backdrop:meta.backdrop||item.backdrop||'',plot:meta.plot||item.plot||'',year:meta.year||item.year||'',rating:meta.rating||item.rating||'',tmdbId:meta.tmdbId||item.tmdbId||''};
+}
+function validHex(value){return /^#[0-9a-f]{6}$/i.test(String(value||''))?String(value).toLowerCase():'#050505'}
+function applyTheme(){const c=validHex(state.settings.backgroundColor);document.documentElement.style.setProperty('--bg',c);document.documentElement.style.setProperty('--swoop-bg',c);}
+async function enrichItemMetadata(item,{rerender=true}={}){
+  if(!item||!['movie','series'].includes(item.kind)||metadataPending.has(item.id))return;
+  const cached=state.metadataCache?.[item.id];
+  if(cached?.checkedAt&&Date.now()-cached.checkedAt<7*86400000)return;
+  metadataPending.add(item.id);
+  try{
+    const metadata=await fetchTitleMetadata({settings:state.settings,item});
+    state.metadataCache[item.id]={...(cached||{}),...(metadata||{}),checkedAt:Date.now()};
+    if(metadata?.tmdbId&&!item.tmdbId)item.tmdbId=metadata.tmdbId;
+    persist();
+    if(rerender&&(state.page==='home'||detailItem?.id===item.id||modal==='homeRows'))render();
+  }catch(err){state.metadataCache[item.id]={...(cached||{}),checkedAt:Date.now(),error:err.message||String(err)};persist();}
+  finally{metadataPending.delete(item.id)}
+}
+function scheduleMetadataEnrichment(){
+  const queue=[];
+  const heroItem=featureItem();if(heroItem)queue.push(heroItem);
+  if(state.page==='home')for(const def of selectedHomeRows().slice(0,8))for(const item of homeRowItems(def.id).slice(0,5))queue.push(item);
+  if(detailItem)queue.unshift(detailItem);
+  const unique=[...new Map(queue.filter(Boolean).map(x=>[x.id,x])).values()].filter(x=>['movie','series'].includes(x.kind)).slice(0,12);
+  let i=0;const next=()=>{if(i>=unique.length)return;enrichItemMetadata(unique[i++],{rerender:i<=2}).finally(()=>setTimeout(next,120))};next();
+}
 function resolveProviderAsset(value=''){
   const raw=Array.isArray(value)?value.find(Boolean)||'':String(value||'').trim();
   if(!raw)return'';
@@ -68,11 +100,24 @@ const HOME_ROW_DEFS=[
   {id:'thriller-movies',label:'Thriller Movies',group:'Categories',poster:true},
   {id:'scifi-movies',label:'Sci-Fi & Fantasy Movies',group:'Categories',poster:true},
   {id:'family-movies',label:'Family Movies',group:'Categories',poster:true},
-  {id:'animation-movies',label:'Animation',group:'Categories',poster:true},
+  {id:'animation-movies',label:'Animation Movies',group:'Categories',poster:true},
+  {id:'romance-movies',label:'Romance Movies',group:'Categories',poster:true},
+  {id:'adventure-movies',label:'Adventure Movies',group:'Categories',poster:true},
+  {id:'fantasy-movies',label:'Fantasy Movies',group:'Categories',poster:true},
+  {id:'mystery-movies',label:'Mystery Movies',group:'Categories',poster:true},
+  {id:'western-movies',label:'Western Movies',group:'Categories',poster:true},
+  {id:'war-movies',label:'War Movies',group:'Categories',poster:true},
+  {id:'music-movies',label:'Music & Musical Movies',group:'Categories',poster:true},
   {id:'drama-shows',label:'Drama TV Shows',group:'Categories',poster:true},
   {id:'crime-shows',label:'Crime TV Shows',group:'Categories',poster:true},
   {id:'comedy-shows',label:'Comedy TV Shows',group:'Categories',poster:true},
   {id:'reality-shows',label:'Reality TV',group:'Categories',poster:true},
+  {id:'action-shows',label:'Action & Adventure TV',group:'Categories',poster:true},
+  {id:'scifi-shows',label:'Sci-Fi & Fantasy TV',group:'Categories',poster:true},
+  {id:'mystery-shows',label:'Mystery TV',group:'Categories',poster:true},
+  {id:'thriller-shows',label:'Thriller TV',group:'Categories',poster:true},
+  {id:'animation-shows',label:'Animation TV',group:'Categories',poster:true},
+  {id:'family-shows',label:'Family & Kids TV',group:'Categories',poster:true},
   {id:'documentary',label:'Documentaries',group:'Categories',poster:true},
   {id:'movies',label:'All Movies',group:'Your provider',poster:true,page:'movies'},
   {id:'shows',label:'All TV Shows',group:'Your provider',poster:true,page:'series'}
@@ -117,10 +162,23 @@ function localHomeRowItems(id){
   if(id==='scifi-movies')return filter(movies,['sci-fi','sci fi','science fiction','fantasy']);
   if(id==='family-movies')return filter(movies,['family','kids','children']);
   if(id==='animation-movies')return filter(movies,['animation','animated','anime']);
+  if(id==='romance-movies')return filter(movies,['romance','romantic']);
+  if(id==='adventure-movies')return filter(movies,['adventure']);
+  if(id==='fantasy-movies')return filter(movies,['fantasy']);
+  if(id==='mystery-movies')return filter(movies,['mystery']);
+  if(id==='western-movies')return filter(movies,['western']);
+  if(id==='war-movies')return filter(movies,['war','military']);
+  if(id==='music-movies')return filter(movies,['music','musical']);
   if(id==='drama-shows')return filter(shows,['drama']);
   if(id==='crime-shows')return filter(shows,['crime','detective']);
   if(id==='comedy-shows')return filter(shows,['comedy','sitcom']);
   if(id==='reality-shows')return filter(shows,['reality']);
+  if(id==='action-shows')return filter(shows,['action','adventure']);
+  if(id==='scifi-shows')return filter(shows,['sci-fi','sci fi','science fiction','fantasy']);
+  if(id==='mystery-shows')return filter(shows,['mystery','detective']);
+  if(id==='thriller-shows')return filter(shows,['thriller','suspense']);
+  if(id==='animation-shows')return filter(shows,['animation','animated','anime']);
+  if(id==='family-shows')return filter(shows,['family','kids','children']);
   if(id==='documentary')return stableDailyOrder([...movies,...shows].filter(x=>['documentary','docuseries'].some(w=>mediaSearchText(x).includes(w))),id);
   return [];
 }
@@ -137,10 +195,19 @@ function discoveryMeta(id,data){
   return`${data.length.toLocaleString()} available`;
 }
 async function fetchBuiltInDiscovery(id,apiKey){
-  if(id==='top20-movies'){let payload;try{payload=await getMDBListOfficialItems({apiKey,slug:'movies/popular'})}catch{payload=await getMDBListStreamingChart({apiKey,mediaType:'movie'})}return matchMDBListToCatalog(payload,state.catalog,{sourceLimit:100,limit:20});}
-  if(id==='top20-shows'){let payload;try{payload=await getMDBListOfficialItems({apiKey,slug:'shows/popular'})}catch{payload=await getMDBListStreamingChart({apiKey,mediaType:'show'})}return matchMDBListToCatalog(payload,state.catalog,{sourceLimit:100,limit:20});}
-  if(id==='trending-movies'){const payload=await getMDBListStreamingChart({apiKey,mediaType:'movie'});return matchMDBListToCatalog(payload,state.catalog,{sourceLimit:80,limit:20});}
-  if(id==='trending-shows'){const payload=await getMDBListStreamingChart({apiKey,mediaType:'show'});return matchMDBListToCatalog(payload,state.catalog,{sourceLimit:80,limit:20});}
+  const mergeUnique=(a,b)=>[...new Map([...a,...b].map(x=>[x.id,x])).values()].slice(0,20);
+  if(id==='top20-movies'){
+    let primary=[];try{const payload=await getMDBListOfficialItems({apiKey,slug:'movies/popular'});primary=matchMDBListToCatalog(payload,state.catalog,{limit:20,mediaType:'movie'})}catch{}
+    if(primary.length<20){const chart=await getMDBListStreamingChart({apiKey,mediaType:'movie'});primary=mergeUnique(primary,matchMDBListToCatalog(chart,state.catalog,{limit:20,mediaType:'movie'}));}
+    return primary;
+  }
+  if(id==='top20-shows'){
+    let primary=[];try{const payload=await getMDBListOfficialItems({apiKey,slug:'shows/popular'});primary=matchMDBListToCatalog(payload,state.catalog,{limit:20,mediaType:'show'})}catch{}
+    if(primary.length<20){const chart=await getMDBListStreamingChart({apiKey,mediaType:'show'});primary=mergeUnique(primary,matchMDBListToCatalog(chart,state.catalog,{limit:20,mediaType:'show'}));}
+    return primary;
+  }
+  if(id==='trending-movies'){const payload=await getMDBListStreamingChart({apiKey,mediaType:'movie'});return matchMDBListToCatalog(payload,state.catalog,{limit:20,mediaType:'movie'});}
+  if(id==='trending-shows'){const payload=await getMDBListStreamingChart({apiKey,mediaType:'show'});return matchMDBListToCatalog(payload,state.catalog,{limit:20,mediaType:'show'});}
   return[];
 }
 async function refreshDiscoveryRows(force=false){
@@ -159,6 +226,7 @@ async function refreshDiscoveryRows(force=false){
 }
 function card(item,poster=false,opts={}){
   if(!item)return'';
+  item=visualItem(item);
   const fallback=item.demoColor||`linear-gradient(135deg,hsl(${Math.abs(hash(item.name))%360} 44% 34%),#080b12)`;
   const sub=item.kind==='live'?(item.group||'Live TV'):[item.year,item.rating?`★ ${item.rating}`:'',item.kind==='episode'&&item.season?`S${item.season} E${item.episodeNum||''}`:''].filter(Boolean).join('  ·  ');
   const art=item.logo?`<img class="card-art" data-swoop-art="${esc(item.logo)}" alt="" loading="lazy">`:'';
@@ -194,11 +262,13 @@ function featureItem(){
 }
 function hero(feature,providerName){
   if(!feature)return'';
+  feature=visualItem(feature);
   const isLive=feature.kind==='live',isSeries=feature.kind==='series';
   const typeLabel=isLive?'LIVE TV':feature.kind==='movie'?'FEATURED MOVIE':'FEATURED SERIES';
   const meta=[feature.year,feature.rating?`★ ${feature.rating}`:'',feature.group].filter(Boolean);
   const backdrop=feature.backdrop||feature.logo;
-  const art=backdrop?`<img class="hero-backdrop hero-backdrop-clean" data-swoop-art="${esc(backdrop)}" alt="" loading="eager">`:'';
+  const artClass=feature.backdrop?'hero-backdrop hero-backdrop-clean':'hero-backdrop hero-backdrop-poster';
+  const art=backdrop?`<img class="${artClass}" data-swoop-art="${esc(backdrop)}" alt="" loading="eager">`:'';
   const poster=feature.logo?`<img class="hero-poster" data-swoop-art="${esc(feature.logo)}" alt="" loading="eager">`:'';
   const mainAction=isSeries?`<button class="btn play-btn" data-detail="${esc(feature.id)}"><span>▶</span> View Series</button>`:`<button class="btn play-btn" data-play="${esc(feature.id)}"><span>▶</span> Play</button>`;
   return `<section class="hero"><div class="hero-media">${art}${poster}<div class="hero-fallback" style="--hero-fallback:${feature.demoColor||'linear-gradient(135deg,#1d2a44,#080a0e)'}"></div></div><div class="hero-vignette"></div>
@@ -221,7 +291,8 @@ function home(){
 }
 function page(kind,title){
   const arr=items(kind),limit=viewLimits[kind]||120,shown=arr.slice(0,limit),providerName=state.provider?.name||'Demo Library';
-  const lead=arr.find(x=>x.backdrop||x.logo)||arr[0];
+  const leadRaw=arr.find(x=>visualItem(x).backdrop||visualItem(x).logo)||arr[0];
+  const lead=visualItem(leadRaw);
   const groups=[...new Set(arr.map(x=>x.group).filter(Boolean))].slice(0,10);
   const leadBackdrop=lead?(lead.backdrop||lead.logo):'';
   const leadArt=leadBackdrop?`<img data-swoop-art="${esc(leadBackdrop)}" class="page-hero-art page-hero-backdrop" alt="" loading="eager">`:'';
@@ -242,6 +313,7 @@ function settingsPage(){
   <section class="setting-card setting-card-feature"><div class="setting-icon">TV</div><div class="setting-main"><h3>TV Provider</h3><p>${esc(state.provider?.name||'Demo mode')}</p><div class="setting-stats"><span><strong>${counts.live.toLocaleString()}</strong> Live</span><span><strong>${counts.movie.toLocaleString()}</strong> Movies</span><span><strong>${counts.series.toLocaleString()}</strong> Shows</span></div><div class="cta-row"><button class="btn secondary" data-modal="provider">Manage Provider</button>${state.catalog.length?'<button class="btn danger" data-action="disconnect">Disconnect</button>':''}</div></div></section>
   <section class="setting-card"><div class="setting-icon">＋</div><div class="setting-main"><h3>My List & Continue Watching</h3><p>${state.myList.length.toLocaleString()} saved · ${state.continueWatching.length.toLocaleString()} recently watched.</p><div class="cta-row"><button class="btn secondary" data-page="mylist">Open My List</button>${state.continueWatching.length?'<button class="btn secondary" data-action="clear-history">Clear Continue Watching</button>':''}</div></div></section>
   <section class="setting-card"><div class="setting-icon">ROW</div><div class="setting-main"><h3>Home & Web Discovery</h3><p>${state.settings.homeRows.length} Home rows selected · ${state.settings.mdblistApiKey?'MDBList connected':'MDBList key not configured'}. Top 20 and Trending rows refresh automatically when enabled.</p><div class="cta-row"><button class="btn accent" data-modal="homeRows">Customize Home</button><button class="btn secondary" data-modal="mdblist">Add Custom MDBList Row</button></div>${state.mdblistRows.length?state.mdblistRows.map((r,i)=>`<div class="kv"><span>${esc(r.name)}</span><span>${r.items.length} matched · ${esc(relativeRefreshTime(r.updatedAt))} · <button class="nav-btn" data-remove-row="${i}">Remove</button></span></div>`).join(''):''}</div></section>
+  <section class="setting-card"><div class="setting-icon">ART</div><div class="setting-main"><h3>Cinematic Artwork</h3><p>Swoop uses provider artwork first and can enhance movie/TV presentation with TMDb posters and full-width backdrops through the owner-managed Swoop metadata service. End users do not need a TMDb key.</p><div class="kv"><span>Metadata service</span><span>${esc(metadataServiceUrl(state.settings))}</span></div><div class="kv"><span>Home background</span><span>${esc(validHex(state.settings.backgroundColor))}</span></div><div class="cta-row"><button class="btn secondary" data-modal="homeRows">Appearance & Home Rows</button></div></div></section>
   ${NATIVE_WINDOWS?`<section class="setting-card native-ready"><div class="setting-icon">▶</div><div class="setting-main"><h3>Windows Native Playback</h3><p>Native bridge ready · mpv 0.41.0. Live TV and VOD play outside the browser sandbox for broader IPTV compatibility.</p></div></section>`:`<section class="setting-card"><div class="setting-icon">↗</div><div class="setting-main"><h3>Browser Connection Helper</h3><p>${state.settings.xtreamRelayUrl?esc(state.settings.xtreamRelayUrl):'Not configured'} · Used only for Xtream API/catalog requests when the browser blocks direct access.</p></div></section>`}
   <section class="setting-card"><div class="setting-icon">◈</div><div class="setting-main"><h3>Privacy & Architecture</h3><p>Swoop TV does not bundle content. ${NATIVE_WINDOWS?'The Windows build uses a loopback-only local bridge for provider API calls and native playback.':'Imported streams play directly from your provider whenever the browser/device supports them.'} Xtream stream URLs can contain provider credentials and are stored locally with the catalog.</p></div></section>
   </div></main>`;
@@ -316,8 +388,9 @@ async function loadGuideEpg(){
 function updateGuideRow(ch){const row=[...document.querySelectorAll('[data-guide-row]')].find(x=>x.dataset.guideRow===ch.id);if(!row)return;const box=row.querySelector('.guide-programs');const cached=epgCache.get(ch.id);if(box&&cached)box.innerHTML=guideProgramsHtml(ch,cached.list,3);hydrateArtwork(row)}
 
 function render(){
+  applyTheme();
   let body;if(state.page==='home')body=home();else if(state.page==='live')body=page('live','Live TV');else if(state.page==='guide')body=guidePage();else if(state.page==='movies')body=page('movie','Movies');else if(state.page==='series')body=page('series','TV Shows');else if(state.page==='mylist')body=myListPage();else if(state.page==='search')body=searchPage();else body=settingsPage();
-  $app.innerHTML=`<div class="app-shell">${nav()}${body}${modal?modalHtml():''}${detailItem?detailHtml():''}${playerItem?playerHtml():''}</div>`;bind();if(state.page==='search')runSearch('');hydrateArtwork();if(state.page==='guide')setTimeout(loadGuideEpg,0);if(state.page==='home'&&state.catalog.length&&state.settings.mdblistApiKey)setTimeout(()=>refreshDiscoveryRows(false),0);
+  $app.innerHTML=`<div class="app-shell">${nav()}${body}${modal?modalHtml():''}${detailItem?detailHtml():''}${playerItem?playerHtml():''}</div>`;bind();if(state.page==='search')runSearch('');hydrateArtwork();if(state.page==='guide')setTimeout(loadGuideEpg,0);if(state.page==='home'&&state.catalog.length&&state.settings.mdblistApiKey)setTimeout(()=>refreshDiscoveryRows(false),0);if(state.catalog.length)setTimeout(scheduleMetadataEnrichment,80);
 }
 
 function providerModal(){
@@ -332,7 +405,9 @@ function mdblistModal(){return `<div class="modal-backdrop" data-close-modal><di
 function homeRowsModal(){
   const selected=new Set(state.settings.homeRows),defs=allHomeRowDefs(),groups=[...new Set(defs.map(x=>x.group))];
   const lastWeb=Math.max(0,...Object.values(state.webDiscovery||{}).map(x=>Number(x?.updatedAt||0)),...state.mdblistRows.map(x=>Number(x.updatedAt||0)));
-  return `<div class="modal-backdrop" data-close-modal><div class="modal home-rows-modal" data-modal-card><div class="modal-head home-rows-head"><div><div class="eyebrow">HOME SCREEN</div><h2>Customize Swoop</h2><p>Choose exactly which rows appear on Home. Web rows refresh automatically and are matched against titles your provider can actually play.</p></div><button class="icon-btn" data-close>✕</button></div><div class="modal-body home-rows-body">
+  const feature=visualItem(featureItem()),featureArt=feature?(feature.backdrop||feature.logo):'',bg=validHex(state.settings.backgroundColor);
+  return `<div class="modal-backdrop" data-close-modal><div class="modal home-rows-modal" data-modal-card><div class="modal-head home-rows-head"><div><div class="eyebrow">HOME SCREEN</div><h2>Customize Swoop</h2><p>Choose your rows, background and cinematic presentation. Swoop can enhance provider posters with TMDb backdrops through your owner-managed metadata service.</p></div><button class="icon-btn" data-close>✕</button></div><div class="modal-body home-rows-body">
+  <section class="home-look-card" style="--preview-bg:${esc(bg)}"><div class="home-look-preview">${featureArt?`<img data-swoop-art="${esc(featureArt)}" alt="">`:''}<div class="home-look-shade"></div><div class="home-look-copy"><span class="eyebrow">HOME PREVIEW</span><strong>${esc(feature?.name||'Your featured title')}</strong><small>Large cinematic artwork fills the Home hero when available.</small></div></div><div class="home-look-controls"><span class="eyebrow">APPEARANCE</span><h3>Background colour</h3><p>Choose the base colour behind Home rows and content pages. Film artwork sits above it with a cinematic fade.</p><div class="colour-row"><input id="homeBgColor" type="color" value="${esc(bg)}" aria-label="Background colour"><input id="homeBgHex" type="text" value="${esc(bg)}" maxlength="7" aria-label="Background hex colour"><button type="button" class="btn secondary compact-btn" data-bg-preset="#050505">Cinema Black</button><button type="button" class="btn secondary compact-btn" data-bg-preset="#111218">Charcoal</button><button type="button" class="btn secondary compact-btn" data-bg-preset="#081018">Midnight</button></div><small class="metadata-note">Artwork source: provider images first, enhanced with TMDb backdrops when configured on ${esc(metadataServiceUrl(state.settings))}.</small></div></section>
   <section class="discovery-key-card"><div><span class="eyebrow">WEB DISCOVERY</span><h3>MDBList connection</h3><p>One API key powers Top 20, Trending and auto-refreshing custom MDBList rows. Free MDBList accounts currently allow 1,000 API requests per day.</p></div><form id="homeDiscoveryForm"><div class="field"><label>MDBList API key</label><input name="apiKey" type="password" value="${esc(state.settings.mdblistApiKey||'')}" placeholder="Paste your MDBList API key"></div><div class="discovery-key-actions"><button class="btn accent" type="submit">Save & Refresh</button><button class="btn secondary" type="button" data-refresh-discovery ${state.settings.mdblistApiKey?'':'disabled'}>Refresh now</button></div><small>${lastWeb?esc(relativeRefreshTime(lastWeb)):'No web refresh yet'}${discoveryRefreshing?' · Refreshing now…':''}</small></form></section>
   <div class="home-row-toolbar"><div><strong>${state.settings.homeRows.length} rows selected</strong><span>Use ↑ ↓ to control the order.</span></div><div><button class="btn secondary compact-btn" data-modal="mdblist">＋ Custom MDBList Row</button><button class="btn secondary compact-btn" data-reset-home>Reset defaults</button></div></div>
   <div class="home-row-picker">${groups.map(group=>`<section class="home-row-group"><div class="home-row-group-title"><span>${esc(group)}</span></div>${defs.filter(x=>x.group===group).map(def=>{const on=selected.has(def.id),index=state.settings.homeRows.indexOf(def.id),data=homeRowItems(def.id),cache=state.webDiscovery?.[def.id],err=cache?.error||(def.custom?state.mdblistRows.find(r=>`custom:${r.uid}`===def.id)?.error:'');return `<div class="home-row-option ${on?'selected':''}"><button class="home-row-toggle" data-home-toggle="${esc(def.id)}" aria-pressed="${on?'true':'false'}"><span class="home-row-check">${on?'✓':'＋'}</span><span><strong>${esc(def.label)}</strong><small>${esc(def.description||`${data.length.toLocaleString()} items currently available`)}</small>${err?`<em>${esc(err)}</em>`:''}</span></button><div class="home-row-order">${on?`<button data-home-up="${esc(def.id)}" ${index<=0?'disabled':''} aria-label="Move ${esc(def.label)} up">↑</button><button data-home-down="${esc(def.id)}" ${index<0||index>=state.settings.homeRows.length-1?'disabled':''} aria-label="Move ${esc(def.label)} down">↓</button>`:''}</div></div>`}).join('')}</section>`).join('')}</div>
@@ -350,9 +425,12 @@ function providerProgressBack(){const setup=document.querySelector('#providerSet
 function toast(msg){clearTimeout(toastTimer);document.querySelector('.toast')?.remove();const el=document.createElement('div');el.className='toast';el.textContent=msg;document.body.appendChild(el);toastTimer=setTimeout(()=>el.remove(),2200)}
 
 function detailMeta(item,payload){
+  item=visualItem(item);
   const info=payload?.info||{},movie=payload?.movie_data||{};
-  const cover=resolveProviderAsset(info.movie_image||info.cover_big||info.cover||movie.stream_icon||item.logo);
-  const backdrop=resolveProviderAsset((Array.isArray(info.backdrop_path)?info.backdrop_path[0]:info.backdrop_path)||(Array.isArray(payload?.backdrop_path)?payload.backdrop_path[0]:payload?.backdrop_path)||item.backdrop||cover);
+  const providerCover=resolveProviderAsset(info.movie_image||info.cover_big||info.cover||movie.stream_icon||'');
+  const providerBackdrop=resolveProviderAsset((Array.isArray(info.backdrop_path)?info.backdrop_path[0]:info.backdrop_path)||(Array.isArray(payload?.backdrop_path)?payload.backdrop_path[0]:payload?.backdrop_path)||'');
+  const cover=item.logo||providerCover;
+  const backdrop=item.backdrop||providerBackdrop||cover;
   return {title:info.name||movie.name||item.name,plot:info.plot||info.description||movie.plot||item.plot||'',cover,backdrop,year:info.releasedate||info.releaseDate||info.year||movie.year||item.year||'',rating:info.rating||info.rating_5based||movie.rating||item.rating||'',genre:info.genre||item.genre||item.group||'',cast:info.cast||'',director:info.director||'',duration:info.duration||info.episode_run_time||movie.duration||item.duration||'',country:info.country||'',age:info.age||info.mpaa_rating||'',youtube:info.youtube_trailer||''};
 }
 function normalizeEpisode(item,ep,season){
@@ -428,20 +506,25 @@ function bind(){
   document.querySelectorAll('[data-search-term]').forEach(el=>el.onclick=()=>{state.page='search';render();const input=document.querySelector('#searchInput');if(input){input.value=el.dataset.searchTerm;runSearch(input.value)}});
   document.querySelector('[data-guide-now]')?.addEventListener('click',()=>{guideStart=Math.floor(Date.now()/1800000)*1800000;render()});
   document.querySelector('[data-guide-more]')?.addEventListener('click',()=>{guideLimit+=24;if(state.provider?.type==='m3u')m3uGuideLoaded=false;render()});
-  document.querySelector('[data-action="disconnect"]')?.addEventListener('click',()=>{state.catalog=[];state.provider=null;state.mdblistRows.forEach(r=>{r.items=[];r.updatedAt=0;r.error=''});state.webDiscovery={};state.myList=[];state.continueWatching=[];sessionRelay={url:'',token:''};sessionXtream={server:'',username:'',password:'',relayUrl:'',relayToken:''};epgCache.clear();detailCache.clear();persist();render();toast('Provider disconnected')});
+  document.querySelector('[data-action="disconnect"]')?.addEventListener('click',()=>{state.catalog=[];state.provider=null;state.mdblistRows.forEach(r=>{r.items=[];r.updatedAt=0;r.error=''});state.webDiscovery={};state.metadataCache={};state.myList=[];state.continueWatching=[];sessionRelay={url:'',token:''};sessionXtream={server:'',username:'',password:'',relayUrl:'',relayToken:''};epgCache.clear();detailCache.clear();persist();render();toast('Provider disconnected')});
   document.querySelector('[data-action="clear-history"]')?.addEventListener('click',()=>{state.continueWatching=[];persist();render();toast('Continue Watching cleared')});
   document.querySelectorAll('[data-remove-row]').forEach(el=>el.onclick=()=>{const row=state.mdblistRows[Number(el.dataset.removeRow)];if(row)state.settings.homeRows=state.settings.homeRows.filter(id=>id!==`custom:${row.uid}`);state.mdblistRows.splice(Number(el.dataset.removeRow),1);persist();render()});
   const search=document.querySelector('#searchInput');if(search)search.oninput=e=>runSearch(e.target.value);
   document.querySelectorAll('[data-provider-tab]').forEach(el=>el.onclick=()=>{document.querySelectorAll('[data-provider-tab]').forEach(x=>x.classList.toggle('active',x===el));document.querySelector('#m3uForm').hidden=el.dataset.providerTab!=='m3u';document.querySelector('#xtreamForm').hidden=el.dataset.providerTab!=='xtream';document.querySelector('#providerStatus').innerHTML=''});
   document.querySelector('[data-provider-progress-back]')?.addEventListener('click',providerProgressBack);
   document.querySelector('#homeDiscoveryForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),key=String(fd.get('apiKey')||'').trim();if(!key){toast('Enter an MDBList API key first');return}state.settings.mdblistApiKey=key;persist();toast('MDBList key saved');await refreshDiscoveryRows(true)});
+  const bgPicker=document.querySelector('#homeBgColor'),bgHex=document.querySelector('#homeBgHex');
+  const setBg=value=>{const c=validHex(value);state.settings.backgroundColor=c;if(bgPicker)bgPicker.value=c;if(bgHex)bgHex.value=c;applyTheme();persist()};
+  if(bgPicker)bgPicker.oninput=e=>setBg(e.target.value);
+  if(bgHex)bgHex.onchange=e=>setBg(e.target.value);
+  document.querySelectorAll('[data-bg-preset]').forEach(el=>el.onclick=()=>setBg(el.dataset.bgPreset));
   document.querySelector('[data-refresh-discovery]')?.addEventListener('click',()=>refreshDiscoveryRows(true));
   document.querySelectorAll('[data-home-toggle]').forEach(el=>el.onclick=()=>{const id=el.dataset.homeToggle,index=state.settings.homeRows.indexOf(id);if(index>=0)state.settings.homeRows.splice(index,1);else state.settings.homeRows.push(id);persist();render()});
   document.querySelectorAll('[data-home-up]').forEach(el=>el.onclick=()=>{const id=el.dataset.homeUp,i=state.settings.homeRows.indexOf(id);if(i>0){[state.settings.homeRows[i-1],state.settings.homeRows[i]]=[state.settings.homeRows[i],state.settings.homeRows[i-1]];persist();render()}});
   document.querySelectorAll('[data-home-down]').forEach(el=>el.onclick=()=>{const id=el.dataset.homeDown,i=state.settings.homeRows.indexOf(id);if(i>=0&&i<state.settings.homeRows.length-1){[state.settings.homeRows[i+1],state.settings.homeRows[i]]=[state.settings.homeRows[i],state.settings.homeRows[i+1]];persist();render()}});
   document.querySelector('[data-reset-home]')?.addEventListener('click',()=>{state.settings.homeRows=[...DEFAULT_HOME_ROWS,...state.mdblistRows.map(r=>`custom:${r.uid}`)];persist();render();toast('Home rows reset')});
-  document.querySelector('#m3uForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),file=fd.get('file'),url=String(fd.get('url')||'').trim(),name=String(fd.get('name')||'M3U Provider');providerProgressStart('m3u',name);try{providerProgressUpdate({step:'read',progress:12,title:`Reading ${name}…`,detail:file&&file.size?'Swoop is reading the M3U file from this device.':'Swoop is downloading the playlist from your provider.'});let text;if(file&&file.size)text=await file.text();else if(url){if(NATIVE_WINDOWS)text=await nativeFetchText(url);else{const r=await fetch(url);if(!r.ok)throw new Error(`Playlist returned HTTP ${r.status}`);text=await r.text()}}else throw new Error('Choose an M3U file or enter a playlist URL.');providerProgressMark('read','Complete');providerProgressUpdate({step:'parse',progress:55,title:'Parsing channels…',detail:'Swoop is reading channel names, groups, logos and stream addresses.'});await new Promise(r=>setTimeout(r,40));const providerId=`m3u-${Date.now()}`,cat=parseM3U(text,providerId);if(!cat.length)throw new Error('No playable entries were found in that M3U playlist.');providerProgressMark('parse',`${cat.length.toLocaleString()} items`);providerProgressUpdate({step:'save',progress:86,title:'Building your Swoop library…',detail:`Preparing ${cat.length.toLocaleString()} imported items for browsing.`});state.catalog=cat;state.provider={id:providerId,type:'m3u',name,epgUrl:String(fd.get('epgUrl')||'')};state.mdblistRows.forEach(r=>{r.items=[];r.updatedAt=0;r.error=''});state.webDiscovery={};state.myList=[];state.continueWatching=[];m3uGuideLoaded=false;epgCache.clear();persist();providerProgressMark('save','Ready');providerProgressSuccess(`Imported ${cat.length.toLocaleString()} items from ${name}.`);setTimeout(()=>{modal=null;state.page='home';render()},1100)}catch(err){providerProgressError(err.message||String(err))}});
-  document.querySelector('#xtreamForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),relayUrl=String(fd.get('relayUrl')||'').trim(),relayToken=String(fd.get('relayToken')||''),name=String(fd.get('name')||'Xtream Provider'),cfg={server:String(fd.get('server')).trim(),username:String(fd.get('username')),password:String(fd.get('password')),relayUrl,relayToken};providerProgressStart('xtream',name);try{providerProgressUpdate({step:'contact',progress:7,title:`Contacting ${name}…`,detail:NATIVE_WINDOWS?'Using the Windows Native Bridge to reach your Xtream server.':relayUrl?'Using the Swoop Connection Helper to reach your Xtream server.':'Connecting directly to your Xtream server.'});const profile=await testXtream(cfg);providerProgressMark('contact','Reached');providerProgressUpdate({step:'auth',progress:18,title:'Verifying your Xtream login…',detail:'Checking that the account is active and authorised.'});if(String(profile?.user_info?.auth)==='0')throw new Error('Xtream account was not authorised.');providerProgressMark('auth','Authorised');providerProgressUpdate({step:'live',progress:26,title:'Loading your provider library…',detail:'Live TV, Movies and TV Shows are being loaded. Large subscriptions can take a little while.'});const providerId=`xtream-${Date.now()}`,completedSections=new Set();const result=await importXtream(cfg,providerId,info=>{if(info?.section){completedSections.add(info.section);providerProgressMark(info.section,`${Number(info.count||0).toLocaleString()} items`);const next=['live','movie','series'].find(x=>!completedSections.has(x))||'save',progress=next==='live'?30:next==='movie'?47:next==='series'?64:80,nextLabel=next==='live'?'Live TV':next==='movie'?'Movies':next==='series'?'TV Shows':'your Swoop library';providerProgressUpdate({step:next,progress,title:next==='save'?'Provider catalog loaded — preparing Swoop…':`Loading ${nextLabel}…`,detail:next==='save'?'Swoop is now building the local library and indexes.':'The remaining sections are still loading. You can leave this window open.'})}});if(!result.items.length)throw new Error('Connected, but the provider returned an empty catalog.');providerProgressUpdate({step:'save',progress:88,title:'Building your Swoop library…',detail:'Saving the catalog and preparing it for Home, Live TV, Movies, TV Shows, Guide and Search.'});const remember=Boolean(fd.get('remember'));sessionRelay={url:relayUrl,token:relayToken};sessionXtream={...cfg};state.settings.xtreamRelayUrl=relayUrl;state.settings.xtreamRelayToken=remember?relayToken:'';state.catalog=result.items;state.provider={id:providerId,type:'xtream',name,server:cfg.server,connection:NATIVE_WINDOWS?'windows-native':relayUrl?'helper':'direct',relayUrl,...(remember?{username:cfg.username,password:cfg.password,relayToken}:{})};state.mdblistRows.forEach(r=>{r.items=[];r.updatedAt=0;r.error=''});state.webDiscovery={};state.myList=[];state.continueWatching=[];epgCache.clear();detailCache.clear();persist();providerProgressMark('save','Ready');const counts=result.counts||{live:result.items.filter(x=>x.kind==='live').length,movie:result.items.filter(x=>x.kind==='movie').length,series:result.items.filter(x=>x.kind==='series').length};providerProgressSuccess(`${counts.live.toLocaleString()} live channels · ${counts.movie.toLocaleString()} movies · ${counts.series.toLocaleString()} TV shows`);setTimeout(()=>{modal=null;state.page='home';render()},1300)}catch(err){providerProgressError(err.message||String(err))}});
+  document.querySelector('#m3uForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),file=fd.get('file'),url=String(fd.get('url')||'').trim(),name=String(fd.get('name')||'M3U Provider');providerProgressStart('m3u',name);try{providerProgressUpdate({step:'read',progress:12,title:`Reading ${name}…`,detail:file&&file.size?'Swoop is reading the M3U file from this device.':'Swoop is downloading the playlist from your provider.'});let text;if(file&&file.size)text=await file.text();else if(url){if(NATIVE_WINDOWS)text=await nativeFetchText(url);else{const r=await fetch(url);if(!r.ok)throw new Error(`Playlist returned HTTP ${r.status}`);text=await r.text()}}else throw new Error('Choose an M3U file or enter a playlist URL.');providerProgressMark('read','Complete');providerProgressUpdate({step:'parse',progress:55,title:'Parsing channels…',detail:'Swoop is reading channel names, groups, logos and stream addresses.'});await new Promise(r=>setTimeout(r,40));const providerId=`m3u-${Date.now()}`,cat=parseM3U(text,providerId);if(!cat.length)throw new Error('No playable entries were found in that M3U playlist.');providerProgressMark('parse',`${cat.length.toLocaleString()} items`);providerProgressUpdate({step:'save',progress:86,title:'Building your Swoop library…',detail:`Preparing ${cat.length.toLocaleString()} imported items for browsing.`});state.catalog=cat;state.provider={id:providerId,type:'m3u',name,epgUrl:String(fd.get('epgUrl')||'')};state.mdblistRows.forEach(r=>{r.items=[];r.updatedAt=0;r.error=''});state.webDiscovery={};state.metadataCache={};state.myList=[];state.continueWatching=[];m3uGuideLoaded=false;epgCache.clear();persist();providerProgressMark('save','Ready');providerProgressSuccess(`Imported ${cat.length.toLocaleString()} items from ${name}.`);setTimeout(()=>{modal=null;state.page='home';render()},1100)}catch(err){providerProgressError(err.message||String(err))}});
+  document.querySelector('#xtreamForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),relayUrl=String(fd.get('relayUrl')||'').trim(),relayToken=String(fd.get('relayToken')||''),name=String(fd.get('name')||'Xtream Provider'),cfg={server:String(fd.get('server')).trim(),username:String(fd.get('username')),password:String(fd.get('password')),relayUrl,relayToken};providerProgressStart('xtream',name);try{providerProgressUpdate({step:'contact',progress:7,title:`Contacting ${name}…`,detail:NATIVE_WINDOWS?'Using the Windows Native Bridge to reach your Xtream server.':relayUrl?'Using the Swoop Connection Helper to reach your Xtream server.':'Connecting directly to your Xtream server.'});const profile=await testXtream(cfg);providerProgressMark('contact','Reached');providerProgressUpdate({step:'auth',progress:18,title:'Verifying your Xtream login…',detail:'Checking that the account is active and authorised.'});if(String(profile?.user_info?.auth)==='0')throw new Error('Xtream account was not authorised.');providerProgressMark('auth','Authorised');providerProgressUpdate({step:'live',progress:26,title:'Loading your provider library…',detail:'Live TV, Movies and TV Shows are being loaded. Large subscriptions can take a little while.'});const providerId=`xtream-${Date.now()}`,completedSections=new Set();const result=await importXtream(cfg,providerId,info=>{if(info?.section){completedSections.add(info.section);providerProgressMark(info.section,`${Number(info.count||0).toLocaleString()} items`);const next=['live','movie','series'].find(x=>!completedSections.has(x))||'save',progress=next==='live'?30:next==='movie'?47:next==='series'?64:80,nextLabel=next==='live'?'Live TV':next==='movie'?'Movies':next==='series'?'TV Shows':'your Swoop library';providerProgressUpdate({step:next,progress,title:next==='save'?'Provider catalog loaded — preparing Swoop…':`Loading ${nextLabel}…`,detail:next==='save'?'Swoop is now building the local library and indexes.':'The remaining sections are still loading. You can leave this window open.'})}});if(!result.items.length)throw new Error('Connected, but the provider returned an empty catalog.');providerProgressUpdate({step:'save',progress:88,title:'Building your Swoop library…',detail:'Saving the catalog and preparing it for Home, Live TV, Movies, TV Shows, Guide and Search.'});const remember=Boolean(fd.get('remember'));sessionRelay={url:relayUrl,token:relayToken};sessionXtream={...cfg};state.settings.xtreamRelayUrl=relayUrl;state.settings.xtreamRelayToken=remember?relayToken:'';state.catalog=result.items;state.provider={id:providerId,type:'xtream',name,server:cfg.server,connection:NATIVE_WINDOWS?'windows-native':relayUrl?'helper':'direct',relayUrl,...(remember?{username:cfg.username,password:cfg.password,relayToken}:{})};state.mdblistRows.forEach(r=>{r.items=[];r.updatedAt=0;r.error=''});state.webDiscovery={};state.metadataCache={};state.myList=[];state.continueWatching=[];epgCache.clear();detailCache.clear();persist();providerProgressMark('save','Ready');const counts=result.counts||{live:result.items.filter(x=>x.kind==='live').length,movie:result.items.filter(x=>x.kind==='movie').length,series:result.items.filter(x=>x.kind==='series').length};providerProgressSuccess(`${counts.live.toLocaleString()} live channels · ${counts.movie.toLocaleString()} movies · ${counts.series.toLocaleString()} TV shows`);setTimeout(()=>{modal=null;state.page='home';render()},1300)}catch(err){providerProgressError(err.message||String(err))}});
   document.querySelector('#mdblistForm')?.addEventListener('submit',async e=>{e.preventDefault();if(!state.catalog.length){setStatus('#mdbStatus','Import an IPTV catalog first so Swoop TV has something to match against.','err');return}const fd=new FormData(e.currentTarget),apiKey=String(fd.get('apiKey')||'').trim();try{setStatus('#mdbStatus','Fetching MDBList and matching it against your provider catalog…');const payload=await getMDBListItems({apiKey,listId:String(fd.get('listId')||'').trim(),username:String(fd.get('username')||'').trim(),listName:String(fd.get('listName')||'').trim()});const matched=matchMDBListToCatalog(payload,state.catalog);state.settings.mdblistApiKey=apiKey;const uid=`mdb-${Date.now()}-${Math.abs(hash(String(fd.get('rowName')||'MDBList')))%10000}`;const source={listId:String(fd.get('listId')||'').trim(),username:String(fd.get('username')||'').trim(),listName:String(fd.get('listName')||'').trim()};state.mdblistRows.push({uid,name:String(fd.get('rowName')||'MDBList'),items:matched,source,updatedAt:Date.now(),error:''});state.settings.homeRows.push(`custom:${uid}`);persist();setStatus('#mdbStatus',`Matched ${matched.length} titles from this MDBList to your provider catalog. It is now enabled on Home and will refresh automatically.`,'ok');setTimeout(()=>{modal=null;state.page='home';render()},650)}catch(err){setStatus('#mdbStatus',err.message||String(err),'err')}});
 }
 

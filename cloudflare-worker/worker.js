@@ -14,6 +14,71 @@ const ALLOWED_ACTIONS = new Set([
 
 const ALLOWED_PARAMS = new Set(['series_id', 'vod_id', 'stream_id', 'epg_limit']);
 
+const TMDB_BASE = 'https://api.themoviedb.org/3';
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
+
+function tmdbHeaders(env) {
+  const token=String(env.TMDB_API_TOKEN || '').trim();
+  if (!token) throw new Error('TMDb metadata is not configured on the Swoop service.');
+  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.2.8'};
+}
+
+function safeYear(value='') { const m=String(value||'').match(/(?:19|20)\d{2}/); return m?m[0]:''; }
+function cleanSearchTitle(value='') {
+  let s=String(value||'').trim();
+  s=s.replace(/^\s*(?:TOP|NEW|MOVIES?|FILMS?|VOD|EN|ENG|ENGLISH|4K|UHD|FHD|HD)\s*(?:\||:|\s-\s)\s*/i,'');
+  s=s.replace(/\s*[\[(](?:19|20)\d{2}[\])]\s*$/,'');
+  return s.trim();
+}
+function tmdbImage(path,size='original'){return path?`${TMDB_IMAGE_BASE}/${size}${path}`:''}
+
+async function tmdbFetch(path, env, params={}) {
+  const url=new URL(`${TMDB_BASE}${path}`);
+  Object.entries(params).forEach(([k,v])=>{if(v!==undefined&&v!==null&&v!=='')url.searchParams.set(k,String(v))});
+  const res=await fetch(url.toString(),{headers:tmdbHeaders(env),cf:{cacheTtl:86400,cacheEverything:true}});
+  if(!res.ok)throw new Error(`TMDb returned HTTP ${res.status}.`);
+  return res.json();
+}
+
+function metadataFromTmdb(item,type='movie') {
+  if(!item)return null;
+  const title=type==='tv'?(item.name||item.original_name):(item.title||item.original_title);
+  const date=type==='tv'?item.first_air_date:item.release_date;
+  return {
+    tmdbId:item.id?String(item.id):'',
+    title:title||'',
+    year:safeYear(date),
+    plot:item.overview||'',
+    rating:item.vote_average?Number(item.vote_average).toFixed(1):'',
+    poster:tmdbImage(item.poster_path,'w500'),
+    backdrop:tmdbImage(item.backdrop_path,'original')
+  };
+}
+
+async function handleMetadata(request, env, body) {
+  if(!String(env.TMDB_API_TOKEN||'').trim()) return json(request,{error:'Swoop cinematic artwork is not configured yet. Add the TMDB_API_TOKEN secret to the Swoop Worker.'},503);
+  const type=String(body?.mediaType||'movie')==='tv'?'tv':'movie';
+  const tmdbId=String(body?.tmdbId||'').trim(),imdbId=String(body?.imdbId||'').trim();
+  const title=cleanSearchTitle(body?.title||''),year=safeYear(body?.year||body?.title||'');
+  try{
+    let item=null;
+    if(tmdbId){ item=await tmdbFetch(`/${type}/${encodeURIComponent(tmdbId)}`,env,{language:'en-AU'}); }
+    else if(imdbId&&/^tt\d+$/i.test(imdbId)){
+      const found=await tmdbFetch(`/find/${encodeURIComponent(imdbId)}`,env,{external_source:'imdb_id',language:'en-AU'});
+      item=(type==='tv'?found.tv_results:found.movie_results)?.[0]||null;
+    }
+    if(!item&&title){
+      const params={query:title,language:'en-AU',include_adult:'false'};
+      if(year)params[type==='tv'?'first_air_date_year':'year']=year;
+      let found=await tmdbFetch(`/search/${type}`,env,params);
+      if(!found?.results?.length&&year){delete params[type==='tv'?'first_air_date_year':'year'];found=await tmdbFetch(`/search/${type}`,env,params);}
+      item=found?.results?.[0]||null;
+    }
+    if(!item)return json(request,{metadata:null},200);
+    return new Response(JSON.stringify({metadata:metadataFromTmdb(item,type)}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=21600'}});
+  }catch(error){return json(request,{error:error.message||'Could not load TMDb metadata.'},502)}
+}
+
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '*';
   return {
@@ -130,14 +195,16 @@ async function handleAsset(request, body) {
 }
 
 async function handlePost(request, env) {
+  let body;
+  try { body = await request.clone().json(); }
+  catch { return json(request, {error:'Request body must be JSON.'}, 400); }
+
+  if (String(body?.mode || '') === 'metadata') return handleMetadata(request, env, body);
+
   if (!String(env.SWOOP_PROXY_TOKEN || '')) {
     return json(request, {error:'Worker is not configured. Set the SWOOP_PROXY_TOKEN secret first.'}, 503);
   }
   if (!authorized(request, env)) return json(request, {error:'Invalid Swoop Connection Helper token.'}, 401);
-
-  let body;
-  try { body = await request.json(); }
-  catch { return json(request, {error:'Request body must be JSON.'}, 400); }
 
   if (String(body?.mode || '') === 'asset') return handleAsset(request, body);
 
@@ -183,8 +250,9 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.3',
-        configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16
+        version:'0.1.4',
+        configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
+        metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim())
       });
     }
     if (request.method !== 'POST') return json(request, {error:'Method not allowed.'}, 405);

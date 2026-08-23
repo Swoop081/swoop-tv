@@ -1,5 +1,5 @@
 import {parseM3U} from './src/m3u.js';
-import {matchMDBListToCatalog, getMDBListOfficialItems, getMDBListStreamingChart} from './src/mdblist.js';
+import {matchMDBListToCatalog, normalizeMediaTitle, getMDBListOfficialItems, getMDBListStreamingChart} from './src/mdblist.js';
 import {buildXtreamApiUrl, buildXtreamSeriesStreamUrl, testXtream, importXtream, fetchXtreamAssetBlob, fetchXtreamVodInfo, fetchXtreamShortEpg} from './src/xtream.js';
 import worker from './cloudflare-worker/worker.js';
 
@@ -13,6 +13,13 @@ assert(items[0].kind==='live'&&items[1].kind==='movie','M3U kind failed');
 const catalog=[{id:'m1',kind:'movie',name:'Signal Run',year:'2026',tmdbId:'42'}];
 const matches=matchMDBListToCatalog([{title:'Signal Run',year:2026,tmdb:42}],catalog);
 assert(matches.length===1&&matches[0].id==='m1','MDBList match failed');
+
+
+const messyCatalog=[{id:'m2',kind:'movie',name:'TOP - Michael (2026)',year:'2026'}];
+const messyMatch=matchMDBListToCatalog([{title:'Michael',year:2026,tmdb:123}],messyCatalog,{mediaType:'movie',limit:20});
+assert(messyMatch.length===1&&messyMatch[0].id==='m2','IPTV-prefixed title matching failed');
+assert(normalizeMediaTitle('EN - 4K - The Example (2025)')==='the example','IPTV title cleanup failed');
+
 
 
 // Built-in web discovery endpoints + order-preserving matching.
@@ -141,5 +148,19 @@ const vodWorkerRequest=new Request('https://relay.example.workers.dev/',{
 const vodWorkerResponse=await worker.fetch(vodWorkerRequest,{SWOOP_PROXY_TOKEN:token});
 assert(vodWorkerResponse.status===200,'Worker VOD info allowlist failed');
 
+
+// Swoop owner-managed TMDb metadata endpoint.
+globalThis.fetch=async (url,options={})=>{
+  const u=String(url);
+  assert(u.includes('api.themoviedb.org/3/search/movie'),'TMDb search endpoint failed');
+  assert(String(options?.headers?.Authorization||'').startsWith('Bearer '),'TMDb bearer token missing');
+  return new Response(JSON.stringify({results:[{id:77,title:'Michael',release_date:'2026-01-01',overview:'Backdrop test',vote_average:7.8,poster_path:'/poster.jpg',backdrop_path:'/backdrop.jpg'}]}),{status:200,headers:{'content-type':'application/json'}});
+};
+const metadataReq=new Request('https://relay.example.workers.dev/',{method:'POST',headers:{'content-type':'application/json','origin':'http://127.0.0.1:38673'},body:JSON.stringify({mode:'metadata',mediaType:'movie',title:'TOP - Michael (2026)',year:'2026'})});
+const metadataRes=await worker.fetch(metadataReq,{SWOOP_PROXY_TOKEN:token,TMDB_API_TOKEN:'tmdb-test-token'});
+assert(metadataRes.status===200,'Worker metadata request failed');
+const metadataJson=await metadataRes.json();
+assert(metadataJson.metadata?.backdrop==='https://image.tmdb.org/t/p/original/backdrop.jpg','TMDb backdrop mapping failed');
+
 globalThis.fetch=realFetch;
-console.log('Swoop TV v0.2.7 tests passed');
+console.log('Swoop TV v0.2.8 tests passed');
