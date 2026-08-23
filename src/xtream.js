@@ -1,26 +1,88 @@
 function cleanServer(server='') {
-  return server.trim().replace(/\/+$/, '');
+  let value = String(server || '').trim().replace(/\/+$/, '');
+  value = value.replace(/\/(?:player_api\.php|get\.php)$/i, '');
+  if (!/^https?:\/\//i.test(value)) throw new Error('Xtream server URL must start with http:// or https://.');
+  return value;
 }
 
-async function getJson(url, timeoutMs=20000) {
-  const controller = new AbortController();
-  const timer = setTimeout(()=>controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, {signal: controller.signal, cache:'no-store'});
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
-  } finally { clearTimeout(timer); }
-}
-
-function apiUrl(server, username, password, action='') {
+export function buildXtreamApiUrl(server, username, password, action='', params={}) {
   const s = cleanServer(server);
   const qs = new URLSearchParams({username, password});
   if (action) qs.set('action', action);
+  for (const [key, value] of Object.entries(params || {})) {
+    if (value !== undefined && value !== null && value !== '') qs.set(key, String(value));
+  }
   return `${s}/player_api.php?${qs.toString()}`;
 }
 
+async function parseJsonResponse(res, source='Xtream API') {
+  const text = await res.text();
+  if (!res.ok) {
+    let detail = '';
+    try { detail = JSON.parse(text)?.error || ''; } catch {}
+    throw new Error(`${source} returned HTTP ${res.status}${detail ? ` — ${detail}` : ''}`);
+  }
+  try { return JSON.parse(text); }
+  catch { throw new Error(`${source} did not return valid JSON.`); }
+}
+
+async function directJson(config, action='', params={}, timeoutMs=20000) {
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), timeoutMs);
+  try {
+    const url = buildXtreamApiUrl(config.server, config.username, config.password, action, params);
+    const res = await fetch(url, {signal: controller.signal, cache:'no-store'});
+    return await parseJsonResponse(res);
+  } catch (err) {
+    if (err?.name === 'AbortError') throw new Error('Xtream provider timed out.');
+    if (err instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(String(err?.message || err))) {
+      throw new Error('Browser could not reach the Xtream API. This is usually CORS, mixed-content, or provider network blocking. Configure the Swoop Connection Helper for this provider.');
+    }
+    throw err;
+  } finally { clearTimeout(timer); }
+}
+
+async function relayJson(config, action='', params={}, timeoutMs=30000) {
+  const relayUrl = String(config.relayUrl || '').trim();
+  if (!relayUrl) throw new Error('Connection Helper URL is missing.');
+  if (!/^https:\/\//i.test(relayUrl) && !/^http:\/\/localhost(?::\d+)?(?:\/|$)/i.test(relayUrl)) {
+    throw new Error('Connection Helper URL must use HTTPS.');
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), timeoutMs);
+  const headers = {'content-type':'application/json'};
+  if (config.relayToken) headers.authorization = `Bearer ${String(config.relayToken)}`;
+  try {
+    const res = await fetch(relayUrl, {
+      method:'POST',
+      headers,
+      signal:controller.signal,
+      cache:'no-store',
+      body:JSON.stringify({
+        server:cleanServer(config.server),
+        username:String(config.username || ''),
+        password:String(config.password || ''),
+        action:String(action || ''),
+        params:params || {}
+      })
+    });
+    return await parseJsonResponse(res, 'Swoop Connection Helper');
+  } catch (err) {
+    if (err?.name === 'AbortError') throw new Error('Swoop Connection Helper timed out.');
+    if (err instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(String(err?.message || err))) {
+      throw new Error('Could not reach the Swoop Connection Helper. Check the Worker URL and deployment.');
+    }
+    throw err;
+  } finally { clearTimeout(timer); }
+}
+
+async function getJson(config, action='', params={}) {
+  if (String(config.relayUrl || '').trim()) return relayJson(config, action, params);
+  return directJson(config, action, params);
+}
+
 export async function testXtream(config) {
-  const data = await getJson(apiUrl(config.server, config.username, config.password));
+  const data = await getJson(config);
   if (!data?.user_info) throw new Error('This server did not return an Xtream user profile.');
   return data;
 }
@@ -29,12 +91,12 @@ export async function importXtream(config, providerId='xtream') {
   const server = cleanServer(config.server);
   const {username, password} = config;
   const [liveCats, liveStreams, vodCats, vodStreams, seriesCats, series] = await Promise.all([
-    getJson(apiUrl(server, username, password, 'get_live_categories')).catch(()=>[]),
-    getJson(apiUrl(server, username, password, 'get_live_streams')).catch(()=>[]),
-    getJson(apiUrl(server, username, password, 'get_vod_categories')).catch(()=>[]),
-    getJson(apiUrl(server, username, password, 'get_vod_streams')).catch(()=>[]),
-    getJson(apiUrl(server, username, password, 'get_series_categories')).catch(()=>[]),
-    getJson(apiUrl(server, username, password, 'get_series')).catch(()=>[]),
+    getJson(config, 'get_live_categories').catch(()=>[]),
+    getJson(config, 'get_live_streams').catch(()=>[]),
+    getJson(config, 'get_vod_categories').catch(()=>[]),
+    getJson(config, 'get_vod_streams').catch(()=>[]),
+    getJson(config, 'get_series_categories').catch(()=>[]),
+    getJson(config, 'get_series').catch(()=>[]),
   ]);
   const catName = (cats,id)=>cats.find(c=>String(c.category_id)===String(id))?.category_name || 'Uncategorised';
   const items = [];
@@ -60,6 +122,5 @@ export async function importXtream(config, providerId='xtream') {
 }
 
 export async function fetchXtreamSeriesInfo(config, seriesId) {
-  const url = apiUrl(config.server, config.username, config.password, 'get_series_info') + `&series_id=${encodeURIComponent(seriesId)}`;
-  return getJson(url);
+  return getJson(config, 'get_series_info', {series_id:seriesId});
 }
