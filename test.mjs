@@ -1,0 +1,10 @@
+import {parseM3U} from './src/m3u.js';
+import {matchMDBListToCatalog} from './src/mdblist.js';
+const sample=`#EXTM3U\n#EXTINF:-1 tvg-id="abc" group-title="Sports",Arena Sports\nhttps://example.com/live/1.m3u8\n#EXTINF:-1 group-title="Movies",Signal Run\nhttps://example.com/movie/2.mp4`;
+const items=parseM3U(sample,'test');
+if(items.length!==2) throw new Error('M3U count failed');
+if(items[0].kind!=='live'||items[1].kind!=='movie') throw new Error('M3U kind failed');
+const catalog=[{id:'m1',kind:'movie',name:'Signal Run',year:'2026',tmdbId:'42'}];
+const matches=matchMDBListToCatalog([{title:'Signal Run',year:2026,tmdb:42}],catalog);
+if(matches.length!==1||matches[0].id!=='m1') throw new Error('MDBList match failed');
+console.log('Swoop TV v0.1 tests passed');

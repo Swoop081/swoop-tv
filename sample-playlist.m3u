@@ -1,0 +1,9 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="swoop.news" tvg-name="Swoop News" group-title="News",Swoop News
+https://example.com/live/news.m3u8
+#EXTINF:-1 tvg-id="arena.sports" tvg-name="Arena Sports" group-title="Sports",Arena Sports
+https://example.com/live/sports.m3u8
+#EXTINF:-1 tvg-name="Signal Run" group-title="Movies",Signal Run (2026)
+https://example.com/movie/signal-run.mp4
+#EXTINF:-1 tvg-name="The District" group-title="Series",The District
+https://example.com/series/the-district.m3u8
