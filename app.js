@@ -104,6 +104,12 @@ if(invalidateDiscovery){state.webDiscovery={};state.settings.discoverySchemaVers
 const METADATA_ARTWORK_SCHEMA=4;
 const invalidateMetadataArtwork=Number(state.settings.metadataArtworkSchemaVersion||0)!==METADATA_ARTWORK_SCHEMA;
 if(invalidateMetadataArtwork){state.metadataCache={};state.settings.metadataArtworkSchemaVersion=METADATA_ARTWORK_SCHEMA;}
+const TITLE_LOOKUP_SCHEMA=2;
+function needsTitleLookupPrefixRepair(item={}){
+  const raw=String(item?.name||'').trim();
+  return /^\s*[-–—|:•·]+\s*(?:MAX|HMAX|HBO\s+MAX|AMZ|AMAZON|PRIME(?:\s+VIDEO)?|NF|NETFLIX|A\+|ATV|APPLE\s*TV\+?|APPLETV\+|APL|DSNP|DISNEY\+?|PMTP|PARAMOUNT\+?)\s*(?:\||:|[-–—])/i.test(raw)
+    || /^\s*(?:A\+|APPLE\s*TV\+|APPLETV\+)\s*(?:\||:|[-–—])/i.test(raw);
+}
 const IMDB_RATING_SCHEMA=2;
 const invalidateImdbRatings=Number(state.settings.imdbRatingSchemaVersion||0)!==IMDB_RATING_SCHEMA;
 function sanitizeImdbMetadataCache(cache={}){
@@ -304,14 +310,15 @@ async function enrichItemMetadata(item,{rerender=true}={}){
   if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind))return null;
   if(metadataPending.has(item.id))return metadataPending.get(item.id);
   const cached=state.metadataCache?.[item.id]||{},now=Date.now();
+  const lookupSchemaCurrent=!needsTitleLookupPrefixRepair(item)||Number(cached.titleLookupSchema||0)>=TITLE_LOOKUP_SCHEMA;
   const titleLogoKnown=Boolean(cached.titleLogo||cached.titleLogoCheckedAt);
-  const metadataFresh=Boolean(cached.checkedAt&&now-cached.checkedAt<7*86400000&&titleLogoKnown);
+  const metadataFresh=Boolean(lookupSchemaCurrent&&cached.checkedAt&&now-cached.checkedAt<7*86400000&&titleLogoKnown);
   const imdbFresh=Boolean(cached.imdbRatingCheckedAt&&now-cached.imdbRatingCheckedAt<30*86400000);
   if(metadataFresh&&imdbFresh)return cached;
   const task=(async()=>{
     try{
       const metadata=await fetchTitleMetadata({settings:state.settings,item}),stamp=Date.now(),hasImdbField=Boolean(tenPointRating(metadata?.imdbRating));
-      state.metadataCache[item.id]={...cached,...(metadata||{}),checkedAt:stamp,titleLogoCheckedAt:stamp,...(hasImdbField?{imdbRatingCheckedAt:stamp}:{})};metadataRevision++;
+      state.metadataCache[item.id]={...cached,...(metadata||{}),checkedAt:stamp,titleLogoCheckedAt:stamp,titleLookupSchema:TITLE_LOOKUP_SCHEMA,...(hasImdbField?{imdbRatingCheckedAt:stamp}:{})};metadataRevision++;
       if(metadata?.tmdbId&&!item.tmdbId)item.tmdbId=metadata.tmdbId;
       if(metadata?.imdbId&&!item.imdbId)item.imdbId=metadata.imdbId;
       persist('cache');

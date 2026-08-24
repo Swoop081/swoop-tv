@@ -2,12 +2,12 @@ const DEFAULT_METADATA_SERVICE = 'https://swoop-tv-connection.justinbelot8.worke
 
 
 function cleanMetadataTitle(value='') {
-  let s=String(value||'').trim();
+  let s=String(value||'').trim().replace(/^\s*(?:[-–—|:•·]+\s*)+/, '').trim();
   for(let i=0;i<4;i++){
-    const m=s.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s-\s)\s*(.+)$/);
+    const m=s.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s[-–—]\s)\s*(.+)$/);
     if(!m)break;
     const key=m[1].trim().toLowerCase();
-    if(!['amz','amazon','prime','prime video','nf','netflix','en','eng','english','atv','apple tv','apl','dsnp','disney','disney+','hmax','max','hbo max','pmtp','paramount','paramount+','top','new','movie','movies','film','films','vod','4k','uhd','fhd','hd','sd','us','uk','au','ca'].includes(key))break;
+    if(!['amz','amazon','prime','prime video','nf','netflix','en','eng','english','atv','a+','apple tv','apple tv+','appletv+','apl','dsnp','disney','disney+','hmax','max','hbo max','pmtp','paramount','paramount+','top','new','movie','movies','film','films','vod','4k','uhd','fhd','hd','sd','us','uk','au','ca'].includes(key))break;
     s=m[2].trim();
   }
   s=s.replace(/\b(?:4320p|2160p|1080p|1080i|720p|576p|576i|480p|480i|8k|4k|uhd|fhd|hdr10\+?|hdr|hlg|dolby\s*vision|dovi|dv|web[- .]?dl|webrip|bluray|brrip|x26[45]|h26[45]|hevc|av1)\b/gi,' ');
@@ -123,7 +123,7 @@ export async function fetchPersonCredits({settings={}, personId='', name=''}) {
   if (!res.ok) {
     let detail='';
     try { detail=(await res.json())?.error || ''; } catch {}
-    if(res.status===401||/connection helper token/i.test(detail))throw new Error('Cast browsing needs the bundled Swoop TV Worker v0.1.14 to be deployed.');
+    if(res.status===401||/connection helper token/i.test(detail))throw new Error('Cast browsing needs the bundled Swoop TV Worker v0.1.15 to be deployed.');
     throw new Error(detail || `Swoop TV cast service returned HTTP ${res.status}.`);
   }
   const data=await res.json();

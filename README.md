@@ -1,15 +1,14 @@
 # Swoop TV
 
-**Current build: v0.7.24 — TV Title Logo Reliability**
+**Current build: v0.7.25 — Provider-Prefix TV Logo Repair**
 
+### v0.7.25 — Provider-Prefix TV Logo Repair
 
-### v0.7.24 — TV Title Logo Reliability
-
-- TV-series metadata lookup now understands provider names such as `Lioness (2023) (US)`: decorative year/market suffixes are removed from the search title while the extracted year remains a strict identity requirement.
-- Detail pages are now **logo-first**. The raw/provider title is hidden while Swoop TV checks for a TMDb title logo; the cleaned text title appears only when the lookup completes without a usable logo.
-- Existing cached titles that predate logo-result tracking automatically retry metadata once. A confirmed no-logo result is remembered so Swoop TV does not repeatedly query the same title.
-- Title logos bypass lazy viewport scheduling and begin loading immediately on the detail route. If the artwork request ultimately fails, the cleaned text title is revealed as the fallback.
-- The bundled Worker v0.1.14 carries the same chained year/market suffix cleanup for server-side parity. The app-side fix is compatible with v0.1.13 because it now sends a cleaned title plus the extracted year.
+- Fixes the remaining TV-show title-logo failures shown on provider names such as `-MAX - Lanterns`, `-AMZ - Reacher`, `-A+ - Ted Lasso` and `-NF - Stranger Things`.
+- Swoop TV now removes leading separator ornaments before parsing known service/source prefixes, and recognises `A+` / `Apple TV+` as Apple TV source tags.
+- The same cleanup is used for fallback display titles, TMDb metadata requests and strict identity comparison, so the cleaned title can resolve a logo without weakening the exact-year mismatch protection.
+- Affected v0.7.24 no-logo cache results automatically retry once under a new title-lookup schema; provider catalogues and SQLite do not need to be refreshed or rebuilt.
+- The bundled Worker v0.1.15 mirrors the same prefix cleanup. The client-side repair already sends cleaned titles, but redeploying v0.1.15 is recommended for full server-side parity.
 
 The TV Guide now uses the provider's **channel categories as the primary navigation** instead of presenting one enormous channel list. Categories stay on the left, and selecting one populates only that category's channel logos and three-hour EPG grid on the right. This substantially reduces initial guide work on very large IPTV libraries.
 
@@ -27,7 +26,7 @@ The TV Guide now uses the provider's **channel categories as the primary navigat
 
 Swoop TV uses a curated set of **Snoak's actively maintained MDBList lists as the primary external discovery layer** for Top 100, Trending, New & Hot and selected genre rails. The app still displays only titles that confidently exist in the user's enabled TV-provider library; Snoak/MDBList determines ranking and candidate order, never playability.
 
-The bundled Cloudflare Worker is **v0.1.14**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable.
+The bundled Cloudflare Worker is **v0.1.15**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable.
 
 ### Snoak-backed discovery
 

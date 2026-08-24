@@ -26,14 +26,18 @@ function artworkFingerprint(value='') {
 const PREFIX_MAP=new Map([
   ['amz','AMZ'],['amazon','AMZ'],['prime','AMZ'],['prime video','AMZ'],
   ['nf','NF'],['netflix','NF'],['en','EN'],['eng','EN'],['english','EN'],
-  ['atv','Apple TV'],['apple tv','Apple TV'],['apl','Apple TV'],
+  ['atv','Apple TV'],['a+','Apple TV'],['apple tv','Apple TV'],['apple tv+','Apple TV'],['appletv+','Apple TV'],['apl','Apple TV'],
   ['dsnp','Disney+'],['disney','Disney+'],['disney+','Disney+'],
   ['hmax','Max'],['max','Max'],['hbo max','Max'],['pmtp','Paramount+'],['paramount','Paramount+']
 ]);
 
+function stripLeadingProviderOrnaments(value='') {
+  return String(value||'').trim().replace(/^\s*(?:[-–—|:•·]+\s*)+/, '').trim();
+}
+
 export function sourceTag(item={}) {
-  const raw=String(item.name||'').trim();
-  const m=raw.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s-\s)\s*(.+)$/);
+  const raw=stripLeadingProviderOrnaments(item.name||'');
+  const m=raw.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s[-–—]\s)\s*(.+)$/);
   if(m){
     const key=m[1].trim().toLowerCase();
     if(PREFIX_MAP.has(key))return PREFIX_MAP.get(key);
@@ -111,9 +115,9 @@ function stripProviderTailTags(value='') {
 }
 
 export function cleanDisplayTitle(item={}) {
-  let raw=String(item.name||'').trim();
+  let raw=stripLeadingProviderOrnaments(item.name||'');
   for(let i=0;i<4;i++){
-    const m=raw.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s-\s)\s*(.+)$/);
+    const m=raw.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s[-–—]\s)\s*(.+)$/);
     if(!m)break;
     const key=m[1].trim().toLowerCase();
     if(!PREFIX_MAP.has(key)&&!/^(?:top|new|movie|vod|4k|uhd|fhd|hd|sd|us|uk|au|ca)$/i.test(m[1].trim()))break;

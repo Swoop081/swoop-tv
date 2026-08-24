@@ -1,3 +1,13 @@
+## v0.7.25 — Provider-Prefix TV Logo Repair
+
+- Fixes title-logo enrichment for TV-provider names whose service tag is wrapped in punctuation, including the confirmed patterns `-MAX - Lanterns`, `-AMZ - Reacher`, `-A+ - Ted Lasso` and `-NF - Stranger Things`.
+- Leading separator ornaments are stripped before source-prefix parsing. `A+`, `Apple TV+` and `AppleTV+` are now recognised aliases alongside the existing Max, Amazon and Netflix tags.
+- The corrected cleanup is shared by visible fallback titles, client metadata requests, strict metadata identity comparison and the bundled Worker, so a provider tag can no longer prevent an otherwise valid TV logo lookup.
+- Adds title-lookup cache schema v2. Affected v0.7.24 entries that recorded “no logo” under the broken provider-prefixed query retry automatically when next viewed; confirmed new results are cached normally. Temporary network errors do not mark the corrected retry complete.
+- Strict year identity remains mandatory. This repair does not reintroduce the Odyssey-style wrong-release fallback.
+- Bundled Cloudflare Worker **v0.1.15** mirrors the new provider-prefix parser and identifies itself with metadata user-agent 0.4.5. Redeploy is recommended for complete server-side parity.
+- No provider refresh, SQLite rebuild, profile reset, watched/resume reset or playback change is required.
+
 ## v0.7.24 — TV Title Logo Reliability
 
 - Fixed TV-show title-logo enrichment failing on common Xtream/provider series names such as `Lioness (2023) (US)`. Swoop TV now removes chained market/language/year suffixes from the metadata search title while preserving the provider year as a strict match constraint.

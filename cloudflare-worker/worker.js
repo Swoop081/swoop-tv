@@ -21,13 +21,19 @@ const MDBLIST_BASE = 'https://api.mdblist.com';
 function tmdbHeaders(env) {
   const token=String(env.TMDB_API_TOKEN || '').trim();
   if (!token) throw new Error('TMDb metadata is not configured on the Swoop TV service.');
-  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.4'};
+  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.5'};
 }
 
 function safeYear(value='') { const m=String(value||'').match(/(?:19|20)\d{2}/); return m?m[0]:''; }
 function cleanSearchTitle(value='') {
-  let s=String(value||'').trim();
-  s=s.replace(/^\s*(?:TOP|NEW|MOVIES?|FILMS?|VOD|EN|ENG|ENGLISH|4K|UHD|FHD|HD)\s*(?:\||:|\s-\s)\s*/i,'');
+  let s=String(value||'').trim().replace(/^\s*(?:[-–—|:•·]+\s*)+/, '').trim();
+  for(let i=0;i<4;i++){
+    const m=s.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s[-–—]\s)\s*(.+)$/);
+    if(!m)break;
+    const key=m[1].trim().toLowerCase();
+    if(!['amz','amazon','prime','prime video','nf','netflix','en','eng','english','atv','a+','apple tv','apple tv+','appletv+','apl','dsnp','disney','disney+','hmax','max','hbo max','pmtp','paramount','paramount+','top','new','movie','movies','film','films','vod','4k','uhd','fhd','hd','sd','us','uk','au','ca'].includes(key))break;
+    s=m[2].trim();
+  }
   for(let i=0;i<6;i++){
     const next=s.replace(/\s*[\[(]\s*(?:(?:19|20)\d{2}|US|USA|UK|GB|AU|AUS|CA|CAN|NZ|EN|ENG|ENGLISH)\s*[\])]\s*$/i,'').trim();
     if(next===s.trim())break;
@@ -162,7 +168,7 @@ async function fetchMdbImdbRating(env,imdbId,type='movie') {
   url.searchParams.set('apikey',key);
   const res=await fetch(url.toString(),{
     method:'POST',
-    headers:{'Accept':'application/json','Content-Type':'application/json','User-Agent':'SwoopTV-Metadata/0.4.4'},
+    headers:{'Accept':'application/json','Content-Type':'application/json','User-Agent':'SwoopTV-Metadata/0.4.5'},
     body:JSON.stringify({ids:[String(imdbId)],provider:'imdb'})
   });
   if(!res.ok)return'';
@@ -597,7 +603,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.14',
+        version:'0.1.15',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
         discoveryConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
