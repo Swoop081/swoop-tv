@@ -1,5 +1,29 @@
 # Swoop TV Release Notes
 
+## v0.7.12 — Poster IMDb Rating Overlay
+
+- Removes the release year and generic star-rating metadata line from movie/TV poster cards so the artwork stays clean.
+- Adds a compact **gold IMDb rating badge** in the bottom-right corner of movie/TV posters when a trusted IMDb rating is available.
+- Resolves the canonical IMDb title ID from TMDb `external_ids`, then fetches the IMDb rating through the existing owner-managed MDBList API integration.
+- Never labels TMDb/provider scores as IMDb: if MDBList is not configured, the title has no IMDb ID, or the rating lookup fails, the badge is simply omitted.
+- Keeps the full provider/source names in Smart Source Selection and leaves detail/playback/provider behavior unchanged.
+- No provider refresh or SQLite rebuild is required.
+
+## v0.7.11 — Expanded Home Rails
+
+- Expands every Home content rail except **Top 20 Movies** and **Top 20 TV Shows** to a maximum of **100 items** when enough matching content is available.
+- Top 20 rows remain fixed at exactly **20** items and keep their numbered/ranked treatment.
+- Increases native SQLite Home-row queries from 24 to 100 items for provider recents, categories, Live Now, Top Rated and genre/search-driven rows.
+- Expands built-in web discovery matching to support up to 100 items for Trending, New & Hot, Popular on Streaming, Most Watched and Box Office rows.
+- Recommended For You can now return up to 100 titles, and profile-scoped Continue Watching / Recently Watched / Recent Channels retention is raised to 100 so those rails can grow to the same cap.
+- Existing provider data, SQLite catalogue, source stacking, metadata, watched/resume semantics and Windows/mpv playback behavior are unchanged. No provider refresh is required.
+
+## v0.7.10 — Settings Provider Priority
+
+- Moves **TV Providers** to the top of Settings, immediately below the Settings header, so provider status, library counts, **Manage Providers** and **Refresh All** are the first controls available.
+- Profile controls now sit directly below TV Providers, followed by Performance.
+- No provider, catalogue, discovery, watched/resume, metadata, theme or playback behavior changes. Existing SQLite/provider data is reused and no refresh is required.
+
 ## v0.7.9 — Disconnected Demo Artwork Guard
 
 - Fixes misleading artwork appearing on the built-in mock/demo catalogue when no TV provider is connected.

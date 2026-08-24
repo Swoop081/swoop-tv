@@ -21,7 +21,7 @@ const MDBLIST_BASE = 'https://api.mdblist.com';
 function tmdbHeaders(env) {
   const token=String(env.TMDB_API_TOKEN || '').trim();
   if (!token) throw new Error('TMDb metadata is not configured on the Swoop service.');
-  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.0'};
+  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.1'};
 }
 
 function safeYear(value='') { const m=String(value||'').match(/(?:19|20)\d{2}/); return m?m[0]:''; }
@@ -88,7 +88,7 @@ function simplifiedRecommendations(item,type='movie'){
   const list=Array.isArray(item?.recommendations?.results)?item.recommendations.results:[];
   return list.slice(0,24).map(x=>({tmdbId:x.id?String(x.id):'',title:type==='tv'?(x.name||x.original_name||''):(x.title||x.original_title||''),year:safeYear(type==='tv'?x.first_air_date:x.release_date),poster:tmdbImage(x.poster_path,'w342'),backdrop:tmdbImage(x.backdrop_path,'w780'),rating:x.vote_average?Number(x.vote_average).toFixed(1):''})).filter(x=>x.tmdbId&&x.title);
 }
-function metadataFromTmdb(item,type='movie') {
+function metadataFromTmdb(item,type='movie',imdbRating='') {
   if(!item)return null;
   const title=type==='tv'?(item.name||item.original_name):(item.title||item.original_title);
   const date=type==='tv'?item.first_air_date:item.release_date;
@@ -99,6 +99,8 @@ function metadataFromTmdb(item,type='movie') {
   const trailer=bestTrailer(item);
   return {
     tmdbId:item.id?String(item.id):'',
+    imdbId:String(item?.external_ids?.imdb_id||''),
+    imdbRating:imdbRating||'',
     title:title||'',
     year:safeYear(date),
     plot:item.overview||'',
@@ -116,6 +118,23 @@ function metadataFromTmdb(item,type='movie') {
     trailerName:trailer?.name||'',
     recommendations:simplifiedRecommendations(item,type)
   };
+}
+
+async function fetchMdbImdbRating(env,imdbId,type='movie') {
+  const key=String(env.MDBLIST_API_KEY||'').trim();
+  if(!key||!/^tt\d+$/i.test(String(imdbId||'')))return'';
+  const mediaType=type==='tv'?'show':'movie';
+  const url=new URL(`${MDBLIST_BASE}/rating/${mediaType}/imdb`);
+  url.searchParams.set('apikey',key);
+  const res=await fetch(url.toString(),{
+    method:'POST',
+    headers:{'Accept':'application/json','Content-Type':'application/json','User-Agent':'SwoopTV-Metadata/0.4.1'},
+    body:JSON.stringify({ids:[String(imdbId)],provider:'imdb'})
+  });
+  if(!res.ok)return'';
+  const payload=await res.json();
+  const value=Number(payload?.ratings?.[0]?.rating);
+  return Number.isFinite(value)&&value>0&&value<=10?value.toFixed(1):'';
 }
 
 async function handleMetadata(request, env, body) {
@@ -142,10 +161,13 @@ async function handleMetadata(request, env, body) {
     // results alone may omit a backdrop even when the title has many backdrops.
     const item=await tmdbFetch(`/${type}/${encodeURIComponent(match.id)}`,env,{
       language:'en-AU',
-      append_to_response:type==='tv'?'images,credits,videos,recommendations,content_ratings':'images,credits,videos,recommendations,release_dates',
+      append_to_response:type==='tv'?'images,credits,videos,recommendations,content_ratings,external_ids':'images,credits,videos,recommendations,release_dates,external_ids',
       include_image_language:'en,null'
     });
-    return new Response(JSON.stringify({metadata:metadataFromTmdb(item,type)}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=21600'}});
+    const resolvedImdbId=String(item?.external_ids?.imdb_id||imdbId||'');
+    let imdbRating='';
+    if(resolvedImdbId&&String(env.MDBLIST_API_KEY||'').trim()){try{imdbRating=await fetchMdbImdbRating(env,resolvedImdbId,type)}catch{}}
+    return new Response(JSON.stringify({metadata:metadataFromTmdb(item,type,imdbRating)}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=21600'}});
   }catch(error){return json(request,{error:error.message||'Could not load TMDb metadata.'},502)}
 }
 
@@ -399,7 +421,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.7',
+        version:'0.1.8',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
         discoveryConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),

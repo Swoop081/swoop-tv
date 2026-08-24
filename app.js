@@ -24,14 +24,14 @@ const NATIVE_HOME_SEARCH={
 'drama-shows':['series','drama'],'crime-shows':['series','crime'],'comedy-shows':['series','comedy'],'reality-shows':['series','reality'],'action-shows':['series','action'],'scifi-shows':['series','sci fi'],'mystery-shows':['series','mystery'],'thriller-shows':['series','thriller'],'animation-shows':['series','animation'],'family-shows':['series','family']};
 async function loadNativeHomeRow(id){
   if(!nativeCatalogMode||nativeHomeRowCache.has(id))return nativeHomeRowCache.get(id)||[];let result=[];
-  if(String(id).startsWith('cat:')){const parts=String(id).split(':'),kind=parts[1],group=decodeURIComponent(parts.slice(2).join(':'));result=(await nativeCatalogQuery({kind,providerIds:nativeEnabledProviderIds(),group,limit:24,sort:'recent'})).items||[]}
-  else if(id==='new-movies'||id==='movies')result=(await nativeCatalogQuery({kind:'movie',providerIds:nativeEnabledProviderIds(),limit:24,sort:'recent'})).items||[];
-  else if(id==='new-shows'||id==='shows')result=(await nativeCatalogQuery({kind:'series',providerIds:nativeEnabledProviderIds(),limit:24,sort:'recent'})).items||[];
-  else if(id==='live-now')result=(await nativeCatalogQuery({kind:'live',providerIds:nativeEnabledProviderIds(),limit:24,sort:'name'})).items||[];
-  else if(id==='top-rated-movies')result=(await nativeCatalogQuery({kind:'movie',providerIds:nativeEnabledProviderIds(),limit:24,sort:'rating'})).items||[];
-  else if(id==='top-rated-shows')result=(await nativeCatalogQuery({kind:'series',providerIds:nativeEnabledProviderIds(),limit:24,sort:'rating'})).items||[];
-  else if(id==='documentary'){const a=await nativeCatalogSearch('documentary',{providerIds:nativeEnabledProviderIds(),limit:24,kinds:['movie','series']});result=a.items||[]}
-  else if(NATIVE_HOME_SEARCH[id]){const [kind,term]=NATIVE_HOME_SEARCH[id],a=await nativeCatalogSearch(term,{providerIds:nativeEnabledProviderIds(),limit:24,kinds:[kind]});result=a.items||[]}
+  if(String(id).startsWith('cat:')){const parts=String(id).split(':'),kind=parts[1],group=decodeURIComponent(parts.slice(2).join(':'));result=(await nativeCatalogQuery({kind,providerIds:nativeEnabledProviderIds(),group,limit:HOME_STANDARD_ROW_LIMIT,sort:'recent'})).items||[]}
+  else if(id==='new-movies'||id==='movies')result=(await nativeCatalogQuery({kind:'movie',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'recent'})).items||[];
+  else if(id==='new-shows'||id==='shows')result=(await nativeCatalogQuery({kind:'series',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'recent'})).items||[];
+  else if(id==='live-now')result=(await nativeCatalogQuery({kind:'live',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'name'})).items||[];
+  else if(id==='top-rated-movies')result=(await nativeCatalogQuery({kind:'movie',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'rating'})).items||[];
+  else if(id==='top-rated-shows')result=(await nativeCatalogQuery({kind:'series',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'rating'})).items||[];
+  else if(id==='documentary'){const a=await nativeCatalogSearch('documentary',{providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,kinds:['movie','series']});result=a.items||[]}
+  else if(NATIVE_HOME_SEARCH[id]){const [kind,term]=NATIVE_HOME_SEARCH[id],a=await nativeCatalogSearch(term,{providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,kinds:[kind]});result=a.items||[]}
   result=cacheNativeItems(result);nativeHomeRowCache.set(id,result);return result;
 }
 async function primeNativeHomeRows(){if(!nativeCatalogMode||nativeHomePrimeBusy||state.page!=='home')return;const skip=new Set(['continue','recently-watched','recommended','recent-live','mylist']);const ids=selectedHomeRows().map(x=>x.id).filter(id=>!WEB_ROW_IDS.has(id)&&!String(id).startsWith('custom:')&&!skip.has(id)&&!nativeHomeRowCache.has(id)).slice(0,10);if(!ids.length)return;nativeHomePrimeBusy=true;try{for(const id of ids){await loadNativeHomeRow(id).catch(()=>[]);await new Promise(r=>setTimeout(r,0))}}finally{nativeHomePrimeBusy=false;if(state.page==='home'&&!modal&&!detailItem&&!playerItem)render()}}
@@ -137,6 +137,8 @@ const HERO_ROTATION_MS=8000;
 const LARGE_LIBRARY_THRESHOLD=12000;
 const HOME_EAGER_ROWS=5;
 const HOME_EAGER_CARDS=12;
+const HOME_TOP20_LIMIT=20;
+const HOME_STANDARD_ROW_LIMIT=100;
 let lazyHomeObserver=null,searchDebounceTimer=null;
 function largeLibraryMode(){return state.settings.performanceMode!=='cinematic'&&catalogLogicalTotal()>=LARGE_LIBRARY_THRESHOLD}
 function performanceLabel(){return largeLibraryMode()?'Optimized for large library':'Full cinematic rendering'}
@@ -217,9 +219,9 @@ function visualItem(item){
   if(!item)return item;
   // Demo titles are intentionally fictional UI placeholders. Never let cached/remote metadata
   // turn a synthetic title into unrelated real-world artwork just because the names collide.
-  if(isDemoItem(item))return {...item,logo:'',backdrop:'',titleLogo:'',plot:'',rating:'',tmdbId:'',imdbId:''};
+  if(isDemoItem(item))return {...item,logo:'',backdrop:'',titleLogo:'',plot:'',rating:'',imdbRating:'',tmdbId:'',imdbId:''};
   const meta=state.metadataCache?.[item.id]||{};
-  return {...item,...(meta||{}),logo:meta.poster||item.logo||'',backdrop:meta.backdrop||item.backdrop||'',plot:meta.plot||item.plot||'',year:meta.year||item.year||'',rating:meta.rating||item.rating||'',tmdbId:meta.tmdbId||item.tmdbId||''};
+  return {...item,...(meta||{}),logo:meta.poster||item.logo||'',backdrop:meta.backdrop||item.backdrop||'',plot:meta.plot||item.plot||'',year:meta.year||item.year||'',rating:meta.rating||item.rating||'',imdbRating:meta.imdbRating||item.imdbRating||'',tmdbId:meta.tmdbId||item.tmdbId||'',imdbId:meta.imdbId||item.imdbId||''};
 }
 function validHex(value){return /^#[0-9a-f]{6}$/i.test(String(value||''))?String(value).toLowerCase():'#050505'}
 function applyTheme(){const theme=themeById(state.settings.themeId||'chill'),root=document.documentElement,override=Boolean(state.settings.backgroundOverride),bg=override?validHex(state.settings.backgroundColor):theme.bg;root.dataset.theme=theme.id;root.style.setProperty('--bg',bg);root.style.setProperty('--swoop-bg',bg);root.style.setProperty('--surface',theme.surface);root.style.setProperty('--surface-2',theme.surface2);root.style.setProperty('--surface-3',theme.surface3);root.style.setProperty('--text',theme.text);root.style.setProperty('--muted',theme.muted);root.style.setProperty('--accent',theme.accent);root.style.setProperty('--accent-2',theme.accent2);root.style.setProperty('--theme-base-bg',theme.bg);document.querySelector('meta[name=theme-color]')?.setAttribute('content',bg);root.dataset.performance=largeLibraryMode()?'lean':'cinematic';}
@@ -229,7 +231,7 @@ function themePickerHtml(selectedId='chill',name='themeId'){const selected=theme
 async function enrichItemMetadata(item,{rerender=true}={}){
   if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind)||metadataPending.has(item.id))return;
   const cached=state.metadataCache?.[item.id];
-  if(cached?.checkedAt&&Date.now()-cached.checkedAt<7*86400000)return;
+  if(cached?.checkedAt&&Date.now()-cached.checkedAt<7*86400000&&Object.prototype.hasOwnProperty.call(cached,'imdbRating'))return;
   metadataPending.add(item.id);
   try{
     const metadata=await fetchTitleMetadata({settings:state.settings,item});
@@ -337,6 +339,7 @@ function yearNumber(item){const m=String(item?.year||item?.name||'').match(/(?:1
 function tenPointRating(value){const n=parseFloat(String(value??'').replace(',','.'));return Number.isFinite(n)&&n>0&&n<=10?n.toFixed(1):''}
 function ratingNumber(item){const meta=state.metadataCache?.[item?.id]||{},trusted=tenPointRating(meta.rating)||tenPointRating(item?.rating);return trusted?Number(trusted):0}
 function displayRating(item){const meta=state.metadataCache?.[item?.id]||{};return tenPointRating(meta.rating)}
+function displayImdbRating(item){const meta=state.metadataCache?.[item?.id]||{};return tenPointRating(meta.imdbRating)}
 function stableDailyOrder(list,key=''){const day=Math.floor(Date.now()/86400000);return [...list].sort((a,b)=>Math.abs(hash(`${day}|${key}|${a.id}`))-Math.abs(hash(`${day}|${key}|${b.id}`)))}
 function watchHistoryItems(){const out=[],seen=new Set();for(const x of [...state.watchHistory].sort((a,b)=>(b.lastPlayed||0)-(a.lastPlayed||0))){const item=savedItem(x.id)||x.item;if(item&&!seen.has(item.id)){seen.add(item.id);out.push(item)}}return out}
 function recentLiveItems(){return state.recentLive.map(savedItem).filter(Boolean)}
@@ -358,7 +361,7 @@ function matchTmdbRecommendations(recs=[],kind=''){
   }
   return collapseMovieSources(out,activeCatalog());
 }
-function personalizedRecommendations(limit=30){
+function personalizedRecommendations(limit=HOME_STANDARD_ROW_LIMIT){
   const history=[...new Map(watchHistoryItems().map(x=>x.kind==='episode'?(savedItem(x.parentSeriesId)||x):x).map(x=>[x.id,x])).values()].slice(0,12),exclude=new Set(history.map(x=>x.id));
   if(!history.length)return[];
   const direct=[];
@@ -460,7 +463,7 @@ function blendDiscoverySources(bundle,mediaType,mode='trending',limit=20){
   const score=new Map(),sourceHits=new Map(),logicalById=new Map();
   for(const [name,weight] of Object.entries(weights)){
     const payload=sources[name];if(!payload||!(Array.isArray(payload)?payload.length:Object.keys(payload||{}).length))continue;
-    const matched=matchMDBListToCatalog(payload,activeCatalog(),{sourceLimit:100,limit:70,mediaType});
+    const matched=matchMDBListToCatalog(payload,activeCatalog(),{sourceLimit:200,limit:HOME_STANDARD_ROW_LIMIT,mediaType});
     matched.forEach((raw,rank)=>{
       const item=savedItem(raw.id)||raw,id=item.id;logicalById.set(id,item);
       const decay=1/(1+rank*.095),prior=score.get(id)||0;
@@ -484,7 +487,7 @@ async function blendDiscoverySourcesNative(bundle,mediaType,mode='trending',limi
   const score=new Map(),sourceHits=new Map(),logicalById=new Map();
   for(const [name,weight] of Object.entries(weights)){
     const payload=sources[name];if(!payload||!(Array.isArray(payload)?payload.length:Object.keys(payload||{}).length))continue;
-    const result=await nativeCatalogMatchPayload(payload,mediaType,{sourceLimit:100,limit:70,providerIds:nativeEnabledProviderIds()}).catch(()=>null),matched=cacheNativeItems(result?.items||[]);
+    const result=await nativeCatalogMatchPayload(payload,mediaType,{sourceLimit:200,limit:HOME_STANDARD_ROW_LIMIT,providerIds:nativeEnabledProviderIds()}).catch(()=>null),matched=cacheNativeItems(result?.items||[]);
     matched.forEach((item,rank)=>{const id=item.id;logicalById.set(id,item);const decay=1/(1+rank*.095);score.set(id,(score.get(id)||0)+weight*decay);sourceHits.set(id,(sourceHits.get(id)||0)+1)});
   }
   const currentYear=new Date().getFullYear();
@@ -496,16 +499,16 @@ async function legacyDiscoveryFallback(id,apiKey){
   const mediaType=discoveryRowMediaType(id);
   if(id==='top20-movies'||id==='top20-shows'){
     const slug=mediaType==='movie'?'movies/popular':'shows/popular',payload=await getMDBListOfficialItems({apiKey,slug});
-    return matchMDBListToCatalog(payload,activeCatalog(),{limit:20,mediaType});
+    return matchMDBListToCatalog(payload,activeCatalog(),{limit:HOME_TOP20_LIMIT,mediaType});
   }
   if(id==='trending-movies'||id==='trending-shows'||id==='streaming-movies'||id==='streaming-shows'){
-    const payload=await getMDBListStreamingChart({apiKey,mediaType});return matchMDBListToCatalog(payload,activeCatalog(),{limit:20,mediaType});
+    const payload=await getMDBListStreamingChart({apiKey,mediaType});return matchMDBListToCatalog(payload,activeCatalog(),{limit:HOME_STANDARD_ROW_LIMIT,mediaType});
   }
   return[];
 }
 async function fetchBuiltInDiscovery(id,apiKey,force=false){
-  const mediaType=discoveryRowMediaType(id),mode=discoveryRowMode(id);
-  try{const bundle=await discoveryBundle(mediaType,force),items=nativeCatalogMode?await blendDiscoverySourcesNative(bundle,mediaType,mode,20):blendDiscoverySources(bundle,mediaType,mode,20);return {items,enhanced:Boolean(bundle?.enhanced),source:nativeCatalogMode?'swoop-sqlite':'swoop'};}
+  const mediaType=discoveryRowMediaType(id),mode=discoveryRowMode(id),rowLimit=String(id).startsWith('top20-')?HOME_TOP20_LIMIT:HOME_STANDARD_ROW_LIMIT;
+  try{const bundle=await discoveryBundle(mediaType,force),items=nativeCatalogMode?await blendDiscoverySourcesNative(bundle,mediaType,mode,rowLimit):blendDiscoverySources(bundle,mediaType,mode,rowLimit);return {items,enhanced:Boolean(bundle?.enhanced),source:nativeCatalogMode?'swoop-sqlite':'swoop'};}
   catch(err){const fallback=await legacyDiscoveryFallback(id,apiKey).catch(()=>[]);if(fallback.length)return {items:fallback,enhanced:false,source:'legacy',warning:err.message||String(err)};throw err}
 }
 async function refreshDiscoveryRows(force=false){
@@ -530,7 +533,8 @@ function card(item,poster=false,opts={}){
   item=visualItem(item);
   const fallback=item.demoColor||`linear-gradient(135deg,hsl(${Math.abs(hash(item.name))%360} 44% 34%),#080b12)`;
   const trustedRating=item.kind==='movie'||item.kind==='series'?displayRating(item):tenPointRating(item.rating);
-  const sub=item.kind==='live'?(item.group||'Live TV'):[item.year,trustedRating?`★ ${trustedRating}`:'',item.kind==='episode'&&item.season?`S${item.season} E${item.episodeNum||''}`:''].filter(Boolean).join('  ·  ');
+  const imdbRating=item.kind==='movie'||item.kind==='series'?displayImdbRating(item):'';
+  const sub=item.kind==='live'?(item.group||'Live TV'):(item.kind==='episode'&&item.season?`S${item.season} E${item.episodeNum||''}`:'');
   const art=item.logo?`<img class="card-art" data-swoop-art="${esc(item.logo)}" alt="" loading="lazy">`:'';
   const posterOwnsTitle=Boolean(poster&&['movie','series'].includes(item.kind)&&item.logo);
   const displayTitle=cleanDisplayTitle(item);
@@ -545,11 +549,12 @@ function card(item,poster=false,opts={}){
   const qualityBadge=liveQuality?`<span class="card-quality">${esc(liveQuality)}</span>`:'';
   const sources=Number(item.sourceCount||item.sources?.length||0)>1?`<span class="card-sources">${Number(item.sourceCount||item.sources.length)} SOURCES</span>`:'';
   const watched=item.kind!=='live'&&isWatched(item)?'<span class="card-watched">✓ WATCHED</span>':'';
+  const imdbBadge=poster&&['movie','series'].includes(item.kind)&&imdbRating?`<span class="card-imdb-rating"><b>IMDb</b> ${esc(imdbRating)}</span>`:'';
   const progress=Number.isFinite(Number(opts.progress))?Math.max(0,Math.min(100,Number(opts.progress))):null;
   const rank=Number.isFinite(Number(opts.rank))&&Number(opts.rank)>0?Number(opts.rank):null;
   const rankBadge=rank?`<div class="rank-badge"><span>${rank}</span></div>`:'';
   return `<button class="card ${poster?'poster':'landscape'} ${posterOwnsTitle?'poster-art-title':''} ${item.kind==='live'?'live-card':''} ${rank?'ranked-card':''}" ${action}="${esc(item.id)}" style="--card-bg:${fallback}" aria-label="${esc(displayTitle)}">
-    <div class="card-bg"></div>${art}<div class="card-shade"></div>${rankBadge}${liveBadge}${saved}${liveFav}${qualityBadge}${sources}${watched}
+    <div class="card-bg"></div>${art}<div class="card-shade"></div>${rankBadge}${liveBadge}${saved}${liveFav}${qualityBadge}${sources}${watched}${imdbBadge}
     <div class="card-copy">${titleHtml}${subHtml}<div class="card-hover"><span class="card-hover-icon">${item.kind==='live'||item.kind==='episode'?'▶':'ⓘ'}</span><span>${hoverAction}</span></div></div>
     ${progress!==null?`<div class="progress"><i style="width:${progress}%"></i></div>`:''}</button>`;
 }
@@ -605,7 +610,7 @@ function rail(title,data,poster=false,meta='',opts={}){
 
 function homeRowMarkup(def){
   const data=homeRowItems(def.id);if(!data.length)return'';
-  const baseLimit=def.ranked?20:(def.id==='live-now'?14:18),limit=largeLibraryMode()&&!def.ranked?Math.min(HOME_EAGER_CARDS,baseLimit):baseLimit;
+  const limit=String(def.id).startsWith('top20-')?HOME_TOP20_LIMIT:HOME_STANDARD_ROW_LIMIT;
   return rail(def.label,data.slice(0,limit),def.poster,discoveryMeta(def.id,data),{page:def.page,ranked:def.ranked,rowId:def.id,priority:PINNED_HOME_ROWS.includes(def.id)});
 }
 function lazyHomePlaceholder(def){return `<section class="section lazy-home-row swoop-render-section ${def.poster?'poster-placeholder':'landscape-placeholder'}" data-lazy-home-row="${esc(def.id)}"><div class="section-head"><div><h2>${esc(def.label)}</h2><span class="section-meta">Ready as you scroll</span></div></div><div class="lazy-row-skeleton ${def.poster?'poster-skeleton':'landscape-skeleton'}">${Array.from({length:5},()=>'<i></i>').join('')}</div></section>`}
@@ -715,9 +720,9 @@ function searchPage(){return `<main class="page search-page"><div class="search-
 function settingsPage(){
   const counts={live:nativeCatalogMode?nativeTotal('live'):items('live').length,movie:nativeCatalogMode?nativeTotal('movie'):items('movie').length,series:nativeCatalogMode?nativeTotal('series'):items('series').length};
   return `<main class="page settings-page"><div class="settings-hero"><div class="eyebrow">${esc(activeProfile()?.name||'SWOOP')} · PROFILE SETTINGS</div><h1>Settings</h1><p>Manage this profile, your unified providers, discovery rows and playback environment.</p></div><div class="page-content settings-list">
+  <section class="setting-card setting-card-feature"><div class="setting-icon">TV</div><div class="setting-main"><h3>TV Providers</h3><p>${state.providers.length?`${enabledProviders().length} enabled · ${state.providers.length} connected`:'Demo mode'}</p><div class="setting-stats"><span><strong>${counts.live.toLocaleString()}</strong> Unique Live</span><span><strong>${counts.movie.toLocaleString()}</strong> Unique Movies</span><span><strong>${counts.series.toLocaleString()}</strong> Shows</span><span><strong>${catalogRawTotal().toLocaleString()}</strong> Raw items</span></div><div class="cta-row"><button class="btn accent" data-modal="provider">Manage Providers</button>${state.providers.length?'<button class="btn secondary" data-provider-refresh-all>Refresh All</button>':''}</div></div></section>
   <section class="setting-card profile-setting-card"><div class="setting-icon profile-setting-avatar">${profileAvatarHtml(activeProfile(),'profile-avatar-lg')}</div><div class="setting-main"><h3>${esc(activeProfile()?.name||'Profile')}</h3><p>${activeProfile()?.kids?'Kids restrictions are enabled.':'Personal viewing profile.'} Continue Watching, My List, recommendations, favourite channels, Home order and theme are private to this profile.</p><div class="setting-stats"><span><strong>${state.profiles.length}</strong> Household profiles</span><span><strong>${state.watchHistory.length}</strong> Watched</span><span><strong>${state.liveFavourites.length}</strong> Live favourites</span></div><div class="cta-row"><button class="btn accent" data-profile-picker>Switch Profile</button><button class="btn secondary" data-profile-edit="${esc(activeProfile()?.id||'')}">Edit Profile</button></div></div></section>
   <section class="setting-card performance-setting-card"><div class="setting-icon">⚡</div><div class="setting-main"><h3>Performance</h3><p>${performanceLabel()}. Auto mode reduces off-screen rendering and background metadata work when Swoop detects a very large library.</p><div class="cta-row"><button class="btn ${state.settings.performanceMode!=='cinematic'?'accent':'secondary'}" data-performance-mode="auto">Auto / Recommended</button><button class="btn ${state.settings.performanceMode==='cinematic'?'accent':'secondary'}" data-performance-mode="cinematic">Full Cinematic</button></div><small>${catalogLogicalTotal().toLocaleString()} enabled logical library items · ${nativeCatalogMode?'SQLite query mode active · ':''}large-library optimization starts at ${LARGE_LIBRARY_THRESHOLD.toLocaleString()}.</small></div></section>
-  <section class="setting-card setting-card-feature"><div class="setting-icon">TV</div><div class="setting-main"><h3>TV Providers</h3><p>${state.providers.length?`${enabledProviders().length} enabled · ${state.providers.length} connected`:'Demo mode'}</p><div class="setting-stats"><span><strong>${counts.live.toLocaleString()}</strong> Unique Live</span><span><strong>${counts.movie.toLocaleString()}</strong> Unique Movies</span><span><strong>${counts.series.toLocaleString()}</strong> Shows</span><span><strong>${catalogRawTotal().toLocaleString()}</strong> Raw items</span></div><div class="cta-row"><button class="btn accent" data-modal="provider">Manage Providers</button>${state.providers.length?'<button class="btn secondary" data-provider-refresh-all>Refresh All</button>':''}</div></div></section>
   <section class="setting-card"><div class="setting-icon">＋</div><div class="setting-main"><h3>My List & Viewing</h3><p>${state.myList.length.toLocaleString()} saved · ${state.continueWatching.length.toLocaleString()} in progress · ${state.watchHistory.length.toLocaleString()} in viewing history.</p><div class="cta-row"><button class="btn secondary" data-page="mylist">Open My List</button>${state.continueWatching.length?'<button class="btn secondary" data-action="clear-history">Clear Continue Watching</button>':''}${state.watchHistory.length?'<button class="btn secondary" data-action="clear-viewing">Reset Recommendations</button>':''}</div></div></section>
   <section class="setting-card"><div class="setting-icon">▶</div><div class="setting-main"><h3>Smart Sources & Live TV</h3><p>${Object.keys(state.settings.movieSourcePreferences||{}).length.toLocaleString()} remembered movie source choices · ${state.liveFavourites.length.toLocaleString()} favourite live channels. Multi-source movies are ranked by quality/HDR/codec and still ask before playback.</p><div class="setting-stats"><span><strong>BEST</strong> source ranked first</span><span><strong>AUTO</strong> fallback on immediate failure</span><span><strong>FAST</strong> in-process live channel switching</span></div><div class="cta-row"><button class="btn secondary" data-page="live">Open Live TV</button>${Object.keys(state.settings.movieSourcePreferences||{}).length?'<button class="btn secondary" data-action="clear-source-preferences">Reset Source Choices</button>':''}${state.liveFavourites.length?'<button class="btn secondary" data-action="clear-live-favourites">Clear Live Favourites</button>':''}</div></div></section>
   <section class="setting-card"><div class="setting-icon">ROW</div><div class="setting-main"><h3>Home & Web Discovery</h3><p>${state.settings.homeRows.length} Home rows selected · ${state.settings.mdblistApiKey?'MDBList connected':'MDBList key not configured'}. Top 20 and Trending rows refresh automatically when enabled.</p><div class="cta-row"><button class="btn accent" data-modal="homeRows">Customize Home</button><button class="btn secondary" data-modal="mdblist">Add Custom MDBList Row</button></div>${state.mdblistRows.length?state.mdblistRows.map((r,i)=>`<div class="kv"><span>${esc(r.name)}</span><span>${r.items.length} matched · ${esc(relativeRefreshTime(r.updatedAt))} · <button class="nav-btn" data-remove-row="${i}">Remove</button></span></div>`).join(''):''}</div></section>
@@ -1020,7 +1025,7 @@ function toggleWatched(item){
   }else{
     const existing=watchHistoryEntry(item)||{};
     const entry={...existing,id:item.id,item:compactMediaSnapshot(item),lastPlayed:Date.now(),selectedSourceId:item._selectedSourceId||existing.selectedSourceId||'',completed:true,manualWatched:true,completedAt:Date.now()};
-    state.watchHistory=state.watchHistory.filter(x=>!ids.has(String(x?.id||'')));state.watchHistory.unshift(entry);state.watchHistory=state.watchHistory.slice(0,80);
+    state.watchHistory=state.watchHistory.filter(x=>!ids.has(String(x?.id||'')));state.watchHistory.unshift(entry);state.watchHistory=state.watchHistory.slice(0,HOME_STANDARD_ROW_LIMIT);
     state.continueWatching=state.continueWatching.filter(x=>!ids.has(String(x?.id||'')));
     toast('Marked as watched');
   }
@@ -1030,20 +1035,20 @@ function recordWatchHistory(item,{completed=false}={}){
   if(!item)return;
   const ids=new Set(logicalItemIds(item));
   if(item.kind==='live'){
-    state.recentLive=[item.id,...state.recentLive.filter(id=>!ids.has(String(id)))].slice(0,20);
+    state.recentLive=[item.id,...state.recentLive.filter(id=>!ids.has(String(id)))].slice(0,HOME_STANDARD_ROW_LIMIT);
     return;
   }
   const prior=state.watchHistory.find(x=>ids.has(String(x?.id||'')))||{};
   const done=Boolean(completed||prior.completed||prior.manualWatched);
   const entry={...prior,id:item.id,item:compactMediaSnapshot(item),lastPlayed:Date.now(),selectedSourceId:item._selectedSourceId||prior.selectedSourceId||'',completed:done,manualWatched:Boolean(prior.manualWatched),completedAt:done?Number(prior.completedAt||Date.now()):0};
-  state.watchHistory=state.watchHistory.filter(x=>!ids.has(String(x?.id||'')));state.watchHistory.unshift(entry);state.watchHistory=state.watchHistory.slice(0,80);
+  state.watchHistory=state.watchHistory.filter(x=>!ids.has(String(x?.id||'')));state.watchHistory.unshift(entry);state.watchHistory=state.watchHistory.slice(0,HOME_STANDARD_ROW_LIMIT);
 }
 function rememberWatching(item){
   if(!item)return;recordWatchHistory(item);
   if(item.kind==='live'){persist();return}
   const old=continueEntry(item.id)||{};
   const entry={id:item.id,item:compactMediaSnapshot(item),lastPlayed:Date.now(),progress:Number(old.progress||0),position:Number(old.position||0),duration:Number(old.duration||0),selectedSourceId:item._selectedSourceId||old.selectedSourceId||''};
-  const ids=new Set(logicalItemIds(item));state.continueWatching=state.continueWatching.filter(x=>!ids.has(String(x?.id||'')));state.continueWatching.unshift(entry);state.continueWatching=state.continueWatching.slice(0,40);persist();
+  const ids=new Set(logicalItemIds(item));state.continueWatching=state.continueWatching.filter(x=>!ids.has(String(x?.id||'')));state.continueWatching.unshift(entry);state.continueWatching=state.continueWatching.slice(0,HOME_STANDARD_ROW_LIMIT);persist();
 }
 function resumeSeconds(item){
   const e=continueEntry(item?.id);if(!e)return 0;
@@ -1062,7 +1067,7 @@ function updateContinueProgress(item,pb,force=false){
   if(pos<8&&pct<1&&!force)return;
   const old=continueEntry(item.id)||{};
   const entry={id:item.id,item:compactMediaSnapshot(item),lastPlayed:Date.now(),position:pos||Number(old.position||0),duration:duration||Number(old.duration||0),progress:pct||Number(old.progress||0),selectedSourceId:item._selectedSourceId||old.selectedSourceId||''};
-  const ids=new Set(logicalItemIds(item));state.continueWatching=state.continueWatching.filter(x=>!ids.has(String(x?.id||'')));state.continueWatching.unshift(entry);state.continueWatching=state.continueWatching.slice(0,40);
+  const ids=new Set(logicalItemIds(item));state.continueWatching=state.continueWatching.filter(x=>!ids.has(String(x?.id||'')));state.continueWatching.unshift(entry);state.continueWatching=state.continueWatching.slice(0,HOME_STANDARD_ROW_LIMIT);
   if(force||Date.now()-lastPlaybackPersist>7000){lastPlaybackPersist=Date.now();persist()}
 }
 function nextEpisodeFromMap(item){

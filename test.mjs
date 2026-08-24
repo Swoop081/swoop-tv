@@ -325,7 +325,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v079-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.9 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0712-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.12 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -334,7 +334,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.9'")&&swHotfix.includes('swoop-tv-v079-shell'),'v0.7.9 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.12'")&&swHotfix.includes('swoop-tv-v0712-shell'),'v0.7.12 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -344,7 +344,15 @@ assert(appSource.includes('posterOwnsTitle')&&appSource.includes('poster-art-tit
 assert(appSource.includes("source.name||item.name"),'Smart Source Selection must retain full raw source titles');
 assert(appSource.includes('function tenPointRating')&&appSource.includes('function displayRating')&&appSource.includes('rating:tenPointRating(enriched.rating)'),'Trusted 0–10 TMDb rating display guard missing');
 assert(appSource.includes('if(!history.length)return[]')&&appSource.includes('if(affinity<=0)return {item,score:0,tie:0}'),'Recommended For You cold-start/genre-affinity guard missing');
-assert(appSource.includes('function isDemoItem(item)')&&appSource.includes("if(isDemoItem(item))return {...item,logo:'',backdrop:'',titleLogo:'',plot:'',rating:'',tmdbId:'',imdbId:''}"),'Disconnected demo artwork cache guard missing');
+assert(appSource.includes('function isDemoItem(item)')&&appSource.includes("if(isDemoItem(item))return {...item,logo:'',backdrop:'',titleLogo:'',plot:'',rating:'',imdbRating:'',tmdbId:'',imdbId:''}"),'Disconnected demo artwork cache guard missing');
 assert(appSource.includes("if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind)||metadataPending.has(item.id))return;"),'Demo metadata lookup exclusion missing');
 assert(appSource.includes('const enriched=isDemoItem(item)?{}:'),'Demo detail metadata guard missing');
-console.log('Swoop TV v0.7.9 tests passed');
+assert(appSource.indexOf('<h3>TV Providers</h3>')<appSource.indexOf("profileAvatarHtml(activeProfile(),'profile-avatar-lg')")&&appSource.indexOf("profileAvatarHtml(activeProfile(),'profile-avatar-lg')")<appSource.indexOf('<h3>Performance</h3>'),'Settings hierarchy must begin TV Providers → Profile → Performance');
+assert(appSource.includes('const HOME_TOP20_LIMIT=20;')&&appSource.includes('const HOME_STANDARD_ROW_LIMIT=100;'),'Home rail 20/100 limits missing');
+assert(appSource.includes("String(def.id).startsWith('top20-')?HOME_TOP20_LIMIT:HOME_STANDARD_ROW_LIMIT"),'Home row renderer must preserve Top 20 while expanding other rails to 100');
+assert(appSource.includes('limit:HOME_STANDARD_ROW_LIMIT')&&appSource.includes('rowLimit=String(id).startsWith(\'top20-\')?HOME_TOP20_LIMIT:HOME_STANDARD_ROW_LIMIT'),'Native/web discovery Home row limits must support 100 items');
+assert(appSource.includes('function displayImdbRating')&&appSource.includes('card-imdb-rating')&&!appSource.includes("[item.year,trustedRating?`★ ${trustedRating}`"),'Poster cards must hide year/generic star metadata and expose the IMDb badge');
+const workerSource=fs.readFileSync(new URL('./cloudflare-worker/worker.js',import.meta.url),'utf8');
+assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes('external_ids')&&workerSource.includes("version:'0.1.8'"),'IMDb rating enrichment worker wiring missing');
+assert(appSource.includes("Object.prototype.hasOwnProperty.call(cached,'imdbRating')"),'Existing metadata caches must refresh once for IMDb rating enrichment');
+console.log('Swoop TV v0.7.12 tests passed');

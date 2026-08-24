@@ -30,8 +30,8 @@ TMDb: `https://www.themoviedb.org/`
 
 When TMDb supplies an official YouTube trailer key, Swoop can display that trailer using YouTube's standard embedded player. Swoop does not download or redistribute trailer video files.
 
-## MDBList discovery
+## MDBList discovery + rating enrichment
 
-Swoop TV can optionally use an owner-managed MDBList API key through the Swoop Cloudflare Worker to enrich built-in discovery rankings with streaming/popularity list signals. End-user IPTV credentials are not sent to MDBList.
+Swoop TV can optionally use an owner-managed MDBList API key through the Swoop Cloudflare Worker to enrich built-in discovery rankings with streaming/popularity list signals and to retrieve an IMDb rating for a title after TMDb has resolved its canonical IMDb ID. End-user IPTV credentials are not sent to MDBList.
 
 MDBList: `https://mdblist.com/`

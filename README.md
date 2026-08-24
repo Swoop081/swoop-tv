@@ -1,8 +1,31 @@
 # Swoop TV
 
-**Current build: v0.7.9 — Disconnected Demo Artwork Guard**
+**Current build: v0.7.12 — Poster IMDb Rating Overlay**
 
-This build fixes disconnected/demo presentation on top of v0.7.8. It does not change the proven Windows mpv compatibility profile or require a provider refresh.
+This build removes year text from movie/TV poster cards and replaces the old card metadata line with a compact **gold IMDb rating badge** in the bottom-right corner when a verified IMDb rating is available. IMDb IDs are resolved through TMDb external IDs, while the rating itself is fetched through the existing owner-managed MDBList integration. If MDBList is not configured or no IMDb rating is available, the badge stays hidden rather than showing a different score as IMDb. The 100-item Home rails, provider-priority Settings layout and proven Windows mpv playback profile are preserved.
+
+
+## Poster IMDb rating overlay
+
+- Movie and TV poster cards no longer show release year or a generic star score over the artwork.
+- When metadata resolves an IMDb title ID and the Swoop Worker has `MDBLIST_API_KEY`, Swoop requests the IMDb rating through MDBList and renders **IMDb x.x** in a compact gold badge at the bottom-right of the poster.
+- Swoop never relabels a TMDb/provider rating as IMDb. If the IMDb rating is missing, unavailable or the MDBList key is not configured, no badge is shown.
+- IMDb IDs are taken from TMDb `external_ids`, avoiding fuzzy title matching for the rating request.
+- Existing cached provider/library data is reused; no provider refresh is required.
+
+## Expanded Home rails
+
+- Every Home row except the two **Top 20** rows can now expose up to **100 items** when that many matching titles are available.
+- This includes New & Recent, Trending, New & Hot, streaming/weekly charts, provider categories, Live Now, My List, Continue Watching, Recently Watched, Recent Channels, Recommended For You and custom MDBList rows.
+- **Top 20 Movies** and **Top 20 TV Shows** remain capped at exactly **20** and retain their ranked presentation.
+- Native SQLite Home queries and web-discovery matching now request enough results to support the larger rails. Artwork remains viewport-lazy and lower Home rows remain lazy-mounted for large libraries.
+
+
+## Settings provider priority
+
+- **TV Providers** is now the first card in Settings, directly below the Settings header.
+- Profile controls now follow TV Providers, with Performance immediately after the profile card.
+- Provider counts, Manage Providers, Refresh All and all provider behavior are unchanged; this is a navigation/hierarchy improvement only.
 
 ## Disconnected demo artwork
 
