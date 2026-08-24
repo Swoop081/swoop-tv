@@ -1,7 +1,12 @@
 # Swoop TV
 
-**Current build: v0.7.34 — TV Hero + Title Logo Reliability**
+**Current build: v0.7.35 — Curated Home + Snoak Daily Rails**
 
+
+
+### v0.7.35 — Curated Home + Snoak Daily Rails
+
+Home is now a deliberately curated discovery surface. The active default layout keeps Continue Watching, Top 100 Movies/TV, New & Hot and provider Recently Added rows at the top; removes the older Recently Watched, Recent Channels, Trending, Live Now, Top Rated and three generic genre rows; then adds the requested Snoak/MDBList platform/latest/popular rails in a fixed order. **Recommended For You** and **My List** are retained at the bottom. Existing profiles migrate once without clearing provider, watch, resume, My List or SQLite state. The bundled Cloudflare Worker is **v0.1.19** and must be redeployed for the new Snoak feeds.
 
 
 ### v0.7.34 — TV Hero + Title Logo Reliability
@@ -81,7 +86,7 @@ The TV Guide now uses the provider's **channel categories as the primary navigat
 
 Swoop TV uses a curated set of **Snoak's actively maintained MDBList lists as the primary external discovery layer** for Top 100, Trending, New & Hot and selected genre rails. The app still displays only titles that confidently exist in the user's enabled TV-provider library; Snoak/MDBList determines ranking and candidate order, never playability.
 
-The bundled Cloudflare Worker is **v0.1.18**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable.
+The bundled Cloudflare Worker is **v0.1.19**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable.
 
 ### Snoak-backed discovery
 

@@ -81,8 +81,20 @@ async function ensureNativePage(kind,{force=false}={}){
 }
 function scheduleNativePage(kind,force=false){if(!nativeCatalogMode)return;const cache=nativePageCache[kind],group=kind==='live'?liveCategory:(pageCategory[kind]||''),want=`${providerFilter}|${group}|${viewLimits[kind]||(kind==='live'?96:72)}`;if(!force&&cache.key===want&&cache.items.length)return;setTimeout(async()=>{const before=cache.key;await ensureNativePage(kind,{force});if((before!==cache.key||force)&&((state.page==='movies'&&kind==='movie')||(state.page==='series'&&kind==='series')||(state.page==='live'&&kind==='live')))render()},0)}
 const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows'];
+const PRIMARY_HOME_ROWS=['new-hot-movies','new-hot-shows','new-movies','new-shows'];
+const CURATED_SNOAK_HOME_ORDER=[
+  'snoak-latest-netflix-shows','snoak-latest-amazon-prime-shows','snoak-latest-apple-tv-shows','snoak-latest-hbo-max-shows-a','snoak-latest-disney-shows','snoak-latest-hbo-max-shows-b','snoak-latest-miniseries-shows','snoak-popular-kdrama-shows','snoak-trending-anime-shows',
+  'snoak-popular-action-movies','snoak-popular-action-shows','snoak-popular-animated-movies','snoak-popular-animated-shows','snoak-popular-comedy-movies','snoak-popular-comedy-shows','snoak-popular-documentary-movies','snoak-popular-documentary-shows','snoak-popular-drama-movies','snoak-popular-drama-shows','snoak-popular-horror-movies','snoak-popular-horror-shows','snoak-popular-reality-shows','snoak-popular-romance-movies','snoak-popular-romance-shows','snoak-popular-scifi-movies','snoak-popular-scifi-shows','snoak-popular-thriller-movies','snoak-popular-thriller-shows'
+];
+const BOTTOM_HOME_ROWS=['recommended','mylist'];
+const HOME_REMOVED_ROWS=new Set(['recently-watched','recent-live','trending-movies','trending-shows','live-now','top-rated-movies','top-rated-shows','action-movies','comedy-movies','drama-shows']);
 function normalizeHomeRows(rows=[]){const source=Array.isArray(rows)?rows:[],rest=[];for(const id of source){if(!id||id==='because-you-watched'||PINNED_HOME_ROWS.includes(id)||rest.includes(id))continue;rest.push(id)}return [...PINNED_HOME_ROWS,...rest]}
-const DEFAULT_HOME_ROWS=normalizeHomeRows(['continue','top20-movies','top20-shows','recommended','recently-watched','recent-live','mylist','trending-movies','trending-shows','new-hot-movies','new-hot-shows','live-now','new-movies','new-shows','action-movies','comedy-movies','drama-shows']);
+function migrateCuratedHomeRows(rows=[]){
+  const source=normalizeHomeRows(rows),locked=new Set([...PINNED_HOME_ROWS,...PRIMARY_HOME_ROWS,...CURATED_SNOAK_HOME_ORDER,...BOTTOM_HOME_ROWS]);
+  const retained=source.filter(id=>!HOME_REMOVED_ROWS.has(id)&&!locked.has(id));
+  return normalizeHomeRows([...PRIMARY_HOME_ROWS,...CURATED_SNOAK_HOME_ORDER,...retained,...BOTTOM_HOME_ROWS]);
+}
+const DEFAULT_HOME_ROWS=normalizeHomeRows([...PRIMARY_HOME_ROWS,...CURATED_SNOAK_HOME_ORDER,...BOTTOM_HOME_ROWS]);
 const DEFAULT_STATE={page:'home',catalog:[],provider:null,providers:[],myList:[],favourites:[],liveFavourites:[],continueWatching:[],watchHistory:[],recentLive:[],profiles:[],activeProfileId:'',mdblistRows:[],webDiscovery:{},metadataCache:{},settings:{mdblistApiKey:'',xtreamRelayUrl:'',xtreamRelayToken:'',metadataServiceUrl:'',themeId:'chill',backgroundColor:'#050505',backgroundOverride:false,movieSourcePreferences:{},homeRows:[...DEFAULT_HOME_ROWS],smartHomeOrder:true,performanceMode:'auto'}};
 const loaded=loadState()||{};
 let savedProviderProfiles=loadProviderProfiles()||[];
@@ -98,7 +110,13 @@ syncLegacyProvider();
 if(!Array.isArray(state.settings.homeRows)||!state.settings.homeRows.length)state.settings.homeRows=[...DEFAULT_HOME_ROWS];
 state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);
 if(Number(state.settings.personalizationSchemaVersion||0)<2){for(const id of ['recommended','recently-watched','recent-live'])if(!state.settings.homeRows.includes(id))state.settings.homeRows.push(id);state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);state.settings.personalizationSchemaVersion=2;}
-const DISCOVERY_MATCH_SCHEMA=5;
+const HOME_LAYOUT_SCHEMA=4;
+if(Number(state.settings.homeLayoutSchemaVersion||0)<HOME_LAYOUT_SCHEMA){
+  state.settings.homeRows=migrateCuratedHomeRows(state.settings.homeRows);
+  if(Array.isArray(state.profiles))state.profiles=state.profiles.map(p=>({...p,profileSettings:{...(p?.profileSettings||{}),homeRows:migrateCuratedHomeRows(p?.profileSettings?.homeRows||DEFAULT_HOME_ROWS)}}));
+  state.settings.homeLayoutSchemaVersion=HOME_LAYOUT_SCHEMA;
+}
+const DISCOVERY_MATCH_SCHEMA=6;
 const invalidateDiscovery=Number(state.settings.discoverySchemaVersion||0)!==DISCOVERY_MATCH_SCHEMA;
 if(invalidateDiscovery){state.webDiscovery={};state.settings.discoverySchemaVersion=DISCOVERY_MATCH_SCHEMA;}
 const METADATA_ARTWORK_SCHEMA=4;
@@ -430,6 +448,34 @@ const HOME_ROW_DEFS=[
   {id:'live-now',label:'Live Now',group:'Your provider',poster:false,page:'live'},
   {id:'new-movies',label:'Recently Added Movies',group:'Your provider',poster:true,page:'movies',description:'Newest movie additions reported by your TV provider'},
   {id:'new-shows',label:'Recently Added TV Shows',group:'Your provider',poster:true,page:'series',description:'Newest TV additions or updates reported by your TV provider'},
+  {id:'snoak-latest-netflix-shows',label:'Latest Netflix Shows',group:'Snoak Daily Lists',poster:true,description:'Snoak/MDBList latest Netflix shows matched to your provider library'},
+  {id:'snoak-latest-amazon-prime-shows',label:'Latest Amazon Prime Shows',group:'Snoak Daily Lists',poster:true,description:'Snoak/MDBList latest Amazon Prime shows matched to your provider library'},
+  {id:'snoak-latest-apple-tv-shows',label:'Latest Apple TV+ Shows',group:'Snoak Daily Lists',poster:true,description:'Snoak/MDBList latest Apple TV+ shows matched to your provider library'},
+  {id:'snoak-latest-hbo-max-shows-a',label:'Latest HBO Max Shows',group:'Snoak Daily Lists',poster:true,description:'Snoak/MDBList latest HBO Max shows matched to your provider library'},
+  {id:'snoak-latest-disney-shows',label:'Latest Disney+ Shows',group:'Snoak Daily Lists',poster:true,description:'Snoak/MDBList latest Disney+ shows matched to your provider library'},
+  {id:'snoak-latest-hbo-max-shows-b',label:'Latest HBO Max Shows',group:'Snoak Daily Lists',poster:true,description:'Second requested Snoak/MDBList HBO Max row, matched to your provider library'},
+  {id:'snoak-latest-miniseries-shows',label:'Latest Mini Series',group:'Snoak Daily Lists',poster:true,description:'Snoak/MDBList latest miniseries matched to your provider library'},
+  {id:'snoak-popular-kdrama-shows',label:'Popular K-Drama Shows',group:'Snoak Daily Lists',poster:true,description:'Snoak/MDBList popular K-Drama shows matched to your provider library'},
+  {id:'snoak-trending-anime-shows',label:'Trending Anime Shows',group:'Snoak Daily Lists',poster:true,description:'Snoak/MDBList trending anime shows matched to your provider library'},
+  {id:'snoak-popular-action-movies',label:'Popular Action Movies',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-action-shows',label:'Popular Action Shows',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-animated-movies',label:'Popular Animated Movies',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-animated-shows',label:'Popular Animated Shows',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-comedy-movies',label:'Popular Comedy Movies',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-comedy-shows',label:'Popular Comedy Shows',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-documentary-movies',label:'Popular Documentary Movies',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-documentary-shows',label:'Popular Documentary Shows',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-drama-movies',label:'Popular Drama Movies',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-drama-shows',label:'Popular Drama Shows',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-horror-movies',label:'Popular Horror Movies',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-horror-shows',label:'Popular Horror Shows',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-reality-shows',label:'Popular Reality Shows',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-romance-movies',label:'Popular Romance Movies',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-romance-shows',label:'Popular Romance Shows',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-scifi-movies',label:'Popular Sci-Fi Movies',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-scifi-shows',label:'Popular Sci-Fi Shows',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-thriller-movies',label:'Popular Thriller Movies',group:'Snoak Daily Lists',poster:true},
+  {id:'snoak-popular-thriller-shows',label:'Popular Thriller Shows',group:'Snoak Daily Lists',poster:true},
   {id:'top-rated-movies',label:'Top Rated Movies',group:'Your provider',poster:true},
   {id:'top-rated-shows',label:'Top Rated TV Shows',group:'Your provider',poster:true},
   {id:'action-movies',label:'Action Movies',group:'Categories',poster:true},
@@ -462,17 +508,36 @@ const HOME_ROW_DEFS=[
   {id:'shows',label:'All TV Shows',group:'Your provider',poster:true,page:'series'}
 ];
 const SNOAK_CURATED_ROWS=new Map([
+  ['snoak-latest-netflix-shows','latest-netflix-shows'],
+  ['snoak-latest-amazon-prime-shows','latest-amazon-prime-shows'],
+  ['snoak-latest-apple-tv-shows','latest-apple-tv-shows'],
+  ['snoak-latest-hbo-max-shows-a','latest-hbo-max-shows'],
+  ['snoak-latest-disney-shows','latest-disney-shows'],
+  ['snoak-latest-hbo-max-shows-b','latest-hbo-max-shows'],
+  ['snoak-latest-miniseries-shows','latest-miniseries'],
+  ['snoak-popular-kdrama-shows','popular-kdrama-shows'],
+  ['snoak-trending-anime-shows','trending-anime-shows'],
+  ['snoak-popular-action-movies','genre-action-movies'],['snoak-popular-action-shows','genre-action-shows'],
+  ['snoak-popular-animated-movies','genre-animation-movies'],['snoak-popular-animated-shows','genre-animation-shows'],
+  ['snoak-popular-comedy-movies','genre-comedy-movies'],['snoak-popular-comedy-shows','genre-comedy-shows'],
+  ['snoak-popular-documentary-movies','genre-documentary'],['snoak-popular-documentary-shows','genre-documentary-shows'],
+  ['snoak-popular-drama-movies','genre-drama-movies'],['snoak-popular-drama-shows','genre-drama-shows'],
+  ['snoak-popular-horror-movies','genre-horror-movies'],['snoak-popular-horror-shows','genre-horror-shows'],
+  ['snoak-popular-reality-shows','genre-reality-shows'],
+  ['snoak-popular-romance-movies','genre-romance-movies'],['snoak-popular-romance-shows','genre-romance-shows'],
+  ['snoak-popular-scifi-movies','genre-scifi-movies'],['snoak-popular-scifi-shows','genre-scifi-shows'],
+  ['snoak-popular-thriller-movies','genre-thriller-movies'],['snoak-popular-thriller-shows','genre-thriller-shows'],
+  // Existing optional category rows keep Snoak backing when enabled manually.
   ['action-movies','genre-action-movies'],['action-shows','genre-action-shows'],
   ['animation-movies','genre-animation-movies'],['animation-shows','genre-animation-shows'],
   ['comedy-movies','genre-comedy-movies'],['comedy-shows','genre-comedy-shows'],
   ['crime-shows','genre-crime-shows'],
   ['drama-movies','genre-drama-movies'],['drama-shows','genre-drama-shows'],
-  ['horror-movies','genre-horror-movies'],
-  ['reality-shows','genre-reality-shows'],
-  ['romance-movies','genre-romance-movies'],
-  ['scifi-movies','genre-scifi-movies'],['scifi-shows','genre-scifi-shows'],
+  ['horror-movies','genre-horror-movies'],['reality-shows','genre-reality-shows'],
+  ['romance-movies','genre-romance-movies'],['scifi-movies','genre-scifi-movies'],['scifi-shows','genre-scifi-shows'],
   ['thriller-movies','genre-thriller-movies'],['thriller-shows','genre-thriller-shows']
 ]);
+
 const HOME_ROW_MAP=new Map(HOME_ROW_DEFS.map(x=>[x.id,x]));
 const WEB_ROW_IDS=new Set([...HOME_ROW_DEFS.filter(x=>x.web).map(x=>x.id),...SNOAK_CURATED_ROWS.keys()]);
 function providerCategoryDefs(){
@@ -491,14 +556,18 @@ function homeRowDef(id){
 function allHomeRowDefs(){return [...HOME_ROW_DEFS,...providerCategoryDefs(),...state.mdblistRows.map(r=>homeRowDef(`custom:${r.uid}`)).filter(Boolean)]}
 function selectedHomeRows(){
   const normalized=normalizeHomeRows(state.settings.homeRows);
-  let defs=normalized.map(homeRowDef).filter(Boolean);
-  const pinned=PINNED_HOME_ROWS.map(id=>defs.find(x=>x.id===id)).filter(Boolean);
-  let rest=defs.filter(x=>!PINNED_HOME_ROWS.includes(x.id));
+  const defs=normalized.map(homeRowDef).filter(Boolean),byId=new Map(defs.map(x=>[x.id,x]));
+  const pinned=PINNED_HOME_ROWS.map(id=>byId.get(id)).filter(Boolean);
+  const primary=PRIMARY_HOME_ROWS.map(id=>byId.get(id)).filter(Boolean);
+  const snoak=CURATED_SNOAK_HOME_ORDER.map(id=>byId.get(id)).filter(Boolean);
+  const bottom=BOTTOM_HOME_ROWS.map(id=>byId.get(id)).filter(Boolean);
+  const locked=new Set([...PINNED_HOME_ROWS,...PRIMARY_HOME_ROWS,...CURATED_SNOAK_HOME_ORDER,...BOTTOM_HOME_ROWS]);
+  let rest=defs.filter(x=>!locked.has(x.id));
   if(state.settings.smartHomeOrder!==false){
     const affinity=profileGenreAffinity(state.watchHistory,id=>savedItem(id),item=>[...mediaGenres(item)]);
     rest=smartRankRows(rest,affinity);
   }
-  return [...pinned,...rest];
+  return [...pinned,...primary,...snoak,...rest,...bottom];
 }
 function mediaSearchText(item){return `${item?.genre||''} ${item?.group||''} ${item?.name||''}`.toLowerCase()}
 function yearNumber(item){const m=String(item?.year||item?.name||'').match(/(?:19|20)\d{2}/);return m?Number(m[0]):0}
@@ -708,7 +777,7 @@ async function fetchBuiltInDiscovery(id,apiKey,force=false){
 async function refreshDiscoveryRows(force=false,userInitiated=false){
   if(discoveryRefreshing||!state.catalog.length)return;
   const apiKey=String(state.settings.mdblistApiKey||'').trim();
-  const mandatory=['top20-movies','top20-shows','trending-movies','trending-shows'];
+  const mandatory=['top20-movies','top20-shows'];
   const wanted=[...new Set([...state.settings.homeRows.filter(id=>WEB_ROW_IDS.has(id)),...mandatory])];
   const custom=state.settings.homeRows.filter(id=>String(id).startsWith('custom:'));
   const now=Date.now(),staleIds=wanted.filter(id=>force||!state.webDiscovery?.[id]?.updatedAt||now-state.webDiscovery[id].updatedAt>discoveryRowTtl(id));
@@ -839,7 +908,7 @@ function patchMountedHomeRows(ids=[]){
     if(!next)continue;
     current.replaceWith(next);const railEl=next.querySelector('.rail');if(railEl)railEl.scrollLeft=left;hydrateArtwork(next);bindDynamicCards(next);bindRailStability(next);changed=true;
   }
-  const status=document.querySelector('.discovery-status');if(status){status.textContent=discoveryRefreshing?'Refreshing Swoop TV discovery…':discoveryMessage||'Trending refreshes about every 90 minutes · Top 100 every 4 hours';status.classList.toggle('busy',discoveryRefreshing)}
+  const status=document.querySelector('.discovery-status');if(status){status.textContent=discoveryRefreshing?'Refreshing Swoop TV discovery…':discoveryMessage||'Snoak lists refresh about every 4 hours · Top 100 every 4 hours';status.classList.toggle('busy',discoveryRefreshing)}
   return changed;
 }
 function lazyHomePlaceholder(def){return `<section class="section lazy-home-row swoop-render-section ${def.poster?'poster-placeholder':'landscape-placeholder'}" data-lazy-home-row="${esc(def.id)}"><div class="section-head"><div><h2>${esc(def.label)}</h2><span class="section-meta">Ready as you scroll</span></div></div><div class="lazy-row-skeleton ${def.poster?'poster-skeleton':'landscape-skeleton'}">${Array.from({length:5},()=>'<i></i>').join('')}</div></section>`}
@@ -923,7 +992,7 @@ function home(){
   const rendered=rows.map((def,index)=>largeLibraryMode()&&index>=HOME_EAGER_ROWS?lazyHomePlaceholder(def):homeRowMarkup(def)).join('');
   const needsWeb=rows.some(r=>r.web||r.custom),hasKey=Boolean(String(state.settings.mdblistApiKey||'').trim()),customNeedsKey=rows.some(r=>r.custom)&&!hasKey;
   const discoveryNote=customNeedsKey?`<section class="web-discovery-callout"><div><span class="eyebrow">CUSTOM MDBLIST ROWS</span><h2>Connect MDBList for your own lists</h2><p>Swoop TV's built-in Top 100 and Trending rows are already automatic. An MDBList key on this device is only needed for custom personal MDBList rows.</p></div><button class="btn accent" data-modal="homeRows">Set up Custom Lists</button></section>`:'';
-  const status=discoveryRefreshing?'Refreshing Swoop TV discovery…':discoveryMessage||'Trending refreshes about every 90 minutes · Top 100 every 4 hours';
+  const status=discoveryRefreshing?'Refreshing Swoop TV discovery…':discoveryMessage||'Snoak lists refresh about every 4 hours · Top 100 every 4 hours';
   return `<main class="home-main">${hero(feature,providerName,{total:heroPool.length,index:heroRotationIndex})}<div class="content home-content"><div class="library-strip home-library-strip"><div><span class="library-dot"></span><strong>${state.catalog.length?esc(providerName):'Demo Library'}</strong><span>${homeCounts.live.toLocaleString()} live · ${homeCounts.movie.toLocaleString()} movies · ${homeCounts.series.toLocaleString()} shows</span></div><div class="home-library-actions"><span class="discovery-status ${discoveryRefreshing?'busy':''}">${esc(status)}</span><button class="library-manage" data-modal="homeRows">☰ Customize Home</button><button class="library-manage" data-modal="provider">${state.catalog.length?'Providers':'Connect Provider'} →</button></div></div>
     ${discoveryNote}${rendered||`<section class="web-discovery-callout"><div><span class="eyebrow">YOUR HOME</span><h2>Choose what Swoop TV shows here</h2><p>Select Top 100, Trending, Live TV, genres and more. You can change the row order any time.</p></div><button class="btn accent" data-modal="homeRows">Customize Home</button></section>`}
   </div></main>`;
@@ -1405,7 +1474,7 @@ function homeRowsModal(){
   <section class="theme-studio-card"><div class="theme-studio-copy"><span class="eyebrow">PROFILE THEME</span><h3>${esc(theme.name)}</h3><p>${esc(theme.description)}</p></div><div class="theme-picker-grid active-theme-picker">${SWOOP_THEMES.map(t=>`<button type="button" class="theme-choice ${t.id===theme.id?'active':''}" data-active-theme="${esc(t.id)}"><span class="theme-swatch" style="--theme-swatch:${esc(t.swatch)}"><i></i><b>${esc(t.name)}</b></span><span><strong>${esc(t.name)}</strong><small>${esc(t.tagline)}</small></span></button>`).join('')}</div></section>
   <section class="home-look-card theme-preview-${esc(theme.id)}" style="--preview-bg:${esc(bg)}"><div class="home-look-preview">${featureArt?`<img data-swoop-art="${esc(featureArt)}" alt="">`:''}<div class="home-look-shade"></div><div class="home-look-copy"><span class="eyebrow">${esc(theme.name.toUpperCase())} PREVIEW</span><strong>${esc(feature?.name||'Your featured title')}</strong><small>${esc(theme.tagline)} · ${state.settings.backgroundOverride?'Custom background':'Theme background'}</small></div></div><div class="home-look-controls"><span class="eyebrow">ADVANCED APPEARANCE</span><h3>Background colour override</h3><p>Each theme has its own base palette. Turn this on only when you want a custom background behind that theme.</p><label class="remember-row theme-bg-toggle"><input type="checkbox" data-bg-override ${state.settings.backgroundOverride?'checked':''}><span><strong>Use a custom background colour</strong><small>Saved only to ${esc(activeProfile()?.name||'this profile')}.</small></span></label><div class="colour-row ${state.settings.backgroundOverride?'':'disabled'}"><input id="homeBgColor" type="color" value="${esc(bg)}" aria-label="Background colour" ${state.settings.backgroundOverride?'':'disabled'}><input id="homeBgHex" type="text" value="${esc(bg)}" maxlength="7" aria-label="Background hex colour" ${state.settings.backgroundOverride?'':'disabled'}><button type="button" class="btn secondary compact-btn" data-bg-reset>Use ${esc(theme.name)} default</button></div><small class="metadata-note">Artwork source: provider images first, enhanced with TMDb backdrops when configured on ${esc(metadataServiceUrl(state.settings))}.</small><label class="remember-row smart-home-toggle"><input type="checkbox" data-smart-home-toggle ${state.settings.smartHomeOrder!==false?'checked':''}><span><strong>Smart Home ordering for ${esc(activeProfile()?.name||'this profile')}</strong><small>Let viewing history move relevant rows higher while Continue Watching and both Top 100 rows stay pinned at the top. Your selected rows remain under your control.</small></span></label></div></section>
   <section class="discovery-key-card"><div><span class="eyebrow">SWOOP TV DISCOVERY</span><h3>Built-in charts update automatically</h3><p>Top 100 and Trending now use Snoak's daily MDBList feeds as the primary ranking layer, blended with fallback TMDb and official chart signals supplied by the Swoop TV metadata service. End users do not need a Trakt or MDBList account. The key below is optional and is only used for custom MDBList rows you create yourself.</p></div><form id="homeDiscoveryForm"><div class="field"><label>Custom MDBList API key <span class="optional">Optional</span></label><input name="apiKey" type="password" value="${esc(state.settings.mdblistApiKey||'')}" placeholder="Only needed for your own MDBList rows"></div><div class="discovery-key-actions"><button class="btn accent" type="submit">Save Custom Key</button><button class="btn secondary" type="button" data-refresh-discovery>Refresh discovery now</button></div><small>${lastWeb?esc(relativeRefreshTime(lastWeb)):'No discovery refresh yet'}${discoveryRefreshing?' · Refreshing now…':''}</small></form></section>
-  <div class="home-row-toolbar"><div><strong>${state.settings.homeRows.length} rows selected</strong><span>Continue Watching, Top 100 Movies and Top 100 TV Shows are pinned first. ${state.settings.smartHomeOrder!==false?'Smart ordering personalises everything below them.':'Use ↑ ↓ to control the remaining rows.'}</span></div><div><button class="btn secondary compact-btn" data-modal="mdblist">＋ Custom MDBList Row</button><button class="btn secondary compact-btn" data-reset-home>Reset defaults</button></div></div>
+  <div class="home-row-toolbar"><div><strong>${state.settings.homeRows.length} rows selected</strong><span>Continue Watching, Top 100 Movies and Top 100 TV Shows are pinned first. The Snoak Daily Lists keep their curated order, while Recommended For You and My List stay at the bottom. ${state.settings.smartHomeOrder!==false?'Smart ordering only personalises any additional optional rows.':'Use ↑ ↓ to control additional optional rows.'}</span></div><div><button class="btn secondary compact-btn" data-modal="mdblist">＋ Custom MDBList Row</button><button class="btn secondary compact-btn" data-reset-home>Reset defaults</button></div></div>
   <div class="home-row-picker">${groups.map(group=>`<section class="home-row-group"><div class="home-row-group-title"><span>${esc(group)}</span></div>${defs.filter(x=>x.group===group).map(def=>{const pinned=PINNED_HOME_ROWS.includes(def.id),on=pinned||selected.has(def.id),index=state.settings.homeRows.indexOf(def.id),data=homeRowItems(def.id),cache=state.webDiscovery?.[def.id],err=cache?.error||(def.custom?state.mdblistRows.find(r=>`custom:${r.uid}`===def.id)?.error:'');return `<div class="home-row-option ${on?'selected':''} ${pinned?'pinned':''}"><button class="home-row-toggle" ${pinned?'disabled':`data-home-toggle="${esc(def.id)}"`} aria-pressed="${on?'true':'false'}"><span class="home-row-check">${pinned?'PIN':on?'✓':'＋'}</span><span><strong>${esc(def.label)}</strong><small>${pinned?'Pinned at the top of Home · ':''}${esc(def.description||`${data.length.toLocaleString()} items currently available`)}</small>${err?`<em>${esc(err)}</em>`:''}</span></button><div class="home-row-order">${on&&!pinned?`<button data-home-up="${esc(def.id)}" ${index<=PINNED_HOME_ROWS.length?'disabled':''} aria-label="Move ${esc(def.label)} up">↑</button><button data-home-down="${esc(def.id)}" ${index<0||index>=state.settings.homeRows.length-1?'disabled':''} aria-label="Move ${esc(def.label)} down">↓</button>`:''}</div></div>`}).join('')}</section>`).join('')}</div>
   <div class="home-row-footer"><span>Theme, rows and background are stored independently for this profile.</span><button class="btn accent" data-close>Done</button></div>
   </div></div></div>`;

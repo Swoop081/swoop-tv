@@ -1,3 +1,16 @@
+## v0.7.35 — Curated Home + Snoak Daily Rails
+
+- Rebuilds the default Home row sequence around a tighter discovery hierarchy while preserving the existing hero, Continue Watching and Top 100 ranked rails.
+- Removes **Recently Watched**, **Recent Channels**, **Trending Now — Movies**, **Trending Now — TV Shows**, **Live Now**, **Top Rated Movies**, **Top Rated TV Shows**, **Action Movies**, **Comedy Movies** and **Drama TV Shows** from the active Home layout. Their underlying history/live/metadata/catalogue systems remain intact.
+- Keeps **New & Hot Movies**, **New & Hot TV Shows**, **Recently Added Movies** and **Recently Added TV Shows** immediately below the pinned Continue Watching / Top 100 rows.
+- Adds 28 Snoak/MDBList Home rails in the requested fixed order: latest Netflix, Amazon Prime, Apple TV+, HBO Max, Disney+, the requested second HBO Max row, Latest Mini Series, Popular K-Drama, Trending Anime, then paired Popular Action / Animated / Comedy / Documentary / Drama / Horror / Romance / Sci-Fi / Thriller movie/show rails plus Popular Reality Shows.
+- Snoak rails are strict availability intersections: external list order decides ranking, but only titles confidently matched to the enabled provider library are rendered. Existing strict title/year/TMDb/IMDb identity protections remain in force.
+- **Recommended For You** and **My List** are retained but locked to the bottom of Home, below the curated Snoak block and any additional optional/custom rows.
+- Existing profiles are migrated once to the new Home layout without touching provider credentials, watched/resume state, My List contents, profile themes or SQLite catalogue data. Custom/optional rows not explicitly removed are preserved between the Snoak block and the two bottom rows.
+- Advances the discovery schema so old cached row identities are refreshed cleanly for the new Snoak rails.
+- Cloudflare Worker **v0.1.19** expands the Snoak allow-list with the platform/latest/miniseries/K-Drama/anime feeds and Popular Romance Shows. Redeploy is required for the new curated Home rails to populate from Snoak.
+- No provider refresh or SQLite rebuild is required.
+
 ## v0.7.34 — TV Hero + Title Logo Reliability
 
 - Fixes remaining TV-series title-logo failures caused by chained quality/provider prefixes including `4K-MAX -`, `4K-NF -`, `4K-AMZ -` and Disney shorthand such as `D+ -`.

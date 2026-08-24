@@ -347,6 +347,14 @@ const SNOAK_LISTS = Object.freeze({
   'movies-trakt-digital':{slug:'trakts-trending-movies-digital',mediaType:'movie'},
   'movies-latest':{slug:'latest-movies-digital-release',mediaType:'movie'},
   'shows-latest':{slug:'latest-tv-shows',mediaType:'tv'},
+  'latest-netflix-shows':{slug:'latest-netflix-tv-shows',mediaType:'tv'},
+  'latest-amazon-prime-shows':{slug:'latest-amazon-prime-tv-shows',mediaType:'tv'},
+  'latest-apple-tv-shows':{slug:'latest-apple-tv-plus-tv-shows',mediaType:'tv'},
+  'latest-hbo-max-shows':{slug:'latest-max-tv-shows',mediaType:'tv'},
+  'latest-disney-shows':{slug:'latest-disney-plus-tv-shows',mediaType:'tv'},
+  'latest-miniseries':{slug:'latest-miniseries',mediaType:'tv'},
+  'popular-kdrama-shows':{slug:'popular-kdrama-shows',mediaType:'tv'},
+  'trending-anime-shows':{slug:'trending-anime-shows',mediaType:'tv'},
 
   // Curated popular genre rails. Only a known allow-list can be requested by clients.
   'genre-action-movies':{slug:'action-movies',mediaType:'movie'},
@@ -364,6 +372,7 @@ const SNOAK_LISTS = Object.freeze({
   'genre-horror-shows':{slug:'horror-shows',mediaType:'tv'},
   'genre-reality-shows':{slug:'top-reality-shows',mediaType:'tv'},
   'genre-romance-movies':{slug:'popular-romance-movies',mediaType:'movie'},
+  'genre-romance-shows':{slug:'popular-romance-shows',mediaType:'tv'},
   'genre-scifi-movies':{slug:'science-fiction-movies',mediaType:'movie'},
   'genre-scifi-shows':{slug:'science-fiction-shows',mediaType:'tv'},
   'genre-thriller-movies':{slug:'thriller-movies',mediaType:'movie'},
@@ -613,7 +622,7 @@ async function handlePost(request, env) {
     const qs = new URLSearchParams({username, password});
     const target = `${server}/xmltv.php?${qs.toString()}`;
     try {
-      const upstream = await fetch(target,{method:'GET',headers:{'Accept':'application/xml,text/xml,text/plain,*/*','User-Agent':'SwoopTV-Connection-Helper/0.1.18'},redirect:'follow'});
+      const upstream = await fetch(target,{method:'GET',headers:{'Accept':'application/xml,text/xml,text/plain,*/*','User-Agent':'SwoopTV-Connection-Helper/0.1.19'},redirect:'follow'});
       const headers=corsHeaders(request);headers['Content-Type']=upstream.headers.get('Content-Type')||'application/xml; charset=utf-8';headers['X-Swoop-Upstream-Status']=String(upstream.status);
       return new Response(upstream.body,{status:upstream.status,headers});
     } catch (error) { return json(request,{error:`Could not reach the Xtream XMLTV guide from Cloudflare: ${error.message || error}`},502); }
@@ -652,7 +661,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.18',
+        version:'0.1.19',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
         discoveryConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
