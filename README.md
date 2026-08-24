@@ -1,8 +1,23 @@
 # Swoop TV
 
-**Current build: v0.7.35 — Curated Home + Snoak Daily Rails**
+**Current build: v0.7.38 — Faster Browse Artwork Hydration**
 
 
+
+
+
+
+
+### v0.7.38 — Faster Browse Artwork Hydration
+
+Movie and TV rails now hydrate visible and near-visible artwork much more aggressively without trying to load the whole 25k+ catalogue. Cards that arrive without provider artwork automatically request full TMDb metadata in the viewport, then patch the poster and IMDb badge directly into the existing card. Visible artwork is eager/high-priority, the prefetch margin now extends well ahead vertically and horizontally, and mixed-content/provider artwork relay concurrency is raised for the active screen. Broken provider posters can also fall back to metadata artwork. This is a client-side performance pass; no Cloudflare Worker redeploy, provider refresh or SQLite rebuild is required.
+### v0.7.37 — Faster Detail Hydration
+
+Title detail pages now start TMDb metadata and Xtream programme/episode hydration **before the first detail paint** instead of after it. Full TMDb metadata no longer waits for the slower MDBList IMDb-rating lookup; IMDb continues through its dedicated background route. Series/movie detail payloads are prewarmed on card hover/focus/touch and the active Home hero prewarms its provider detail payload, so opening a title that the user has already approached can be effectively instant. Cached results remain unchanged and no provider refresh or SQLite rebuild is required. The bundled Worker is **v0.1.21** with metadata parser **0.4.8**.
+
+### v0.7.36 — Crunchyroll TV Title Cleanup
+
+TV-series title cleanup now recognises Crunchyroll source prefixes including `CR -`, `Crunchyroll -` and `Crunchy Roll -`. Titles such as `CR - Mushoku Tensei: Jobless Reincarnation` are sent to TMDb and displayed as `Mushoku Tensei: Jobless Reincarnation`, while the raw provider/source name remains available where source identity matters. Cached no-logo results created before this parser update retry once automatically. The bundled Worker is **v0.1.20** with metadata parser **0.4.7**. No provider refresh or SQLite rebuild is required.
 
 ### v0.7.35 — Curated Home + Snoak Daily Rails
 
@@ -86,7 +101,7 @@ The TV Guide now uses the provider's **channel categories as the primary navigat
 
 Swoop TV uses a curated set of **Snoak's actively maintained MDBList lists as the primary external discovery layer** for Top 100, Trending, New & Hot and selected genre rails. The app still displays only titles that confidently exist in the user's enabled TV-provider library; Snoak/MDBList determines ranking and candidate order, never playability.
 
-The bundled Cloudflare Worker is **v0.1.19**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable.
+The bundled Cloudflare Worker is **v0.1.20**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable.
 
 ### Snoak-backed discovery
 

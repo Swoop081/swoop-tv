@@ -21,12 +21,12 @@ const MDBLIST_BASE = 'https://api.mdblist.com';
 function tmdbHeaders(env) {
   const token=String(env.TMDB_API_TOKEN || '').trim();
   if (!token) throw new Error('TMDb metadata is not configured on the Swoop TV service.');
-  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.6'};
+  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.8'};
 }
 
 function safeYear(value='') { const m=String(value||'').match(/(?:19|20)\d{2}/); return m?m[0]:''; }
 function cleanSearchTitle(value='') {
-  const prefixes=new Set(['amz','amazon','prime','prime video','nf','netflix','en','eng','english','atv','a+','apple tv','apple tv+','appletv+','apl','dsnp','d+','dplus','disney','disney+','hmax','max','hbo max','pmtp','paramount','paramount+','top','new','movie','movies','film','films','vod','us','uk','au','ca']);
+  const prefixes=new Set(['amz','amazon','prime','prime video','nf','netflix','en','eng','english','atv','a+','apple tv','apple tv+','appletv+','apl','dsnp','d+','dplus','disney','disney+','hmax','max','hbo max','cr','crunchyroll','crunchy roll','pmtp','paramount','paramount+','top','new','movie','movies','film','films','vod','us','uk','au','ca']);
   const qualityPrefix=/^(?:4320p|2160p|1080p|1080i|720p|576p|576i|480p|480i|8k|4k|uhd|fhd|hd|sd)\s*(?:[-–—|:•·]+\s*)+/i;
   let s=String(value||'').trim();
   for(let i=0;i<10;i++){
@@ -180,7 +180,7 @@ async function fetchMdbImdbRating(env,imdbId,type='movie') {
   url.searchParams.set('apikey',key);
   const res=await fetch(url.toString(),{
     method:'POST',
-    headers:{'Accept':'application/json','Content-Type':'application/json','User-Agent':'SwoopTV-Metadata/0.4.6'},
+    headers:{'Accept':'application/json','Content-Type':'application/json','User-Agent':'SwoopTV-Metadata/0.4.8'},
     body:JSON.stringify({ids:[String(imdbId)],provider:'imdb'})
   });
   if(!res.ok)return'';
@@ -226,10 +226,9 @@ async function handleMetadata(request, env, body) {
     });
     if(!exactYearMatch(year,tmdbMediaYear(item,type)))return json(request,{metadata:null},200);
     if(resolved.source==='title-year'&&!exactTitleMatch(title,tmdbMediaTitle(item,type)))return json(request,{metadata:null},200);
-    const resolvedImdbId=String(item?.external_ids?.imdb_id||imdbId||'');
-    let imdbRating='';
-    if(resolvedImdbId&&String(env.MDBLIST_API_KEY||'').trim()){try{imdbRating=await fetchMdbImdbRating(env,resolvedImdbId,type)}catch{}}
-    return new Response(JSON.stringify({metadata:metadataFromTmdb(item,type,imdbRating)}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=21600'}});
+    // Keep cinematic metadata latency independent of MDBList. IMDb ratings already have
+    // their own lightweight route and are hydrated asynchronously by the client.
+    return new Response(JSON.stringify({metadata:metadataFromTmdb(item,type,'')}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=21600'}});
   }catch(error){return json(request,{error:error.message||'Could not load TMDb metadata.'},502)}
 }
 
@@ -622,7 +621,7 @@ async function handlePost(request, env) {
     const qs = new URLSearchParams({username, password});
     const target = `${server}/xmltv.php?${qs.toString()}`;
     try {
-      const upstream = await fetch(target,{method:'GET',headers:{'Accept':'application/xml,text/xml,text/plain,*/*','User-Agent':'SwoopTV-Connection-Helper/0.1.19'},redirect:'follow'});
+      const upstream = await fetch(target,{method:'GET',headers:{'Accept':'application/xml,text/xml,text/plain,*/*','User-Agent':'SwoopTV-Connection-Helper/0.1.21'},redirect:'follow'});
       const headers=corsHeaders(request);headers['Content-Type']=upstream.headers.get('Content-Type')||'application/xml; charset=utf-8';headers['X-Swoop-Upstream-Status']=String(upstream.status);
       return new Response(upstream.body,{status:upstream.status,headers});
     } catch (error) { return json(request,{error:`Could not reach the Xtream XMLTV guide from Cloudflare: ${error.message || error}`},502); }
@@ -661,7 +660,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.19',
+        version:'0.1.21',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
         discoveryConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),

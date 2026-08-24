@@ -1,3 +1,33 @@
+## v0.7.38 — Faster Browse Artwork Hydration
+
+- Speeds up poster population across Home, Movies and TV Shows rails, especially large-library rows that previously sat on gradient placeholders while visible.
+- Visible and near-visible movie/TV cards now request full TMDb metadata when the provider item has no usable poster, instead of performing only the lightweight IMDb-rating lookup.
+- Poster/IMDb metadata patches the existing card in place; rows are not rebuilt and horizontal scroll position is preserved.
+- Visible artwork is promoted to eager/high-priority loading and the artwork observer prefetches substantially farther ahead both vertically and horizontally.
+- Mixed-content/provider artwork relay concurrency increases from 3 to 8 jobs in large-library Auto mode (6 to 12 in Full Cinematic), while high-priority visible jobs jump ahead of background artwork.
+- If a provider poster URL fails, Swoop TV can force one metadata repair lookup and substitute TMDb artwork rather than leaving the card permanently on a gradient.
+- Viewport metadata concurrency increases from 2 to 4 in large-library mode and unnecessary per-card delay is reduced, while work remains bounded to visible/near-visible cards rather than the whole catalogue.
+- No Cloudflare Worker redeploy, provider refresh, SQLite rebuild, profile reset, watched/resume reset or playback change is required.
+
+## v0.7.37 — Faster Detail Hydration
+
+- Starts TMDb metadata and Xtream movie/series detail requests before the first detail-screen paint so network work overlaps the immediate route transition instead of beginning afterward.
+- Adds detail prewarming on title-card hover, keyboard focus and touch-start. The active Home hero also prewarms its provider movie/series payload.
+- Adds a shared in-flight provider-detail cache so prewarm and click never duplicate the same Xtream request.
+- Full TMDb metadata no longer blocks on MDBList IMDb rating retrieval. The Worker returns poster/backdrop/title-logo/plot/cast metadata as soon as TMDb responds; IMDb ratings continue through the existing dedicated lightweight background route.
+- Fresh cinematic metadata is no longer re-requested solely because its IMDb rating cache is stale; rating refresh is queued independently.
+- Existing metadata/detail caches continue to work. No provider refresh, SQLite rebuild, profile reset, watched/resume reset or playback change is required.
+- Cloudflare Worker advances to **v0.1.21** / metadata parser **0.4.8**. Redeploy is recommended to remove MDBList latency from the full metadata route.
+
+## v0.7.36 — Crunchyroll TV Title Cleanup
+
+- Adds Crunchyroll provider/source aliases to TV/movie title cleanup: `CR`, `Crunchyroll` and `Crunchy Roll`.
+- Fixes provider titles such as `CR - Mushoku Tensei: Jobless Reincarnation` leaking the `CR -` source prefix into Home/detail hero titles and blocking clean TMDb title-logo lookup.
+- The same cleanup is used by display titles, metadata requests, strict identity matching and the Cloudflare Worker; raw provider names remain unchanged for source/provider contexts.
+- Title lookup schema advances to **4**, so stale pre-v0.7.36 no-logo cache entries for Crunchyroll-prefixed titles retry automatically once.
+- Cloudflare Worker advances to **v0.1.20** / metadata parser **0.4.7** for server-side parity. Redeploy is recommended, but the client performs the corrected cleanup itself.
+- No provider refresh, SQLite rebuild, watched/resume reset, Home-layout reset or playback change is required.
+
 ## v0.7.35 — Curated Home + Snoak Daily Rails
 
 - Rebuilds the default Home row sequence around a tighter discovery hierarchy while preserving the existing hero, Continue Watching and Top 100 ranked rails.

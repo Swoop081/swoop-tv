@@ -122,13 +122,13 @@ if(invalidateDiscovery){state.webDiscovery={};state.settings.discoverySchemaVers
 const METADATA_ARTWORK_SCHEMA=4;
 const invalidateMetadataArtwork=Number(state.settings.metadataArtworkSchemaVersion||0)!==METADATA_ARTWORK_SCHEMA;
 if(invalidateMetadataArtwork){state.metadataCache={};state.settings.metadataArtworkSchemaVersion=METADATA_ARTWORK_SCHEMA;}
-const TITLE_LOOKUP_SCHEMA=3;
+const TITLE_LOOKUP_SCHEMA=4;
 function needsTitleLookupPrefixRepair(item={}){
   const raw=String(item?.name||'').trim();
   // v0.7.34: provider catalogues commonly chain quality + service markers, e.g.
   // `4K-MAX - Lanterns`, `4K-NF - Outer Banks`, `4K-AMZ - Reacher`, or
   // `D+ - Lucky Luke`. These were missed by the earlier one-prefix repair.
-  return /^\s*[-–—|:•·]*\s*(?:(?:8K|4K|UHD|FHD|HD|SD)\s*[-–—|:•·]+\s*)?(?:MAX|HMAX|HBO\s+MAX|AMZ|AMAZON|PRIME(?:\s+VIDEO)?|NF|NETFLIX|A\+|ATV|APPLE\s*TV\+?|APPLETV\+|APL|DSNP|D\+|DPLUS|DISNEY\+?|PMTP|PARAMOUNT\+?)\s*(?:\||:|[-–—])/i.test(raw);
+  return /^\s*[-–—|:•·]*\s*(?:(?:8K|4K|UHD|FHD|HD|SD)\s*[-–—|:•·]+\s*)?(?:MAX|HMAX|HBO\s+MAX|AMZ|AMAZON|PRIME(?:\s+VIDEO)?|NF|NETFLIX|A\+|ATV|APPLE\s*TV\+?|APPLETV\+|APL|DSNP|D\+|DPLUS|DISNEY\+?|CR|CRUNCHYROLL|CRUNCHY\s+ROLL|PMTP|PARAMOUNT\+?)\s*(?:\||:|[-–—])/i.test(raw);
 }
 const IMDB_RATING_SCHEMA=2;
 const invalidateImdbRatings=Number(state.settings.imdbRatingSchemaVersion||0)!==IMDB_RATING_SCHEMA;
@@ -186,6 +186,7 @@ let longTask=null,longTaskTicker=null,longTaskClearTimer=null,longTaskSeq=0;
 const metadataPending=new Map();
 const visibleMetadataQueue=[];
 const visibleMetadataQueued=new Set();
+const visibleArtworkRepairIds=new Set();
 let visibleMetadataActive=0,visibleMetadataObserver=null;
 const DISCOVERY_REFRESH_MS=4*60*60*1000;
 const DISCOVERY_FAST_REFRESH_MS=90*60*1000;
@@ -194,6 +195,7 @@ let detailItem=null,detailPayload=null,detailLoading=false,detailError='',detail
 let personView=null,personLoading=false,personError='',personMovies=[],personShows=[],personProgress=0,personStatus='',personScrollTop=0;
 let suspendedBaseView=null,suspendedDetailView=null,suspendedPersonView=null;
 const detailCache=new Map();
+const detailPrefetchPending=new Map();
 const detailEpisodeItems=new Map();
 const viewLimits={live:96,movie:72,series:72};
 let guideLimit=48,guideCategory='',liveCategory='',providerFilter='all',pageCategory={movie:'',series:''};
@@ -338,7 +340,7 @@ function applyTheme(){const theme=themeById(state.settings.themeId||'chill'),roo
 function currentTheme(){return themeById(state.settings.themeId||'chill')}
 function profileTheme(profile){return themeById(profile?.profileSettings?.themeId||'chill')}
 function themePickerHtml(selectedId='chill',name='themeId'){const selected=themeById(selectedId).id;return `<div class="theme-picker-grid">${SWOOP_THEMES.map(t=>`<button type="button" class="theme-choice ${t.id===selected?'active':''}" data-profile-theme="${esc(t.id)}" data-theme-value="${esc(t.id)}"><span class="theme-swatch" style="--theme-swatch:${esc(t.swatch)}"><i></i><b>${esc(t.name)}</b></span><span><strong>${esc(t.name)}</strong><small>${esc(t.tagline)}</small></span></button>`).join('')}</div><input type="hidden" name="${esc(name)}" value="${esc(selected)}" id="profileThemeValue">`}
-async function enrichItemMetadata(item,{rerender=true}={}){
+async function enrichItemMetadata(item,{rerender=true,force=false}={}){
   if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind))return null;
   if(metadataPending.has(item.id))return metadataPending.get(item.id);
   const cached=state.metadataCache?.[item.id]||{},now=Date.now();
@@ -346,7 +348,7 @@ async function enrichItemMetadata(item,{rerender=true}={}){
   const titleLogoKnown=Boolean(cached.titleLogo||cached.titleLogoCheckedAt);
   const metadataFresh=Boolean(lookupSchemaCurrent&&cached.checkedAt&&now-cached.checkedAt<7*86400000&&titleLogoKnown);
   const imdbFresh=Boolean(cached.imdbRatingCheckedAt&&now-cached.imdbRatingCheckedAt<30*86400000);
-  if(metadataFresh&&imdbFresh)return cached;
+  if(metadataFresh&&!force){if(!imdbFresh)queueVisibleMetadata(item);return cached;}
   const task=(async()=>{
     try{
       const metadata=await fetchTitleMetadata({settings:state.settings,item}),stamp=Date.now(),hasImdbField=Boolean(tenPointRating(metadata?.imdbRating));
@@ -354,6 +356,7 @@ async function enrichItemMetadata(item,{rerender=true}={}){
       if(metadata?.tmdbId&&!item.tmdbId)item.tmdbId=metadata.tmdbId;
       if(metadata?.imdbId&&!item.imdbId)item.imdbId=metadata.imdbId;
       persist('cache');
+      if(!hasImdbField)queueVisibleMetadata(item);
       if(rerender&&(state.page==='home'||detailItem?.id===item.id||modal==='homeRows'))render();
       return state.metadataCache[item.id];
     }catch(err){const stamp=Date.now();state.metadataCache[item.id]={...cached,checkedAt:stamp,titleLogoCheckedAt:stamp,error:err.message||String(err)};metadataRevision++;persist('cache');return state.metadataCache[item.id];}
@@ -366,7 +369,7 @@ function scheduleMetadataEnrichment(){
   // Always hydrate the hero the user can actually see first. In large libraries the
   // old `first four candidates` shortcut meant later TV hero slides could sit on raw
   // provider names forever even after the user rotated to them.
-  const activeHero=state.page==='home'?featureItem():null;if(activeHero)queue.push(activeHero);
+  const activeHero=state.page==='home'?featureItem():null;if(activeHero){queue.push(activeHero);prefetchDetailPayload(activeHero).catch(()=>null);}
   for(const heroItem of heroCandidates().slice(0,largeLibraryMode()?6:10))if(heroItem)queue.push(heroItem);
   if(state.page==='home')for(const def of selectedHomeRows().slice(0,largeLibraryMode()?3:8))for(const item of homeRowItems(def.id).slice(0,largeLibraryMode()?3:5))queue.push(item);
   if(detailItem)queue.unshift(detailItem);
@@ -374,17 +377,25 @@ function scheduleMetadataEnrichment(){
   const unique=[...new Map(queue.filter(Boolean).map(x=>[x.id,x])).values()].filter(x=>!isDemoItem(x)&&['movie','series'].includes(x.kind)).slice(0,largeLibraryMode()?6:12);
   let i=0;const next=()=>{if(i>=unique.length)return;const target=unique[i++];enrichItemMetadata(target,{rerender:false}).then(()=>patchHomeHeroTitle(target)).finally(()=>setTimeout(next,largeLibraryMode()?450:140))};next();
 }
-function visibleMetadataLimit(){return largeLibraryMode()?2:4}
-function visibleMetadataDelay(){return largeLibraryMode()?180:70}
-function updateVisibleImdbBadges(itemId){
-  const rating=displayImdbRating({id:itemId});
+function visibleMetadataLimit(){return largeLibraryMode()?4:7}
+function visibleMetadataDelay(){return largeLibraryMode()?45:20}
+function updateVisibleCardMetadata(itemId){
+  const rating=displayImdbRating({id:itemId}),source=savedItem(itemId),visual=source?visualItem(source):null,poster=visual?.logo||'';
   for(const el of document.querySelectorAll('[data-imdb-item]')){
     if(el.dataset.imdbItem!==String(itemId))continue;
     let badge=el.querySelector('.card-imdb-rating');
     if(rating){if(!badge){badge=document.createElement('span');badge.className='card-imdb-rating';el.appendChild(badge)}badge.innerHTML=`<b>IMDb</b> ${rating}`;}else badge?.remove();
+    if(poster){
+      let img=el.querySelector('.card-art');
+      const applyPosterTitleMode=()=>{if(!el.classList.contains('poster'))return;el.classList.add('poster-art-title');el.querySelector('.card-title')?.remove()};
+      if(!img){img=document.createElement('img');img.className='card-art';img.alt='';img.dataset.swoopArt=poster;const bg=el.querySelector('.card-bg');bg?.after(img);img.addEventListener('load',applyPosterTitleMode,{once:true});loadArtwork(img,{priority:'high'});}
+      else if(img.dataset.swoopArt!==poster){img.dataset.swoopArt=poster;delete img.dataset.swoopLoaded;delete img.dataset.swoopFailed;img.classList.remove('loaded','artwork-failed');img.removeAttribute('src');img.addEventListener('load',applyPosterTitleMode,{once:true});loadArtwork(img,{priority:'high'});}
+      else if(img.classList.contains('loaded'))applyPosterTitleMode();
+    }
     el.dataset.imdbHydrated='1';
   }
 }
+function updateVisibleImdbBadges(itemId){updateVisibleCardMetadata(itemId)}
 async function enrichVisibleImdbRating(item){
   if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind))return null;
   const cached=state.metadataCache?.[item.id]||{},now=Date.now();
@@ -404,24 +415,35 @@ async function enrichVisibleImdbRating(item){
     return state.metadataCache[item.id];
   }catch{return state.metadataCache?.[item.id]||null}
 }
+async function enrichVisibleCardMetadata(item){
+  if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind))return null;
+  const visual=visualItem(item),needsPoster=!visual?.logo||visibleArtworkRepairIds.has(item.id);
+  if(needsPoster){const result=await enrichItemMetadata(item,{rerender:false,force:visibleArtworkRepairIds.has(item.id)});visibleArtworkRepairIds.delete(item.id);return result;}
+  return enrichVisibleImdbRating(item);
+}
 function pumpVisibleMetadata(){
   while(visibleMetadataActive<visibleMetadataLimit()&&visibleMetadataQueue.length){
     const item=visibleMetadataQueue.shift();if(!item)continue;visibleMetadataActive++;
-    enrichVisibleImdbRating(item).finally(()=>{updateVisibleImdbBadges(item.id);visibleMetadataQueued.delete(item.id);visibleMetadataActive--;setTimeout(pumpVisibleMetadata,visibleMetadataDelay())});
+    enrichVisibleCardMetadata(item).finally(()=>{updateVisibleCardMetadata(item.id);visibleMetadataQueued.delete(item.id);visibleMetadataActive--;setTimeout(pumpVisibleMetadata,visibleMetadataDelay())});
   }
 }
-function queueVisibleMetadata(item){
-  if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind)||visibleMetadataQueued.has(item.id))return;
-  const cached=state.metadataCache?.[item.id]||{},now=Date.now();
-  if(cached.imdbRatingCheckedAt&&now-cached.imdbRatingCheckedAt<30*86400000){updateVisibleImdbBadges(item.id);return}
+function queueVisibleMetadata(item,{forceArtwork=false}={}){
+  if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind))return;
+  if(forceArtwork)visibleArtworkRepairIds.add(item.id);
+  if(visibleMetadataQueued.has(item.id))return;
+  const visual=visualItem(item),cached=state.metadataCache?.[item.id]||{},now=Date.now(),posterMissing=!visual?.logo||visibleArtworkRepairIds.has(item.id);
+  if(!posterMissing&&cached.imdbRatingCheckedAt&&now-cached.imdbRatingCheckedAt<30*86400000){updateVisibleCardMetadata(item.id);return}
   visibleMetadataQueued.add(item.id);visibleMetadataQueue.push(item);pumpVisibleMetadata();
 }
 function hydrateVisibleImdbRatings(root=document){
   const nodes=[...root.querySelectorAll('[data-imdb-item]')].filter(el=>el.dataset.imdbHydrated!=='1');if(!nodes.length)return;
-  const activate=el=>{const id=el.dataset.imdbItem,item=savedItem(id);if(!item){el.dataset.imdbHydrated='1';return}const cached=state.metadataCache?.[id]||{};if(displayImdbRating({id})){updateVisibleImdbBadges(id);return}if(cached.imdbRatingCheckedAt&&Date.now()-cached.imdbRatingCheckedAt<30*86400000){el.dataset.imdbHydrated='1';return}queueVisibleMetadata(item)};
-  if(!('IntersectionObserver'in window)){nodes.forEach(activate);return}
-  if(!visibleMetadataObserver)visibleMetadataObserver=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){visibleMetadataObserver?.unobserve(entry.target);activate(entry.target)}},{rootMargin:largeLibraryMode()?'260px 420px':'420px 720px',threshold:.01});
-  nodes.forEach(el=>visibleMetadataObserver.observe(el));
+  const activate=el=>{const id=el.dataset.imdbItem,item=savedItem(id);if(!item){el.dataset.imdbHydrated='1';return}const visual=visualItem(item),cached=state.metadataCache?.[id]||{};if(!visual?.logo){queueVisibleMetadata(item,{forceArtwork:false});return}if(displayImdbRating({id})){updateVisibleCardMetadata(id);return}if(cached.imdbRatingCheckedAt&&Date.now()-cached.imdbRatingCheckedAt<30*86400000){el.dataset.imdbHydrated='1';return}queueVisibleMetadata(item)};
+  const near=el=>{const r=el.getBoundingClientRect();return r.bottom>=-500&&r.top<=innerHeight+700&&r.right>=-900&&r.left<=innerWidth+1400};
+  const immediate=nodes.filter(near);immediate.forEach(activate);
+  const deferred=nodes.filter(el=>!immediate.includes(el));if(!deferred.length)return;
+  if(!('IntersectionObserver'in window)){deferred.forEach(activate);return}
+  if(!visibleMetadataObserver)visibleMetadataObserver=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){visibleMetadataObserver?.unobserve(entry.target);activate(entry.target)}},{rootMargin:largeLibraryMode()?'700px 1200px':'1000px 1800px',threshold:.01});
+  deferred.forEach(el=>visibleMetadataObserver.observe(el));
 }
 function resolveProviderAsset(value='',providerId=''){
   const raw=Array.isArray(value)?value.find(Boolean)||'':String(value||'').trim();if(!raw)return'';const cfg=providerConfigById(providerId)||sessionXtream||{};
@@ -1688,30 +1710,54 @@ async function resolveNativeCatalogItem(item,{includeSources=true}={}){
   }catch{return item}
 }
 
+async function prefetchDetailPayload(item){
+  if(!item||!['movie','series'].includes(item.kind)||item.source!=='xtream')return null;
+  if(detailCache.has(item.id))return detailCache.get(item.id);
+  if(detailPrefetchPending.has(item.id))return detailPrefetchPending.get(item.id);
+  const cfg=providerConfigFor(item);
+  if(!cfg.server||!cfg.username||!cfg.password)return null;
+  const task=(item.kind==='series'?fetchXtreamSeriesInfo(cfg,item.seriesId):fetchXtreamVodInfo(cfg,item.streamId))
+    .then(payload=>{const value=payload||{};detailCache.set(item.id,value);return value})
+    .catch(()=>null)
+    .finally(()=>detailPrefetchPending.delete(item.id));
+  detailPrefetchPending.set(item.id,task);
+  return task;
+}
+function prewarmDetail(item){
+  if(!item||!['movie','series'].includes(item.kind))return;
+  enrichItemMetadata(item,{rerender:false}).catch(()=>null);
+  prefetchDetailPayload(item).catch(()=>null);
+}
+
 async function openDetail(item){
   if(!item)return;
   const fromPerson=Boolean(personView);
   if(fromPerson){suspendPersonViewForDetail();resetPersonState();detailItem=null;}
   if(!detailItem&&!fromPerson){detailReturnScroll=window.scrollY||document.documentElement.scrollTop||0;detailScrollTop=0;suspendBaseViewForDetail();}
-  // Route immediately. The detail shell renders once; background metadata/source work patches it in place
-  // so buttons are never replaced underneath a click and loaded artwork never flashes back to black.
-  detailItem=item;detailSeason='';detailError='';detailPayload=detailCache.get(item.id)||null;detailLoading=Boolean(!detailPayload&&item.kind==='series'&&item.source==='xtream');render();
+  // Start both remote lookups before the first detail paint. The shell still routes immediately,
+  // but network latency now overlaps rendering instead of beginning after it.
   const openingId=item.id;
-  if(['movie','series'].includes(item.kind))setTimeout(async()=>{await enrichItemMetadata(item,{rerender:false});if(detailItem?.id===openingId)patchDetailFromState({sections:true,controls:false})},0);
+  const metadataTask=['movie','series'].includes(item.kind)?enrichItemMetadata(item,{rerender:false}):Promise.resolve(null);
+  let providerDetailTask=prefetchDetailPayload(item);
+  detailItem=item;detailSeason='';detailError='';detailPayload=detailCache.get(item.id)||null;detailLoading=Boolean(!detailPayload&&item.kind==='series'&&item.source==='xtream');render();
+  metadataTask.then(()=>{if(detailItem?.id===openingId)patchDetailFromState({sections:true,controls:false})}).catch(()=>{});
   let resolved=item;
   try{resolved=await resolveNativeCatalogItem(item,{includeSources:true})||item}catch{}
   if(detailItem?.id!==openingId)return;
   if(resolved!==detailItem){detailItem=resolved;cacheNativeItems([resolved]);patchDetailFromState({sections:true,controls:false});}
-  if(detailPayload||resolved.source!=='xtream'||!['movie','series'].includes(resolved.kind)){detailLoading=false;patchDetailFromState({sections:true,controls:resolved.kind==='series'});return;}
+  if(!providerDetailTask&&resolved.source==='xtream'&&['movie','series'].includes(resolved.kind))providerDetailTask=prefetchDetailPayload(resolved);
+  const cachedPayload=detailCache.get(resolved.id);
+  if(cachedPayload){detailPayload=cachedPayload;detailLoading=false;patchDetailFromState({sections:true,controls:resolved.kind==='series'});return;}
+  if(resolved.source!=='xtream'||!['movie','series'].includes(resolved.kind)){detailLoading=false;patchDetailFromState({sections:true,controls:resolved.kind==='series'});return;}
   const cfg=providerConfigFor(resolved);
   if(!cfg.server||!cfg.username||!cfg.password){detailLoading=false;detailError=`Reconnect ${providerDisplayName(resolved)} or save its Xtream login to load full title details.`;patchDetailSectionsFromState({controls:false});return;}
   detailLoading=true;patchDetailSectionsFromState({controls:false});
   try{
-    const payload=resolved.kind==='series'?await fetchXtreamSeriesInfo(cfg,resolved.seriesId):await fetchXtreamVodInfo(cfg,resolved.streamId);
-    detailCache.set(resolved.id,payload||{});
+    const payload=await (providerDetailTask||prefetchDetailPayload(resolved));
     if(detailItem?.id===openingId){detailPayload=payload||{};detailLoading=false;patchDetailFromState({sections:true,controls:resolved.kind==='series'});}
   }catch(err){if(detailItem?.id===openingId){detailLoading=false;detailError=err.message||'Could not load title details.';patchDetailSectionsFromState({controls:false});}}
 }
+
 function closeDetail(){
   if(suspendedPersonView&&restoreSuspendedPersonView())return;
   detailItem=null;detailPayload=null;detailLoading=false;detailError='';detailSeason='';detailEpisodeItems.clear();detailScrollTop=0;
@@ -1910,16 +1956,17 @@ async function play(item,{sourceSelected=false}={}){
   rememberWatching(item);playerItem=item;playerUiHidden=false;render();requestAnimationFrame(()=>startPlayback(item));
 }
 
-function queueArtworkRelay(task){return new Promise((resolve,reject)=>{artworkRelayQueue.push({task,resolve,reject});pumpArtworkRelay()})}
-function artworkRelayLimit(){return largeLibraryMode()?3:6}
+function queueArtworkRelay(task,priority='normal'){return new Promise((resolve,reject)=>{const job={task,resolve,reject};if(priority==='high')artworkRelayQueue.unshift(job);else artworkRelayQueue.push(job);pumpArtworkRelay()})}
+function artworkRelayLimit(){return largeLibraryMode()?8:12}
 function pumpArtworkRelay(){while(artworkRelayActive<artworkRelayLimit()&&artworkRelayQueue.length){const job=artworkRelayQueue.shift();artworkRelayActive++;Promise.resolve().then(job.task).then(job.resolve,job.reject).finally(()=>{artworkRelayActive--;pumpArtworkRelay()})}}
-async function relayArtworkUrl(url){if(artworkCache.has(url))return artworkCache.get(url);const promise=queueArtworkRelay(async()=>{const blob=await fetchXtreamAssetBlob({relayUrl:sessionRelay.url,relayToken:sessionRelay.token},url);return URL.createObjectURL(blob)}).catch(err=>{artworkCache.delete(url);throw err});artworkCache.set(url,promise);return promise}
+async function relayArtworkUrl(url,priority='normal'){if(artworkCache.has(url))return artworkCache.get(url);const promise=queueArtworkRelay(async()=>{const blob=await fetchXtreamAssetBlob({relayUrl:sessionRelay.url,relayToken:sessionRelay.token},url);return URL.createObjectURL(blob)},priority).catch(err=>{artworkCache.delete(url);throw err});artworkCache.set(url,promise);return promise}
 function canRelayArtwork(){return !NATIVE_WINDOWS&&Boolean(sessionRelay.url&&sessionRelay.token&&enabledProviders().some(p=>p.type==='xtream'))}
 function optimizedArtworkUrl(url,img){const raw=String(url||'');if(!/image\.tmdb\.org\/t\/p\//i.test(raw))return raw;const cls=img?.className||'';let size='w500';if(/backdrop|hero-art|hero-backdrop|detail-backdrop/i.test(cls))size='w1280';else if(/title-logo/i.test(cls))size='w500';else if(/cast/i.test(cls))size='w185';else if(img?.closest?.('.poster, .poster-content-grid'))size='w342';return raw.replace(/\/t\/p\/(?:original|w\d+)\//i,`/t/p/${size}/`)}
 function revealArtwork(img){const show=()=>img.classList.add('loaded');if(typeof img.decode==='function')img.decode().then(show).catch(show);else show()}
-function artworkLoadFailed(img){img.dataset.swoopFailed='1';img.classList.add('artwork-failed');img.removeAttribute('src');try{img.dispatchEvent(new Event('swoop-artwork-failed'))}catch{}}
-function loadArtwork(img){if(img.dataset.swoopLoaded==='1')return;img.dataset.swoopLoaded='1';const original=img.dataset.swoopArt||'';if(!original)return;const url=optimizedArtworkUrl(original,img);img.decoding='async';if(!/hero|detail-backdrop|title-logo/i.test(img.className||'')){img.loading='lazy';try{img.fetchPriority='low'}catch{}}let relayTried=false;const fallback=async()=>{if(relayTried||!canRelayArtwork()){artworkLoadFailed(img);return}relayTried=true;try{const relay=await relayArtworkUrl(original);img.onload=()=>revealArtwork(img);img.onerror=()=>artworkLoadFailed(img);img.src=relay}catch{artworkLoadFailed(img)}};if(location.protocol==='https:'&&/^http:\/\//i.test(original)&&canRelayArtwork()){fallback();return}img.onload=()=>revealArtwork(img);img.onerror=()=>fallback();img.src=url}
-function hydrateArtwork(root=document){const imgs=[...root.querySelectorAll('img[data-swoop-art]')].filter(img=>img.dataset.swoopLoaded!=='1');if(!imgs.length)return;const immediate=imgs.filter(img=>/title-logo/i.test(img.className||''));immediate.forEach(loadArtwork);const deferred=imgs.filter(img=>!immediate.includes(img));if(!deferred.length)return;if(!('IntersectionObserver'in window)){deferred.forEach(loadArtwork);return}if(!artworkObserver)artworkObserver=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){artworkObserver?.unobserve(entry.target);loadArtwork(entry.target)}},{rootMargin:largeLibraryMode()?'120px 0px':'280px 0px',threshold:.01});deferred.forEach(img=>artworkObserver.observe(img))}
+function artworkLoadFailed(img){img.dataset.swoopFailed='1';img.classList.add('artwork-failed');img.removeAttribute('src');const card=img.closest?.('[data-imdb-item]'),id=card?.dataset?.imdbItem,item=id?savedItem(id):null;if(item&&['movie','series'].includes(item.kind))queueVisibleMetadata(item,{forceArtwork:true});try{img.dispatchEvent(new Event('swoop-artwork-failed'))}catch{}}
+function artworkNearViewport(img,vertical=520,horizontal=1100){const r=img.getBoundingClientRect();return r.bottom>=-vertical&&r.top<=innerHeight+vertical&&r.right>=-horizontal&&r.left<=innerWidth+horizontal}
+function loadArtwork(img,{priority='normal'}={}){if(img.dataset.swoopLoaded==='1')return;img.dataset.swoopLoaded='1';const original=img.dataset.swoopArt||'';if(!original)return;const url=optimizedArtworkUrl(original,img);img.decoding='async';const critical=/hero|detail-backdrop|title-logo/i.test(img.className||''),eager=critical||priority==='high'||artworkNearViewport(img);if(!critical){img.loading=eager?'eager':'lazy';try{img.fetchPriority=eager?'high':'low'}catch{}}let relayTried=false;const fallback=async()=>{if(relayTried||!canRelayArtwork()){artworkLoadFailed(img);return}relayTried=true;try{const relay=await relayArtworkUrl(original,eager?'high':priority);img.onload=()=>revealArtwork(img);img.onerror=()=>artworkLoadFailed(img);img.src=relay}catch{artworkLoadFailed(img)}};if(location.protocol==='https:'&&/^http:\/\//i.test(original)&&canRelayArtwork()){fallback();return}img.onload=()=>revealArtwork(img);img.onerror=()=>fallback();img.src=url}
+function hydrateArtwork(root=document){const imgs=[...root.querySelectorAll('img[data-swoop-art]')].filter(img=>img.dataset.swoopLoaded!=='1');if(!imgs.length)return;const immediate=imgs.filter(img=>/title-logo|hero|detail-backdrop/i.test(img.className||'')||artworkNearViewport(img,600,1300));immediate.forEach(img=>loadArtwork(img,{priority:'high'}));const deferred=imgs.filter(img=>!immediate.includes(img));if(!deferred.length)return;if(!('IntersectionObserver'in window)){deferred.forEach(img=>loadArtwork(img,{priority:'normal'}));return}if(!artworkObserver)artworkObserver=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){artworkObserver?.unobserve(entry.target);loadArtwork(entry.target,{priority:'high'})}},{rootMargin:largeLibraryMode()?'700px 1200px':'1000px 1800px',threshold:.01});deferred.forEach(img=>artworkObserver.observe(img))}
 
 let searchIndexKey='',searchIndexCache=[];
 function searchIndex(){const key=`${activeCatalogContext}|${movieStackPriorityKey}|live-separate|${metadataRevision}`;if(searchIndexKey===key&&searchIndexCache.length)return searchIndexCache;const logical=[...items('movie'),...items('series'),...items('live')];searchIndexCache=logical.map(item=>({item,text:`${item.name||''} ${item.group||''} ${item.year||''}`.toLowerCase()}));searchIndexKey=key;return searchIndexCache}
@@ -2007,6 +2054,10 @@ function bindDynamicCards(root=document){
   });
   root.querySelectorAll('[data-detail]').forEach(el=>{
     if(el.dataset.boundDetail)return;el.dataset.boundDetail='1';
+    const warm=()=>{const item=savedItem(el.dataset.detail);if(item)prewarmDetail(item)};
+    el.addEventListener('pointerenter',warm,{passive:true});
+    el.addEventListener('focus',warm,{passive:true});
+    el.addEventListener('touchstart',warm,{passive:true});
     el.onclick=()=>{const item=savedItem(el.dataset.detail);if(item)openDetail(item);else toast('Opening title…')}
   })
 }

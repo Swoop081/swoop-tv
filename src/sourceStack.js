@@ -28,7 +28,7 @@ const PREFIX_MAP=new Map([
   ['nf','NF'],['netflix','NF'],['en','EN'],['eng','EN'],['english','EN'],
   ['atv','Apple TV'],['a+','Apple TV'],['apple tv','Apple TV'],['apple tv+','Apple TV'],['appletv+','Apple TV'],['apl','Apple TV'],
   ['dsnp','Disney+'],['d+','Disney+'],['dplus','Disney+'],['disney','Disney+'],['disney+','Disney+'],
-  ['hmax','Max'],['max','Max'],['hbo max','Max'],['pmtp','Paramount+'],['paramount','Paramount+']
+  ['hmax','Max'],['max','Max'],['hbo max','Max'],['cr','Crunchyroll'],['crunchyroll','Crunchyroll'],['crunchy roll','Crunchyroll'],['pmtp','Paramount+'],['paramount','Paramount+']
 ]);
 
 function stripLeadingProviderOrnaments(value='') {

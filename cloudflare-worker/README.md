@@ -1,4 +1,4 @@
-# Swoop TV Cloudflare Connection + Metadata Service v0.1.19
+# Swoop TV Cloudflare Connection + Metadata Service v0.1.21
 
 This Worker provides:
 
@@ -24,7 +24,7 @@ Recommended for Snoak-backed discovery and IMDb ratings:
 - `MDBLIST_API_KEY` — one MDBList API key owned by the Swoop TV developer/owner. It powers the enhanced discovery signals and IMDb rating badge lookup; end users do not need their own key.
 
 After deployment, visiting the Worker URL should report:
-- `version: "0.1.19"`
+- `version: "0.1.21"`
 - `configured: true`
 - `metadataConfigured: true`
 - `discoveryConfigured: true`

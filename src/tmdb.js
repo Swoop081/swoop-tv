@@ -2,7 +2,7 @@ const DEFAULT_METADATA_SERVICE = 'https://swoop-tv-connection.justinbelot8.worke
 
 
 function cleanMetadataTitle(value='') {
-  const prefixes=new Set(['amz','amazon','prime','prime video','nf','netflix','en','eng','english','atv','a+','apple tv','apple tv+','appletv+','apl','dsnp','d+','dplus','disney','disney+','hmax','max','hbo max','pmtp','paramount','paramount+','top','new','movie','movies','film','films','vod','us','uk','au','ca']);
+  const prefixes=new Set(['amz','amazon','prime','prime video','nf','netflix','en','eng','english','atv','a+','apple tv','apple tv+','appletv+','apl','dsnp','d+','dplus','disney','disney+','hmax','max','hbo max','cr','crunchyroll','crunchy roll','pmtp','paramount','paramount+','top','new','movie','movies','film','films','vod','us','uk','au','ca']);
   const qualityPrefix=/^(?:4320p|2160p|1080p|1080i|720p|576p|576i|480p|480i|8k|4k|uhd|fhd|hd|sd)\s*(?:[-–—|:•·]+\s*)+/i;
   let s=String(value||'').trim();
   for(let i=0;i<10;i++){
