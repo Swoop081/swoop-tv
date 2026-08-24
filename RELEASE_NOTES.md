@@ -1,3 +1,11 @@
+## v0.7.27 — TV Guide Header Clipping Hotfix
+
+- Fixed the category-first TV Guide header overlaying/clipping the first channel row.
+- Root cause: `.guide-header` still carried the legacy `top: 74px` sticky offset from the old full-width Guide. Once v0.7.23 placed the grid inside `.guide-grid-scroll`, that offset became relative to the guide's own scroll container and created a 74px internal gap over the first row.
+- The guide grid now owns a `position: relative` context and its header uses `position: sticky; top: 0`, keeping the Channels/time bar flush to the top of the grid without covering the first channel.
+- No EPG, provider-category, SQLite, metadata, playback, profile or watched/resume behavior changes.
+- Automated tests and JavaScript syntax checks pass; ZIP integrity is verified.
+
 ## v0.7.26 — Provider-Order Guide + EPG Repair
 
 - TV Guide category navigation now follows the exact order returned by each enabled Xtream provider's `get_live_categories` endpoint. Multi-provider order respects Swoop TV provider priority, deduplicating repeated category names while preserving first occurrence.

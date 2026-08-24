@@ -1,6 +1,14 @@
 # Swoop TV
 
-**Current build: v0.7.26 — Provider-Order Guide + EPG Repair**
+**Current build: v0.7.27 — TV Guide Header Clipping Hotfix**
+
+
+### v0.7.27 — TV Guide Header Clipping Hotfix
+
+- Fixes the category-first TV Guide time/channel header being pushed down over the first channel row, which made the top channel appear clipped.
+- The cause was the legacy 74px sticky-header offset being applied inside the new horizontal guide scroll container. The guide header now sticks to the top edge of its own grid (`top: 0`) instead.
+- The first channel row now begins immediately below the Channels/time header at every scroll position, including after selecting a category or while EPG progress is updating.
+- Category ordering, EPG retrieval/fallbacks, paging, provider data, playback and all other v0.7.26 behavior are unchanged.
 
 
 ### v0.7.26 — Provider-Order Guide + EPG Repair

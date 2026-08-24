@@ -589,3 +589,12 @@ button,.btn,.card,.nav-btn,.icon-btn{touch-action:manipulation;-webkit-tap-highl
 .detail-title-slot.has-logo .detail-title-wait,.detail-title-slot.logo-unavailable .detail-title-wait{display:none}
 .detail-title-slot.logo-unavailable .detail-title-text{opacity:1!important;visibility:visible}
 @media(max-width:700px){.detail-title-wait{width:min(270px,68vw);height:46px}}
+
+/* v0.7.27 — TV Guide Header Clipping Hotfix */
+/* The category-first guide introduces a horizontal scroll container. The legacy
+   74px sticky offset was therefore being applied inside that container and
+   pushed the time header down over the first channel row. Keep the header
+   pinned to the top edge of the guide grid instead. */
+.guide-grid-scroll{position:relative}
+.guide-grid-scroll .guide-header{position:sticky;top:0;z-index:30}
+@media(max-width:760px){.guide-grid-scroll .guide-header{top:0}}
