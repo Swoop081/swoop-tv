@@ -1,5 +1,27 @@
 # Swoop TV Release Notes
 
+## v0.7.19 — Ranked Rail Stability + Strict Discovery Matching
+
+- Fixes the Top 100 horizontal rails jumping/bouncing back toward rank 1 while the user is scrolling. Mounted rails now record active horizontal interaction and defer asynchronous row replacement instead of swapping the entire rail under the pointer/trackpad.
+- Ranked rails disable CSS scroll snapping and forced smooth scrolling, giving mouse wheel, trackpad and drag input direct native horizontal movement without the jagged snap-back behavior shown in the screen recording.
+- Expands Top 100 discovery depth substantially. The client scans up to 600 candidates per blended source, the native SQLite matcher accepts up to 800 candidates, and the Worker supplies a multi-page TMDb popularity pool rather than only the first 20 results.
+- If a blended Top 100 result still has fewer than 100 local matches and MDBList is configured, Swoop supplements it from the full official MDBList popularity list and keeps the original blended order first.
+- Discovery matching now follows the same identity rule as metadata matching: when a web candidate has an explicit year, title matches require that exact year. ID matches are also rejected when both sides have conflicting years.
+- Discovery matching no longer writes TMDb/IMDb IDs back onto provider catalogue items merely because a title candidate matched, preventing a discovery guess from contaminating later metadata resolution.
+- Fixes the `Odyssey (2025)` / `The Odyssey (2026)` case at the ranked-list matching layer, not just at the artwork/metadata layer.
+- Advances the ranked-discovery cache schema once so stale pre-fix Top 100 rows are discarded, including the auxiliary native cache. Provider credentials, SQLite catalogue, profiles, watched/resume state and playback data are preserved.
+- Cloudflare Worker v0.1.11 adds deeper multi-page TMDb popularity discovery. Redeploying the bundled Worker is recommended for the fullest Top 100 pool; the client-side strict matching and rail-stability fixes work immediately with the app update.
+
+## v0.7.18 — Visible Progress + Long Task Feedback
+
+- Adds a consistent long-task feedback system so users are never left with only a spinner or the word “Refreshing…” during work that can take several seconds or minutes.
+- Provider refresh cards now show a live **percentage, moving progress bar and plain-language stage** while Swoop contacts the provider, downloads sections, indexes SQLite and saves the refreshed library.
+- **Refresh All** shows an overall persistent progress HUD with current provider, overall percentage and elapsed time; it remains visible even if the Provider Manager is not the only thing on screen.
+- Provider connection retains its existing step list but now adds a numeric percentage beside the progress bar. Large-library restore also displays its calculated percentage beside restored/indexed item counts.
+- TV Guide loading now reports channel-by-channel progress and fills rows progressively. Native SQLite browse/search and series-episode waits use animated indeterminate activity bars when a truthful exact percentage is not available.
+- Active progress bars include a moving highlight and explicit **Still running — Swoop has not frozen** reassurance so slow network stages still visibly look alive.
+- No provider catalogue semantics, SQLite schema, Top 100/recently-added rails, metadata matching, IMDb hydration, watched/resume state or Windows/mpv playback behavior changes.
+
 ## v0.7.17 — Top 100 Ranked Rails
 
 - Expands **Top 20 Movies** to **Top 100 Movies** and **Top 20 TV Shows** to **Top 100 TV Shows**.

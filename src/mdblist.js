@@ -109,11 +109,11 @@ export function matchMDBListToCatalog(listPayload, catalog=[], {limit=0, sourceL
   const byTmdb = new Map(),byImdb = new Map(),byTitle = new Map();
   const normalizedCandidates=[];
   for (const item of candidates) {
-    if (item.tmdbId) byTmdb.set(String(item.tmdbId), item);
-    if (item.imdbId) byImdb.set(String(item.imdbId), item);
     const title=normalizeMediaTitle(item.name),year=mediaYear(item.name,item.year);
+    if (item.tmdbId) byTmdb.set(String(item.tmdbId), {item,year});
+    if (item.imdbId) byImdb.set(String(item.imdbId).toLowerCase(), {item,year});
     if(title){
-      if(!byTitle.has(`${title}|${year||''}`))byTitle.set(`${title}|${year||''}`,item);
+      if(year&&!byTitle.has(`${title}|${year}`))byTitle.set(`${title}|${year}`,item);
       if(!byTitle.has(title))byTitle.set(title,item);
       normalizedCandidates.push({item,title,year});
     }
@@ -126,21 +126,21 @@ export function matchMDBListToCatalog(listPayload, catalog=[], {limit=0, sourceL
     const imdb = m.imdb ?? m.imdb_id ?? ids.imdb ?? raw?.imdb ?? raw?.imdb_id;
     const titleRaw = m.title || m.name || raw?.title || raw?.name || '';
     const title=normalizeMediaTitle(titleRaw),year=mediaYear(titleRaw,m.year||m.release_year||raw?.year||raw?.release_year||'');
-    let hit = (tmdb && byTmdb.get(String(tmdb))) || (imdb && byImdb.get(String(imdb))) || byTitle.get(`${title}|${year||''}`) || byTitle.get(title);
+    let hit=null;
+    const tmdbHit=tmdb?byTmdb.get(String(tmdb)):null,imdbHit=imdb?byImdb.get(String(imdb).toLowerCase()):null;
+    if(tmdbHit&&(!year||!tmdbHit.year||tmdbHit.year===year))hit=tmdbHit.item;
+    if(!hit&&imdbHit&&(!year||!imdbHit.year||imdbHit.year===year))hit=imdbHit.item;
+    if(!hit&&title)hit=year?byTitle.get(`${title}|${year}`):byTitle.get(title);
     if(!hit&&title){
       let best=null,bestScore=0;
       for(const c of normalizedCandidates){
-        if(year&&c.year&&Math.abs(year-c.year)>1)continue;
+        if(year&&c.year!==year)continue;
         const score=fuzzyScore(title,c.title);
         if(score>bestScore){bestScore=score;best=c.item}
       }
-      if(bestScore>=.86)hit=best;
+      if(bestScore>=(year ? .94 : .97))hit=best;
     }
-    if (hit && !out.some(x=>x.id===hit.id)) {
-      if(tmdb&&!hit.tmdbId)hit.tmdbId=String(tmdb);
-      if(imdb&&!hit.imdbId)hit.imdbId=String(imdb);
-      out.push(hit);
-    }
+    if (hit && !out.some(x=>x.id===hit.id)) out.push(hit);
     if (limit && out.length>=limit) break;
   }
   return out;

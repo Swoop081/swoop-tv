@@ -1,4 +1,4 @@
-# Swoop TV Cloudflare Connection + Metadata Service v0.1.10
+# Swoop TV Cloudflare Connection + Metadata Service v0.1.11
 
 This Worker provides:
 
@@ -8,6 +8,7 @@ This Worker provides:
 4. Optional IMDb rating enrichment for movie/TV poster badges. TMDb resolves the canonical IMDb title ID; MDBList supplies the IMDb rating when `MDBLIST_API_KEY` is configured.
 5. A lightweight `imdb-rating` endpoint for viewport-driven poster badge hydration, so visible cards can fetch ratings without loading full cast/trailer/recommendation metadata.
 6. Strict provider-title identity matching: explicit provider years are hard constraints, and title searches never fall back to a different release year.
+7. Deeper ranked discovery candidate pools for Top 100 rails, including multi-page TMDb popularity scanning before local-library matching.
 
 ## Secrets
 
@@ -21,7 +22,7 @@ Optional but recommended for the full blended discovery ranking:
 - `MDBLIST_API_KEY` — one MDBList API key owned by the Swoop developer/owner. It powers the enhanced discovery signals and IMDb rating badge lookup; end users do not need their own key.
 
 After deployment, visiting the Worker URL should report:
-- `version: "0.1.10"`
+- `version: "0.1.11"`
 - `configured: true`
 - `metadataConfigured: true`
 - `discoveryConfigured: true`

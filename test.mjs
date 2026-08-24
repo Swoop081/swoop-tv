@@ -28,6 +28,16 @@ assert(messyMatch.length===1&&messyMatch[0].id==='m2','IPTV-prefixed title match
 assert(normalizeMediaTitle('EN - 4K - The Example (2025)')==='the example','IPTV title cleanup failed');
 
 
+// v0.7.19 ranked discovery must obey exact release identity and be able to fill a 100-title rail.
+const odysseyCatalog=[{id:'ody25',kind:'movie',name:'Odyssey (2025)',year:'2025'}];
+assert(matchMDBListToCatalog([{title:'The Odyssey',year:2026,tmdb:999}],odysseyCatalog,{mediaType:'movie',limit:100}).length===0,'Discovery matching must not substitute Odyssey (2025) for The Odyssey (2026)');
+assert(matchMDBListToCatalog([{title:'Odyssey',year:2025,tmdb:998}],odysseyCatalog,{mediaType:'movie',limit:100}).length===1,'Exact title/year discovery match should still resolve');
+assert(!odysseyCatalog[0].tmdbId,'Discovery matching must not write external IDs onto provider catalogue items');
+const deepCatalog=Array.from({length:140},(_,i)=>({id:`deep-${i+1}`,kind:'movie',name:`Deep Ranked ${i+1} (2026)`,year:'2026'}));
+const deepPayload=Array.from({length:180},(_,i)=>({title:`Deep Ranked ${i+1}`,year:2026,tmdb:10000+i}));
+assert(matchMDBListToCatalog(deepPayload,deepCatalog,{mediaType:'movie',sourceLimit:600,limit:100}).length===100,'Deep ranked matching must be able to fill a 100-title rail');
+
+
 
 // Built-in web discovery endpoints + order-preserving matching.
 let discoveryUrl='';
@@ -282,7 +292,7 @@ globalThis.fetch=async (url,options={})=>{
   const u=String(url);
   if(u.includes('api.themoviedb.org/3/trending/movie/day'))return new Response(JSON.stringify({results:[{id:501,title:'Hot Today',release_date:'2026-08-20',popularity:99}]}),{status:200});
   if(u.includes('api.themoviedb.org/3/trending/movie/week'))return new Response(JSON.stringify({results:[{id:502,title:'Hot Week',release_date:'2026-08-01',popularity:88}]}),{status:200});
-  if(u.includes('api.themoviedb.org/3/movie/popular'))return new Response(JSON.stringify({results:[{id:503,title:'Popular Film',release_date:'2026-07-01',popularity:77}]}),{status:200});
+  if(u.includes('api.themoviedb.org/3/movie/popular')){const page=Number(new URL(u).searchParams.get('page')||1);return new Response(JSON.stringify({results:[{id:502+page,title:`Popular Film ${page}`,release_date:'2026-07-01',popularity:77-page}]}),{status:200});}
   if(u.includes('api.themoviedb.org/3/movie/now_playing'))return new Response(JSON.stringify({results:[{id:504,title:'Now Playing',release_date:'2026-08-22',popularity:66}]}),{status:200});
   if(u.includes('api.mdblist.com/justwatch/streaming-charts/movie'))return new Response(JSON.stringify([{title:'Stream Hit',year:2026,tmdb:505}]),{status:200});
   if(u.includes('api.mdblist.com/lists/official/movies/popular/items'))return new Response(JSON.stringify([{title:'Stable Hit',year:2026,tmdb:506}]),{status:200});
@@ -298,6 +308,7 @@ assert(discoveryRes.status===200,'Worker discovery request failed');
 const discoveryJson=await discoveryRes.json();
 assert(discoveryJson.enhanced===true,'Owner-managed MDBList discovery flag failed');
 assert(discoveryJson.sources?.tmdbDay?.[0]?.tmdb==='501','TMDb daily trending source failed');
+assert(discoveryJson.sources?.tmdbPopular?.length===20&&discoveryJson.sources.tmdbPopular.at(-1)?.tmdb==='522','Top 100 discovery must fetch a deeper multi-page TMDb popularity pool');
 assert(discoveryJson.sources?.justwatch?.[0]?.tmdb==='505','JustWatch discovery source failed');
 assert(discoveryJson.sources?.traktTrending?.[0]?.tmdb==='507','Trakt trending discovery source failed');
 assert(discoveryJson.sources?.mostWatched?.[0]?.tmdb==='508','Most watched discovery source failed');
@@ -385,7 +396,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0717-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.17 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0719-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.19 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -394,7 +405,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.17'")&&swHotfix.includes('swoop-tv-v0717-shell'),'v0.7.17 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.19'")&&swHotfix.includes('swoop-tv-v0719-shell'),'v0.7.19 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -414,7 +425,7 @@ assert(appSource.includes("String(def.id).startsWith('top20-')?HOME_RANKED_ROW_L
 assert(appSource.includes('limit:HOME_STANDARD_ROW_LIMIT')&&appSource.includes('rowLimit=String(id).startsWith(\'top20-\')?HOME_RANKED_ROW_LIMIT:HOME_STANDARD_ROW_LIMIT'),'Native/web discovery Home row limits must support 100 items');
 assert(appSource.includes('function displayImdbRating')&&appSource.includes('card-imdb-rating')&&!appSource.includes("[item.year,trustedRating?`★ ${trustedRating}`"),'Poster cards must hide year/generic star metadata and expose the IMDb badge');
 const workerSource=fs.readFileSync(new URL('./cloudflare-worker/worker.js',import.meta.url),'utf8');
-assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.10'"),'IMDb viewport rating worker wiring missing');
+assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.11'"),'IMDb viewport rating worker wiring missing');
 assert(appSource.includes('IMDB_RATING_SCHEMA=2')&&appSource.includes('delete meta.imdbRating')&&appSource.includes('delete meta.imdbRatingCheckedAt'),'IMDb rating cache must selectively refresh without clearing artwork metadata');
 assert(appSource.includes('visibleMetadataQueue')&&appSource.includes('hydrateVisibleImdbRatings')&&appSource.includes('data-imdb-item')&&appSource.includes('fetchTitleImdbRating'),'Viewport-driven IMDb rating hydration missing');
 assert(appSource.includes('imdbRatingCheckedAt')&&appSource.includes('30*86400000'),'Long-lived IMDb rating cache missing');
@@ -433,4 +444,19 @@ assert(sqlitePsHotfix.includes("'provider-added'")&&sqlitePsHotfix.includes("jso
 assert(appSource.includes('METADATA_ARTWORK_SCHEMA=4'),'v0.7.15 must invalidate legacy ambiguous metadata cache once');
 assert(workerSource.includes('strictSearchMatch')&&workerSource.includes('resolveTmdbIdentity')&&!workerSource.includes("delete params[type==='tv'?'first_air_date_year':'year']"),'Strict title-year TMDb fallback guard missing');
 assert(tmdbClientSource.includes('metadataIdentityMatches')&&tmdbClientSource.includes('requestedYear!==resolvedYear'),'Client-side metadata identity guard missing');
-console.log('Swoop TV v0.7.17 tests passed');
+
+// v0.7.19 ranked rail stability / strict discovery matching.
+assert(appSource.includes('DISCOVERY_MATCH_SCHEMA=4')&&appSource.includes('if(!invalidateDiscovery&&aux.webDiscovery)'), 'Discovery cache schema must invalidate pre-fix ranked matches, including native aux cache');
+assert(appSource.includes("sourceLimit=mode==='top20'?600:200")&&appSource.includes('sourceLimit:800'), 'Top 100 discovery must scan a deeper candidate pool');
+assert(appSource.includes('bindRailStability')&&appSource.includes("current.dataset.deferredRefresh='1'")&&appSource.includes('left>6'), 'Scrolled Home rails must defer async DOM replacement');
+assert(detailCss.includes('.ranked-section .rail{grid-auto-columns:minmax(205px,15.6vw);padding-left:10px;scroll-snap-type:none;scroll-behavior:auto}'), 'Ranked rails must use unsnapped native horizontal scrolling');
+assert(sqlitePsHotfix.includes('Select-Object -First 800')&&sqlitePsHotfix.includes('(cand.year=0 OR c.year=cand.year)'), 'Native discovery matching must scan deeply and require exact title/year');
+assert(workerSource.includes('tmdbFetchPages')&&workerSource.includes("},20)")&&workerSource.includes('slice(0,500)'), 'Worker must provide a deep Top 100 candidate pool');
+
+// v0.7.18 visible progress / long-task reassurance.
+assert(appSource.includes('provider-inline-progress')&&appSource.includes('data-provider-progress-percent')&&appSource.includes('refreshProgress'),'Provider refresh percentage/progress UI missing');
+assert(appSource.includes('task-progress-hud')&&appSource.includes('Still running — Swoop has not frozen.')&&appSource.includes('longTaskElapsedLabel'),'Persistent long-task progress HUD/reassurance missing');
+assert(appSource.includes('providerProgressPercent')&&appSource.includes('restoreProgressPercent'),'Provider-connect / restore numeric percentages missing');
+assert(appSource.includes('guide-load-progress')&&appSource.includes('data-guide-load-percent')&&appSource.includes('updateGuideProgress'),'TV Guide progress feedback missing');
+assert(appSource.includes('activity-progress indeterminate')&&detailCss.includes('.activity-progress.indeterminate')&&detailCss.includes('@keyframes swoopProgressShine'),'Indeterminate/moving activity feedback missing for unknown-duration work');
+console.log('Swoop TV v0.7.19 tests passed');

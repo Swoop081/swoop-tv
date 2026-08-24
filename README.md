@@ -1,11 +1,21 @@
 # Swoop TV
 
-**Current build: v0.7.17 — Top 100 Ranked Rails**
+**Current build: v0.7.19 — Ranked Rail Stability + Strict Discovery Matching**
 
-This build expands Swoop's two pinned ranked discovery rails from Top 20 to **Top 100 Movies** and **Top 100 TV Shows**. Both rows keep the existing blended web-ranking logic and numbered presentation, but can now expose up to 100 titles that are actually available in your provider library. The internal legacy row IDs are retained so existing profile Home layouts migrate without any reset.
+This build fixes the Top 100 behavior captured in the 24 August screen recording. Horizontally scrolled Home rails are no longer replaced underneath the user while discovery refreshes in the background, ranked rails use unsnapped native horizontal scrolling, and Top 100 discovery scans a much deeper popularity candidate pool so it can fill toward 100 locally available titles instead of stopping around the first few dozen.
 
-This build changes the two provider recency rails so they reflect what your TV provider added most recently, rather than sorting by a title's release year. Xtream movie `added` timestamps and TV `last_modified`/`added` timestamps are retained during provider import and used by both the browser catalogue and the Windows SQLite catalogue. Existing catalogues fall back to provider stream/series sequence until the next provider refresh captures the true timestamps.
+Discovery identity is now strict as well as metadata identity: a ranked web candidate with an explicit year can only match the same cleaned title and release/first-air year in the provider catalogue. This closes the separate path that allowed a provider `Odyssey (2025)` item to stand in for `The Odyssey (2026)` even after the metadata mismatch fix. Pre-v0.7.19 ranked discovery cache is discarded once on upgrade; provider data, watched/resume state and playback are untouched.
 
+
+## Visible progress for long-running work
+
+- **Provider refresh:** each provider card shows a live percentage, moving bar and current stage such as login verification, provider download, SQLite indexing or saving.
+- **Refresh All:** a persistent bottom progress HUD shows the current provider, overall percentage, elapsed time and a clear reassurance that Swoop is still running.
+- **Provider connection:** the existing step-by-step connection screen now includes a large numeric percentage beside its progress bar.
+- **Large-library startup/restore:** the restore screen now shows a numeric percentage as well as item counts.
+- **TV Guide:** guide loading shows a channel-by-channel percentage and progress bar while rows continue filling in.
+- **SQLite browse/search and series episodes:** unknown-duration waits use animated activity bars plus plain-language “still working” text rather than a spinner alone.
+- Active progress bars include a moving highlight so a percentage that pauses during a slow provider response still visibly looks alive.
 
 ## Provider recently added rails
 

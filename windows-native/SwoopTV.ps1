@@ -320,7 +320,7 @@ SELECT raw_json,logical_key,source_count,source_ids,display_name FROM ranked WHE
 }
 
 function Catalog-Match($Data) {
-  $candidates=@($Data.candidates|Select-Object -First 150);if(-not $candidates.Count){return @{ok=$true;items=@()}}
+  $candidates=@($Data.candidates|Select-Object -First 800);if(-not $candidates.Count){return @{ok=$true;items=@()}}
   $kind=if([string]$Data.mediaType -in @('show','tv','series')){'series'}else{'movie'}
   $limit=[Math]::Max(1,[Math]::Min(100,[int]$Data.limit));if(-not $Data.limit){$limit=70}
   $path=Write-JsonTemp $candidates
@@ -340,9 +340,9 @@ WITH cand AS (
  SELECT cand.ord,c.*,
  CASE WHEN cand.tmdb<>'' AND c.tmdb_id=cand.tmdb THEN 0 WHEN cand.imdb<>'' AND lower(c.imdb_id)=lower(cand.imdb) THEN 1 WHEN cand.clean_name<>'' AND c.clean_name=cand.clean_name AND cand.year>0 AND c.year=cand.year THEN 2 ELSE 3 END AS match_rank
  FROM cand JOIN catalog c ON c.kind=$kindSql$providerMatch AND (
-   (cand.tmdb<>'' AND c.tmdb_id=cand.tmdb) OR
-   (cand.imdb<>'' AND lower(c.imdb_id)=lower(cand.imdb)) OR
-   (cand.clean_name<>'' AND c.clean_name=cand.clean_name AND (cand.year=0 OR c.year=0 OR abs(c.year-cand.year)<=1))
+   (cand.tmdb<>'' AND c.tmdb_id=cand.tmdb AND (cand.year=0 OR c.year=0 OR c.year=cand.year)) OR
+   (cand.imdb<>'' AND lower(c.imdb_id)=lower(cand.imdb) AND (cand.year=0 OR c.year=0 OR c.year=cand.year)) OR
+   (cand.clean_name<>'' AND c.clean_name=cand.clean_name AND (cand.year=0 OR c.year=cand.year))
  )
 ), ranked AS (
  SELECT *,ROW_NUMBER() OVER(PARTITION BY ord ORDER BY match_rank,source_score DESC) rn,COUNT(*) OVER(PARTITION BY logical_key) source_count,
@@ -839,7 +839,7 @@ function Handle-Request($Request, [string]$MpvPath) {
     if ($path -eq '/native/status') {
       $playing = $false
       if ($script:MpvProcess) { try { $playing = -not $script:MpvProcess.HasExited } catch {} }
-      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.17'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
+      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.19'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
       return
     }
 
@@ -955,7 +955,7 @@ function Handle-Request($Request, [string]$MpvPath) {
 
     if ([IO.Path]::GetFileName($full).ToLowerInvariant() -eq 'index.html') {
       $html = Get-Content -Path $full -Raw -Encoding UTF8
-      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.17',platform:'windows'};</script>"
+      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.19',platform:'windows'};</script>"
       $html = $html -replace '</head>', ($bootstrap + '</head>')
       Send-Text $stream $html 'text/html; charset=utf-8'
       return
@@ -968,7 +968,7 @@ function Handle-Request($Request, [string]$MpvPath) {
   }
 }
 
-Write-Header 'Swoop TV v0.7.17 — Top 100 Ranked Rails'
+Write-Header 'Swoop TV v0.7.19 — Ranked Rail Stability + Strict Discovery Matching'
 Write-Host 'This local bridge keeps IPTV video provider-to-device and launches mpv for playback.'
 Write-Host 'No administrator rights are required.'
 
