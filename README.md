@@ -1,6 +1,8 @@
 # Swoop TV
 
-**Current build: v0.7.16 — Provider Recently Added Rails**
+**Current build: v0.7.17 — Top 100 Ranked Rails**
+
+This build expands Swoop's two pinned ranked discovery rails from Top 20 to **Top 100 Movies** and **Top 100 TV Shows**. Both rows keep the existing blended web-ranking logic and numbered presentation, but can now expose up to 100 titles that are actually available in your provider library. The internal legacy row IDs are retained so existing profile Home layouts migrate without any reset.
 
 This build changes the two provider recency rails so they reflect what your TV provider added most recently, rather than sorting by a title's release year. Xtream movie `added` timestamps and TV `last_modified`/`added` timestamps are retained during provider import and used by both the browser catalogue and the Windows SQLite catalogue. Existing catalogues fall back to provider stream/series sequence until the next provider refresh captures the true timestamps.
 
@@ -11,7 +13,7 @@ This build changes the two provider recency rails so they reflect what your TV p
 - **New & Recent TV Shows** is renamed **Recently Added TV Shows** and sorts by the provider's own `added` / `last_modified` timestamp instead of first-air year.
 - Xtream imports now retain these provider timestamps on catalogue items. For already-indexed libraries, Swoop falls back to numeric provider stream/series sequence so the rails improve immediately; running **Refresh All** once captures the provider timestamps for exact ordering.
 - Native Windows/SQLite queries use a dedicated `provider-added` sort and take the newest timestamp across duplicate movie sources without rebuilding the database schema.
-- This changes only these two Home rails. **All Movies**, **All TV Shows**, web Trending/New & Hot rows, Top 20 rows, source stacking, metadata, watched/resume state and mpv playback are unchanged.
+- This changes only these two Home rails. **All Movies**, **All TV Shows**, web Trending/New & Hot rows, Top 100 ranked rows, source stacking, metadata, watched/resume state and mpv playback are unchanged.
 
 ## Strict title-year metadata matching
 
@@ -52,9 +54,9 @@ This build changes the two provider recency rails so they reflect what your TV p
 
 ## Expanded Home rails
 
-- Every Home row except the two **Top 20** rows can now expose up to **100 items** when that many matching titles are available.
+- Every Home content rail, including the two ranked discovery rows, can now expose up to **100 items** when that many matching titles are available.
 - This includes New & Recent, Trending, New & Hot, streaming/weekly charts, provider categories, Live Now, My List, Continue Watching, Recently Watched, Recent Channels, Recommended For You and custom MDBList rows.
-- **Top 20 Movies** and **Top 20 TV Shows** remain capped at exactly **20** and retain their ranked presentation.
+- **Top 100 Movies** and **Top 100 TV Shows** are capped at **100** and retain the numbered/ranked presentation.
 - Native SQLite Home queries and web-discovery matching now request enough results to support the larger rails. Artwork remains viewport-lazy and lower Home rows remain lazy-mounted for large libraries.
 
 
@@ -82,8 +84,8 @@ This build changes the two provider recency rails so they reflect what your TV p
 ## Home priorities
 
 - **Continue Watching** is pinned as the first Home row when it has items.
-- **Top 20 Movies** is pinned immediately after Continue Watching.
-- **Top 20 TV Shows** is pinned immediately after Top 20 Movies.
+- **Top 100 Movies** is pinned immediately after Continue Watching.
+- **Top 100 TV Shows** is pinned immediately after Top 100 Movies.
 - Smart Home ordering only reorders rows below those three.
 - **Because You Watched** has been removed completely; **Recommended For You** is now the single personalised recommendation row.
 
@@ -151,7 +153,7 @@ The browser no longer needs the complete provider dump in memory after the one-t
 - Search queries SQLite FTS5 and returns only a small ranked result set.
 - Category lists are aggregated in SQL rather than rebuilt from the raw catalogue in JavaScript.
 - Home rows query only the content needed for that row.
-- Top 20 / Trending / MDBList discovery candidates are matched against the local database instead of scanning the whole provider catalogue in the browser.
+- Top 100 / Trending / MDBList discovery candidates are matched against the local database instead of scanning the whole provider catalogue in the browser.
 - My List, Continue Watching, Recent Channels and profile state hydrate only their referenced items.
 
 ## One-time migration

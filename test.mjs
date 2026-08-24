@@ -34,7 +34,7 @@ let discoveryUrl='';
 const discoveryRealFetch=globalThis.fetch;
 globalThis.fetch=async url=>{discoveryUrl=String(url);return new Response(JSON.stringify([{title:'Signal Run',year:2026,tmdb:42}]),{status:200,headers:{'content-type':'application/json'}})};
 const officialPayload=await getMDBListOfficialItems({apiKey:'test-key',slug:'movies/popular'});
-assert(discoveryUrl.includes('/lists/official/movies/popular/items')&&discoveryUrl.includes('apikey=test-key'),'MDBList official Top 20 endpoint failed');
+assert(discoveryUrl.includes('/lists/official/movies/popular/items')&&discoveryUrl.includes('apikey=test-key'),'MDBList official ranked-discovery endpoint failed');
 assert(matchMDBListToCatalog(officialPayload,catalog,{sourceLimit:20,limit:20}).length===1,'MDBList official matching failed');
 const chartPayload=await getMDBListStreamingChart({apiKey:'test-key',mediaType:'show'});
 assert(discoveryUrl.includes('/justwatch/streaming-charts/show'),'MDBList JustWatch show chart endpoint failed');
@@ -385,7 +385,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0716-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.16 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0717-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.17 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -394,7 +394,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.16'")&&swHotfix.includes('swoop-tv-v0716-shell'),'v0.7.16 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.17'")&&swHotfix.includes('swoop-tv-v0717-shell'),'v0.7.17 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -408,9 +408,10 @@ assert(appSource.includes('function isDemoItem(item)')&&appSource.includes("if(i
 assert(appSource.includes("if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind))return null;"),'Demo metadata lookup exclusion missing');
 assert(appSource.includes('const enriched=isDemoItem(item)?{}:'),'Demo detail metadata guard missing');
 assert(appSource.indexOf('<h3>TV Providers</h3>')<appSource.indexOf("profileAvatarHtml(activeProfile(),'profile-avatar-lg')")&&appSource.indexOf("profileAvatarHtml(activeProfile(),'profile-avatar-lg')")<appSource.indexOf('<h3>Performance</h3>'),'Settings hierarchy must begin TV Providers → Profile → Performance');
-assert(appSource.includes('const HOME_TOP20_LIMIT=20;')&&appSource.includes('const HOME_STANDARD_ROW_LIMIT=100;'),'Home rail 20/100 limits missing');
-assert(appSource.includes("String(def.id).startsWith('top20-')?HOME_TOP20_LIMIT:HOME_STANDARD_ROW_LIMIT"),'Home row renderer must preserve Top 20 while expanding other rails to 100');
-assert(appSource.includes('limit:HOME_STANDARD_ROW_LIMIT')&&appSource.includes('rowLimit=String(id).startsWith(\'top20-\')?HOME_TOP20_LIMIT:HOME_STANDARD_ROW_LIMIT'),'Native/web discovery Home row limits must support 100 items');
+assert(appSource.includes('const HOME_RANKED_ROW_LIMIT=100;')&&appSource.includes('const HOME_STANDARD_ROW_LIMIT=100;'),'Home rail 100-item limits missing');
+assert(appSource.includes("label:'Top 100 Movies'")&&appSource.includes("label:'Top 100 TV Shows'")&&appSource.includes('rank-three-digit'),'Top 100 ranked labels/three-digit rank treatment missing');
+assert(appSource.includes("String(def.id).startsWith('top20-')?HOME_RANKED_ROW_LIMIT:HOME_STANDARD_ROW_LIMIT"),'Ranked Home rows must expand to 100 while retaining legacy row IDs');
+assert(appSource.includes('limit:HOME_STANDARD_ROW_LIMIT')&&appSource.includes('rowLimit=String(id).startsWith(\'top20-\')?HOME_RANKED_ROW_LIMIT:HOME_STANDARD_ROW_LIMIT'),'Native/web discovery Home row limits must support 100 items');
 assert(appSource.includes('function displayImdbRating')&&appSource.includes('card-imdb-rating')&&!appSource.includes("[item.year,trustedRating?`★ ${trustedRating}`"),'Poster cards must hide year/generic star metadata and expose the IMDb badge');
 const workerSource=fs.readFileSync(new URL('./cloudflare-worker/worker.js',import.meta.url),'utf8');
 assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.10'"),'IMDb viewport rating worker wiring missing');
@@ -432,4 +433,4 @@ assert(sqlitePsHotfix.includes("'provider-added'")&&sqlitePsHotfix.includes("jso
 assert(appSource.includes('METADATA_ARTWORK_SCHEMA=4'),'v0.7.15 must invalidate legacy ambiguous metadata cache once');
 assert(workerSource.includes('strictSearchMatch')&&workerSource.includes('resolveTmdbIdentity')&&!workerSource.includes("delete params[type==='tv'?'first_air_date_year':'year']"),'Strict title-year TMDb fallback guard missing');
 assert(tmdbClientSource.includes('metadataIdentityMatches')&&tmdbClientSource.includes('requestedYear!==resolvedYear'),'Client-side metadata identity guard missing');
-console.log('Swoop TV v0.7.16 tests passed');
+console.log('Swoop TV v0.7.17 tests passed');

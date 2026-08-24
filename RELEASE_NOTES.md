@@ -1,5 +1,13 @@
 # Swoop TV Release Notes
 
+## v0.7.17 — Top 100 Ranked Rails
+
+- Expands **Top 20 Movies** to **Top 100 Movies** and **Top 20 TV Shows** to **Top 100 TV Shows**.
+- Both ranked Home rails can now return and render up to **100 locally available titles** while preserving their existing blended web-ranking logic and four-hour refresh cadence.
+- Keeps the existing internal `top20-movies` / `top20-shows` row IDs for profile-layout compatibility, so no Home customization or profile migration is required.
+- Ranked card numbering now accommodates 1–100 cleanly, including a compact three-digit treatment for rank 100.
+- All other Home rails remain capped at 100 as in v0.7.11. Provider recently-added sorting, strict title/year matching, IMDb viewport hydration, source stacking, watched/resume state and Windows/mpv playback are unchanged.
+
 ## v0.7.16 — Provider Recently Added Rails
 
 - Changes the two provider recency rows from release-year sorting to provider-addition sorting.
