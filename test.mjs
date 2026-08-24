@@ -454,7 +454,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0732-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.32 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0733-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.33 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -463,7 +463,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.32'")&&swHotfix.includes('swoop-tv-v0732-shell'),'v0.7.32 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.33'")&&swHotfix.includes('swoop-tv-v0733-shell'),'v0.7.33 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -574,6 +574,12 @@ assert(appSource.includes('actors, actresses, directors…')||appSource.includes
 assert(appSource.includes("else if(!suspendBaseViewForDetail())return")&&appSource.includes('if(restoreSuspendedBaseView())return'),'People opened from Search must preserve/restore the underlying Search page');
 assert(detailCss.includes('.search-people-rail')&&detailCss.includes('.search-person-card'),'People search styling missing');
 
+// v0.7.33 Continue Watching uses season/series posters for episodic playback cards.
+assert(appSource.includes('function continueDisplayItem')&&appSource.includes('_continueSeriesPoster')&&appSource.includes('_continueSeriesTitle'),'Continue Watching series-poster presentation helper missing');
+assert(appSource.includes('seasonPoster:seasonPoster||seriesPoster')&&appSource.includes('seriesPoster,seriesBackdrop')&&appSource.includes('seriesTitle:item.name'), 'Episode snapshots must retain season/series artwork identity');
+assert(appSource.includes('payload?.seasons')&&appSource.includes('cover_big||row?.cover||row?.poster_path'),'Xtream season poster extraction missing');
+assert(appSource.includes('x?.item?.parentSeriesId')&&appSource.includes('slice(0,300)'),'Native profile hydration must include parent series for existing Continue Watching episodes');
+
 // v0.7.27 TV Guide first-row clipping hotfix.
 assert(detailCss.includes('.guide-grid-scroll .guide-header{position:sticky;top:0;z-index:30}'),'Guide header must sit flush to the grid top so it cannot cover the first channel row');
 
@@ -585,4 +591,4 @@ assert(appSource.includes('guide-load-progress')&&appSource.includes('data-guide
 assert(appSource.includes('activity-progress indeterminate')&&detailCss.includes('.activity-progress.indeterminate')&&detailCss.includes('@keyframes swoopProgressShine'),'Indeterminate/moving activity feedback missing for unknown-duration work');
 assert(!appSource.includes('SWOOP TV <b>TV</b>')&&!appSource.includes('<span>SWOOP TV</span><b>TV</b>'),'Brand lockup must not render SWOOP TV TV');
 assert(appSource.includes('<span>SWOOP <b>TV</b></span>')&&appSource.includes('<span>SWOOP</span><b>TV</b>'),'Brand lockup should render a single SWOOP TV label');
-console.log('Swoop TV v0.7.32 tests passed');
+console.log('Swoop TV v0.7.33 tests passed');

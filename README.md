@@ -1,7 +1,12 @@
 # Swoop TV
 
-**Current build: v0.7.32 — People Search**
+**Current build: v0.7.33 — Continue Watching Series Poster Fix**
 
+
+
+### v0.7.33 — Continue Watching Series Poster Fix
+
+Continue Watching now treats TV episodes as part of their parent series for artwork presentation. Episode progress still resumes the exact episode, but the Home card uses the provider's season poster when available and otherwise falls back to the series poster instead of displaying an episode screenshot/still. The card keeps the S/E progress label and playback progress bar while allowing the poster artwork to carry the show title. Existing Continue Watching entries are repaired from their parent-series catalogue record without a provider refresh or SQLite rebuild.
 
 
 ### v0.7.32 — People Search

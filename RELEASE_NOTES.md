@@ -1,3 +1,13 @@
+## v0.7.33 — Continue Watching Series Poster Fix
+
+- Fixes TV episodes in **Continue Watching** using episode screenshots/stills as the large poster artwork.
+- Continue Watching episode cards now prefer the provider's season poster when the Xtream series payload supplies one, then fall back to the parent series poster. Episode thumbnails remain available inside the episode list itself.
+- The card still resumes the exact saved episode and keeps the `Sx Ex` label/progress bar; only the Home artwork/title presentation changes.
+- TV Continue Watching cards let the poster artwork carry the series title rather than overlaying the episode name over the poster.
+- Episode snapshots now retain `seasonPoster`, `seriesPoster`, `seriesBackdrop` and `seriesTitle` so the correct artwork survives app restarts and profile persistence.
+- Existing saved episodes are repaired by hydrating their `parentSeriesId` alongside the episode entry in native/SQLite mode, so no provider refresh or SQLite rebuild is required.
+- Movie Continue Watching, watched/resume semantics, episode playback, provider data, category rails, TV Guide/EPG and Windows/mpv playback behavior remain unchanged.
+
 ## v0.7.32 — People Search
 
 - Expands global Search beyond titles/channels/categories to include **actors, actresses and directors**.
