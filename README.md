@@ -1,8 +1,12 @@
 # Swoop TV
 
-**Current build: v0.7.28 — Brand Lockup Cleanup**
+**Current build: v0.7.29 — Separate Live Streams**
 
 
+
+### v0.7.29 — Separate Live Streams
+
+Live TV now keeps **every provider stream as a separate channel entry**. Matching channel names, tvg/EPG IDs, categories and quality labels no longer cause Live TV streams to collapse together. This applies in both browser catalogue mode and Windows native SQLite mode, including Live browsing, Guide, search and counts. Existing SQLite catalogues do not need to be rebuilt. Movie source stacking remains unchanged.
 
 ### v0.7.28 — Brand Lockup Cleanup
 

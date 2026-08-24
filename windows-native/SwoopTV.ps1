@@ -175,14 +175,14 @@ COMMIT;
 function Catalog-Finish([string]$ProviderId) {
   [void](Invoke-SqliteRaw "PRAGMA optimize;")
   $p=Sql-Literal $ProviderId
-  $rows=Invoke-SqliteJson "SELECT kind, COUNT(*) AS raw_count, COUNT(DISTINCT logical_key) AS unique_count FROM catalog WHERE provider_id=$p GROUP BY kind;"
+  $rows=Invoke-SqliteJson "SELECT kind, COUNT(*) AS raw_count, CASE WHEN kind='live' THEN COUNT(*) ELSE COUNT(DISTINCT logical_key) END AS unique_count FROM catalog WHERE provider_id=$p GROUP BY kind;"
   return @{ok=$true;providerId=$ProviderId;counts=$rows}
 }
 
 function Catalog-Stats {
-  $totals=Invoke-SqliteJson "SELECT kind, COUNT(*) AS raw_count, COUNT(DISTINCT logical_key) AS unique_count FROM catalog GROUP BY kind;"
-  $providers=Invoke-SqliteJson "SELECT provider_id,kind,COUNT(*) AS raw_count,COUNT(DISTINCT logical_key) AS unique_count FROM catalog GROUP BY provider_id,kind;"
-  $row=Invoke-SqliteJson "SELECT COUNT(*) AS row_count,COUNT(DISTINCT logical_key) AS logical_count FROM catalog;"
+  $totals=Invoke-SqliteJson "SELECT kind, COUNT(*) AS raw_count, CASE WHEN kind='live' THEN COUNT(*) ELSE COUNT(DISTINCT logical_key) END AS unique_count FROM catalog GROUP BY kind;"
+  $providers=Invoke-SqliteJson "SELECT provider_id,kind,COUNT(*) AS raw_count,CASE WHEN kind='live' THEN COUNT(*) ELSE COUNT(DISTINCT logical_key) END AS unique_count FROM catalog GROUP BY provider_id,kind;"
+  $row=Invoke-SqliteJson "SELECT COUNT(*) AS row_count,(SELECT COUNT(*) FROM catalog WHERE kind='live')+(SELECT COUNT(DISTINCT kind||'|'||logical_key) FROM catalog WHERE kind<>'live') AS logical_count FROM catalog;"
   $rowCount=0;$logicalCount=0;if($row.Count){$rowCount=[int64]$row[0].row_count;$logicalCount=[int64]$row[0].logical_count}
   return @{ok=$true;database='sqlite';schema=1;path=$CatalogDbPath;rowCount=$rowCount;logicalCount=$logicalCount;totals=$totals;providers=$providers}
 }
@@ -221,6 +221,15 @@ function Catalog-Query($Data) {
   $whereSql=$where -join ' AND '
   $sort=[string]$Data.sort
   $order= switch($sort){'year'{'year DESC, display_name COLLATE NOCASE'} 'rating'{'rating DESC, display_name COLLATE NOCASE'} 'provider-added'{'provider_added_at DESC, provider_sequence DESC, display_name COLLATE NOCASE'} 'recent'{'year DESC, rating DESC, display_name COLLATE NOCASE'} default {'display_name COLLATE NOCASE'}}
+  if($kind -eq 'live') {
+    # v0.7.29: never collapse Live TV by EPG id/name/group. Return each raw provider
+    # stream as its own channel entry, including duplicate-name/alternate-quality streams.
+    $liveOrder= switch($sort){'provider-added'{"COALESCE(CAST(json_extract(raw_json,'$.providerAddedAt') AS INTEGER),0) DESC, COALESCE(CAST(json_extract(raw_json,'$.streamId') AS INTEGER),0) DESC, display_name COLLATE NOCASE"} default {'display_name COLLATE NOCASE'}}
+    $rows=Invoke-SqliteJson "SELECT raw_json,logical_key,1 AS source_count,item_id AS source_ids,display_name FROM catalog WHERE $whereSql ORDER BY $liveOrder LIMIT $limit OFFSET $offset;"
+    $countRows=Invoke-SqliteJson "SELECT COUNT(*) AS total FROM catalog WHERE $whereSql;"
+    $total=0;if($countRows.Count){$total=[int64]$countRows[0].total}
+    return @{ok=$true;items=(Convert-CatalogRows $rows $kind);total=$total;offset=$offset;limit=$limit}
+  }
   $sql=@"
 WITH filtered AS (SELECT * FROM catalog WHERE $whereSql),
 ranked AS (
@@ -245,7 +254,8 @@ function Catalog-Categories($Data) {
   $where="kind="+(Sql-Literal $kind)+" AND group_name<>''"
   if($Data.providerId -and [string]$Data.providerId -ne 'all'){$where += " AND provider_id="+(Sql-Literal ([string]$Data.providerId))}
   elseif($Data.providerIds){$allowed=@($Data.providerIds|Where-Object{$_});if($allowed.Count){$where += " AND provider_id IN ("+(($allowed|ForEach-Object{Sql-Literal ([string]$_)}) -join ',')+")"}}
-  return @{ok=$true;items=(Invoke-SqliteJson "SELECT group_name AS name,COUNT(DISTINCT logical_key) AS count,MIN(COALESCE(CAST(json_extract(raw_json,'$.providerCategoryOrder') AS INTEGER),999999)) AS provider_order,MIN(rowid) AS first_seen FROM catalog WHERE $where GROUP BY group_name ORDER BY provider_order ASC,first_seen ASC,name COLLATE NOCASE LIMIT $limit;")}
+  $countExpr=if($kind -eq 'live'){'COUNT(*)'}else{'COUNT(DISTINCT logical_key)'}
+  return @{ok=$true;items=(Invoke-SqliteJson "SELECT group_name AS name,$countExpr AS count,MIN(COALESCE(CAST(json_extract(raw_json,'$.providerCategoryOrder') AS INTEGER),999999)) AS provider_order,MIN(rowid) AS first_seen FROM catalog WHERE $where GROUP BY group_name ORDER BY provider_order ASC,first_seen ASC,name COLLATE NOCASE LIMIT $limit;")}
 }
 
 function Catalog-Search($Data) {
@@ -263,8 +273,8 @@ WITH hits AS (
  SELECT c.*,bm25(catalog_fts) AS text_rank FROM catalog_fts JOIN catalog c ON c.item_key=catalog_fts.item_key
  WHERE catalog_fts MATCH $ftsSql AND c.kind IN ($kindSql)$providerClause
 ), ranked AS (
- SELECT *,ROW_NUMBER() OVER(PARTITION BY logical_key ORDER BY text_rank ASC,source_score DESC) rn,COUNT(*) OVER(PARTITION BY logical_key) source_count,
- GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key) source_ids
+ SELECT *,ROW_NUMBER() OVER(PARTITION BY CASE WHEN kind='live' THEN item_key ELSE logical_key END ORDER BY text_rank ASC,source_score DESC) rn,COUNT(*) OVER(PARTITION BY CASE WHEN kind='live' THEN item_key ELSE logical_key END) source_count,
+ GROUP_CONCAT(item_id,'|') OVER(PARTITION BY CASE WHEN kind='live' THEN item_key ELSE logical_key END) source_ids
  FROM hits
 )
 SELECT raw_json,logical_key,source_count,source_ids,display_name FROM ranked WHERE rn=1 ORDER BY text_rank ASC LIMIT $limit;
@@ -291,20 +301,27 @@ function Catalog-Sources([string]$LogicalKey) {
 
 function Catalog-Get($Data) {
   $ids=@($Data.ids|Where-Object{$_}|Select-Object -First 250);if(-not $ids.Count){return @{ok=$true;items=@()}}
-  $conditions=New-Object System.Collections.Generic.List[string]
+  $stackConditions=New-Object System.Collections.Generic.List[string]
   $sourceIds=New-Object System.Collections.Generic.List[string]
   foreach($rawId in $ids){
     $id=[string]$rawId
     if($id -match '^stack:(movie|series|live):(.+)$'){
       $kind=Sql-Literal ([string]$Matches[1])
       $logical=Sql-Literal ([uri]::UnescapeDataString([string]$Matches[2]))
-      $conditions.Add("(kind=$kind AND logical_key=$logical)")
+      $stackConditions.Add("(kind=$kind AND logical_key=$logical)")
     } else { $sourceIds.Add($id) }
   }
-  if($sourceIds.Count){$in=($sourceIds|ForEach-Object{Sql-Literal $_}) -join ',';$conditions.Add("item_id IN ($in)")}
-  if(-not $conditions.Count){return @{ok=$true;items=@()}}
-  $where=$conditions -join ' OR '
-  $sql=@"
+  $out=New-Object System.Collections.Generic.List[object]
+  if($sourceIds.Count){
+    $in=($sourceIds|ForEach-Object{Sql-Literal $_}) -join ','
+    # Exact IDs stay exact. This is essential for v0.7.29 Live TV where two streams
+    # can intentionally share a historical logical_key but must remain independent.
+    $exactRows=Invoke-SqliteJson "SELECT raw_json,logical_key,1 AS source_count,item_id AS source_ids,display_name FROM catalog WHERE item_id IN ($in);"
+    foreach($item in @(Convert-CatalogRows $exactRows)){ $out.Add($item) }
+  }
+  if($stackConditions.Count){
+    $where=$stackConditions -join ' OR '
+    $sql=@"
 WITH targets AS (
  SELECT DISTINCT kind,logical_key FROM catalog WHERE $where
 ), ranked AS (
@@ -315,8 +332,9 @@ WITH targets AS (
 )
 SELECT raw_json,logical_key,source_count,source_ids,display_name FROM ranked WHERE rn=1;
 "@
-  $rows=Invoke-SqliteJson $sql
-  return @{ok=$true;items=(Convert-CatalogRows $rows)}
+    foreach($item in @(Convert-CatalogRows (Invoke-SqliteJson $sql))){ $out.Add($item) }
+  }
+  return @{ok=$true;items=@($out)}
 }
 
 function Catalog-Match($Data) {
@@ -846,7 +864,7 @@ function Handle-Request($Request, [string]$MpvPath) {
     if ($path -eq '/native/status') {
       $playing = $false
       if ($script:MpvProcess) { try { $playing = -not $script:MpvProcess.HasExited } catch {} }
-      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.28'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
+      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.29'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
       return
     }
 
@@ -967,7 +985,7 @@ function Handle-Request($Request, [string]$MpvPath) {
 
     if ([IO.Path]::GetFileName($full).ToLowerInvariant() -eq 'index.html') {
       $html = Get-Content -Path $full -Raw -Encoding UTF8
-      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.28',platform:'windows'};</script>"
+      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.29',platform:'windows'};</script>"
       $html = $html -replace '</head>', ($bootstrap + '</head>')
       Send-Text $stream $html 'text/html; charset=utf-8'
       return
@@ -980,7 +998,7 @@ function Handle-Request($Request, [string]$MpvPath) {
   }
 }
 
-Write-Header 'Swoop TV v0.7.28 — Brand Lockup Cleanup'
+Write-Header 'Swoop TV v0.7.29 — Separate Live Streams'
 Write-Host 'This local bridge keeps IPTV video provider-to-device and launches mpv for playback.'
 Write-Host 'No administrator rights are required.'
 

@@ -384,18 +384,16 @@ assert(SWOOP_THEMES.length===4,'Expected four launch themes');
 assert(['chill','prime-time','rewind','vice'].every(id=>themeById(id).id===id),'Theme IDs missing');
 assert(themeById('vice').accent==='#ff4fc3'&&themeById('rewind').accent==='#ffd51f','Theme palettes missing');
 
-// v0.7.0 multi-provider live dedupe + provider-priority source selection.
+// v0.7.29 Live TV stream separation: duplicate-looking channels stay independent.
 const liveMulti=[
   {id:'p1:l1',providerId:'p1',kind:'live',source:'xtream',name:'FOX Footy HD',group:'Sports',tvgId:'fox-footy',streamUrl:'http://p1/live/1.ts'},
   {id:'p2:l9',providerId:'p2',kind:'live',source:'xtream',name:'FOX Footy 1080p',group:'Sports',tvgId:'fox-footy',streamUrl:'http://p2/live/9.ts'},
   {id:'p2:l10',providerId:'p2',kind:'live',source:'xtream',name:'ESPN',group:'Sports',tvgId:'espn',streamUrl:'http://p2/live/10.ts'}
 ];
 const liveIndex=buildLiveStackIndex(liveMulti,{p1:0,p2:1});
-assert(liveIndex.stacked.length===2,'Multi-provider live dedupe failed');
-const fox=liveIndex.stacked.find(x=>x.sourceCount===2);
-assert(fox&&fox._stackConfidence==='EPG channel ID','Live duplicate confidence missing');
-const foxSource=selectLiveSource(fox,{p1:0,p2:1});
-assert(foxSource.streamUrl&&foxSource.id===fox.id,'Live stacked source selection failed');
+assert(liveIndex.stacked.length===3,'Live TV streams must not be deduplicated');
+assert(liveIndex.stacked.every(x=>!x._stackedLive&&!x.sourceCount),'Live TV must not create source stacks');
+assert(liveIndex.bySourceId.get('p1:l1')?.streamUrl==='http://p1/live/1.ts'&&liveIndex.bySourceId.get('p2:l9')?.streamUrl==='http://p2/live/9.ts','Each live provider stream must remain addressable');
 const rankedProvider=rankSources([
   {id:'a',providerId:'p2',name:'Film',kind:'movie'},
   {id:'b',providerId:'p1',name:'Film',kind:'movie'}
@@ -405,6 +403,8 @@ assert(rankedProvider[0].id==='b','Movie source provider-priority tie-break fail
 const nativePs=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 assert(nativePs.includes('--input-ipc-server=')&&nativePs.includes("'/native/control'")&&nativePs.includes("'--start='"),'Windows mpv IPC/resume bridge missing');
 assert(nativePs.includes('swoop-progress.lua')&&nativePs.includes('mpv-playback-state.json')&&nativePs.includes("mp.commandv('seek'"),'Windows durable progress/resume sidecar missing');
+assert(nativePs.includes("if($kind -eq 'live')")&&nativePs.includes("SELECT COUNT(*) AS total FROM catalog WHERE $whereSql")&&nativePs.includes("CASE WHEN kind='live' THEN COUNT(*)"),'Native Live TV must use raw stream rows/counts rather than logical stacks');
+assert(fs.readFileSync(new URL('./src/nativeCatalog.js',import.meta.url),'utf8').includes('live:single:${item.id}'),'Future native Live TV imports must use per-stream logical identity');
 assert(nativePs.includes("'load-url'")&&nativePs.includes("@('loadfile',$switchUrl,'replace')"),'Windows in-process live channel switching missing');
 assert(nativePs.includes("'--cache-secs=15'")&&nativePs.includes("'--demuxer-readahead-secs=20'")&&!nativePs.includes("'--profile=low-latency'"),'Proven compatibility playback profile must remain unchanged');
 assert(appSource.includes('Recommended For You')&&appSource.includes('UP NEXT')&&appSource.includes('Loading Now & Next'),'Personalization/Up Next/live UI missing');
@@ -451,7 +451,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0728-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.26 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0729-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.29 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -460,7 +460,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.28'")&&swHotfix.includes('swoop-tv-v0728-shell'),'v0.7.28 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.29'")&&swHotfix.includes('swoop-tv-v0729-shell'),'v0.7.29 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -558,4 +558,4 @@ assert(appSource.includes('guide-load-progress')&&appSource.includes('data-guide
 assert(appSource.includes('activity-progress indeterminate')&&detailCss.includes('.activity-progress.indeterminate')&&detailCss.includes('@keyframes swoopProgressShine'),'Indeterminate/moving activity feedback missing for unknown-duration work');
 assert(!appSource.includes('SWOOP TV <b>TV</b>')&&!appSource.includes('<span>SWOOP TV</span><b>TV</b>'),'Brand lockup must not render SWOOP TV TV');
 assert(appSource.includes('<span>SWOOP <b>TV</b></span>')&&appSource.includes('<span>SWOOP</span><b>TV</b>'),'Brand lockup should render a single SWOOP TV label');
-console.log('Swoop TV v0.7.28 tests passed');
+console.log('Swoop TV v0.7.29 tests passed');

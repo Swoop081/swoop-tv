@@ -1,3 +1,12 @@
+## v0.7.29 — Separate Live Streams
+
+- **Live TV no longer collapses duplicate-looking channels.** Every provider stream remains a separate Live TV entry even when another stream has the same channel name, category/group or EPG/tvg-id.
+- This applies to the Live TV hub, category browsing, TV Guide, search, favourites/recent-channel hydration and native SQLite queries. Alternate HD/FHD/4K/provider endpoints are therefore independently selectable/playable.
+- Windows native SQLite queries now treat Live TV as raw stream rows instead of logical-channel stacks. Existing v0.7.28 databases work immediately; **no provider refresh or SQLite rebuild is required**. Future imports also write per-stream Live TV logical identities.
+- TV Guide category counts and Settings Live counts now reflect actual separate stream entries rather than deduplicated logical channels.
+- Movie/VOD source stacking is unchanged. Similar movie sources can still be grouped for Smart Source Selection; this change is Live-TV-only.
+- Existing provider ordering, EPG retrieval, Category-First Guide, Snoak discovery, metadata/IMDb handling, watched/resume state and Windows/mpv playback profile are preserved.
+
 ## v0.7.28 — Brand Lockup Cleanup
 
 - Fixed the navigation/profile brand lockup displaying **SWOOP TV TV**.

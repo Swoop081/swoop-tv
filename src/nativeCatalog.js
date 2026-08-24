@@ -20,8 +20,9 @@ function logicalKey(item={}){
     if(title&&year)return `title-year:${title}|${year}`;if(imdb)return `imdb:${imdb}`;if(tmdb)return `tmdb:${tmdb}`;if(title&&art)return `title-art:${title}|${art}`;return `single:${item.id}`;
   }
   if(kind==='live'){
-    const tvg=String(item.tvgId||item.epgChannelId||'').trim().toLowerCase(),name=cleanChannelName(item.name),group=cleanGroup(item.group);
-    if(tvg)return `epg:${tvg}`;if(name&&group)return `name:${name}|${group}`;return `single:${item.id}`;
+    // Live TV is stream-first, not title/channel-stack-first. Two entries that share
+    // a name or EPG id can be different endpoints/qualities and must stay separate.
+    return `live:single:${item.id}`;
   }
   if(kind==='series'){
     const tmdb=String(item.tmdbId||'').trim(),imdb=String(item.imdbId||'').trim().toLowerCase(),title=normalizeMediaTitle(item.name),year=releaseYear(item);
