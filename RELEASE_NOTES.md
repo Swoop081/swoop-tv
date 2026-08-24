@@ -1,5 +1,15 @@
 # Swoop TV Release Notes
 
+## v0.7.14 — Detail Navigation + Interaction Stability
+
+- Fixes the title-detail transition captured in the Windows screen recording: raw provider names such as `EN - 2073 (2024)` / `AMZ - ...` no longer flash as the large title before metadata settles. Detail presentation uses the cleaned title immediately while full raw source names remain available in Smart Source Selection.
+- Keeps the text title visible underneath the title-logo slot until the logo image has actually loaded, then crossfades to the logo. This removes the blank period caused by replacing text with an unloaded image.
+- Stops metadata enrichment, native source hydration and Xtream detail loading from fully rerendering the detail route. Backdrop/title/body updates are patched in place so already-loaded artwork is retained and controls are not replaced underneath pointer clicks.
+- Preserves the already-rendered browse DOM while a detail route is open. Back restores the exact Home/list screen, loaded artwork and previous scroll position immediately rather than reconstructing lazy/skeleton rows.
+- Changes native Home-row priming and web-discovery refreshes to patch mounted rows instead of rebuilding the whole Home page, eliminating the blank/bounce cycle seen after returning from details.
+- Cleans common provider/source prefixes before TMDb metadata/IMDb identity lookup, improving title/logo matching while keeping raw source labels unchanged for playback selection.
+- Adds faster pressed-state feedback for cards/buttons. No provider refresh, SQLite rebuild, profile reset or mpv playback-profile change is required.
+
 ## v0.7.13 — Viewport IMDb Rating Hydration
 
 - Fixes IMDb badges being absent across large category rails even when the underlying films/shows clearly have IMDb ratings.

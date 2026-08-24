@@ -529,3 +529,20 @@ html{scroll-behavior:smooth}
 :root[data-performance="lean"] .home-priority-row{contain:none}
 :root[data-performance="lean"] .home-priority-row .card{transition:transform .1s ease,box-shadow .1s ease}
 @media(max-width:700px){.home-priority-row{margin-bottom:31px}.profile-avatar-xl.animal-avatar b{font-size:58px!important}.profile-avatar-lg.animal-avatar b{font-size:32px!important}}
+
+/* v0.7.14 — stable detail transitions + faster interaction feedback */
+.detail-title-slot{display:grid;align-items:end;max-width:min(760px,100%);margin:0 0 19px;position:relative}
+.detail-title-slot>*{grid-area:1/1}
+.detail-title-slot .detail-title-text{margin:0!important;opacity:1;transition:opacity .2s ease;align-self:end}
+.detail-title-slot .detail-title-logo{margin:0!important;align-self:end;transition:opacity .22s ease,filter .22s ease}
+.detail-title-slot:has(.detail-title-logo.loaded) .detail-title-text{opacity:0}
+.detail-title-logo-next{opacity:0}
+.detail-title-logo-next.loaded{opacity:1}
+.detail-title-logo-retiring{opacity:0!important}
+.detail-backdrop-next{z-index:2!important}
+.detail-backdrop-retiring{opacity:0!important}
+.detail-poster-retiring{opacity:0!important;transition:opacity .26s ease!important}
+button,.btn,.card,.nav-btn,.icon-btn{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.btn:active,.nav-btn:active,.icon-btn:active,.detail-close:active,.section-link:active{transform:scale(.975);transition-duration:.04s!important}
+.card:active{transform:scale(.985)!important;transition-duration:.04s!important}
+@media(max-width:700px){.detail-title-slot{margin-bottom:14px}}

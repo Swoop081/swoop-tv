@@ -34,7 +34,7 @@ async function loadNativeHomeRow(id){
   else if(NATIVE_HOME_SEARCH[id]){const [kind,term]=NATIVE_HOME_SEARCH[id],a=await nativeCatalogSearch(term,{providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,kinds:[kind]});result=a.items||[]}
   result=cacheNativeItems(result);nativeHomeRowCache.set(id,result);return result;
 }
-async function primeNativeHomeRows(){if(!nativeCatalogMode||nativeHomePrimeBusy||state.page!=='home')return;const skip=new Set(['continue','recently-watched','recommended','recent-live','mylist']);const ids=selectedHomeRows().map(x=>x.id).filter(id=>!WEB_ROW_IDS.has(id)&&!String(id).startsWith('custom:')&&!skip.has(id)&&!nativeHomeRowCache.has(id)).slice(0,10);if(!ids.length)return;nativeHomePrimeBusy=true;try{for(const id of ids){await loadNativeHomeRow(id).catch(()=>[]);await new Promise(r=>setTimeout(r,0))}}finally{nativeHomePrimeBusy=false;if(state.page==='home'&&!modal&&!detailItem&&!playerItem)render()}}
+async function primeNativeHomeRows(){if(!nativeCatalogMode||nativeHomePrimeBusy||state.page!=='home')return;const skip=new Set(['continue','recently-watched','recommended','recent-live','mylist']);const ids=selectedHomeRows().map(x=>x.id).filter(id=>!WEB_ROW_IDS.has(id)&&!String(id).startsWith('custom:')&&!skip.has(id)&&!nativeHomeRowCache.has(id)).slice(0,10);if(!ids.length)return;nativeHomePrimeBusy=true;try{for(const id of ids){await loadNativeHomeRow(id).catch(()=>[]);if(state.page==='home'&&!modal&&!detailItem&&!playerItem)patchMountedHomeRows([id]);await new Promise(r=>setTimeout(r,0))}}finally{nativeHomePrimeBusy=false}}
 function cacheNativeItems(list=[]){
   for(const item of list||[]){
     if(!item?.id)continue;
@@ -160,6 +160,7 @@ const DISCOVERY_REFRESH_MS=4*60*60*1000;
 const DISCOVERY_FAST_REFRESH_MS=90*60*1000;
 const discoveryBundleMemory=new Map();
 let detailItem=null,detailPayload=null,detailLoading=false,detailError='',detailSeason='';
+let suspendedBaseView=null;
 const detailCache=new Map();
 const detailEpisodeItems=new Map();
 const viewLimits={live:96,movie:72,series:72};
@@ -192,6 +193,25 @@ const $app=document.querySelector('#app');
 
 function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function hash(s=''){let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h)+s.charCodeAt(i)|0;return h}
+function suspendBaseViewForDetail(){
+  if(suspendedBaseView||detailItem||!$app?.firstElementChild)return;
+  const shell=$app.firstElementChild,active=document.activeElement;
+  suspendedBaseView={shell,page:state.page,scrollY:window.scrollY||document.documentElement.scrollTop||0,focusDetail:active?.dataset?.detail||'',focusPlay:active?.dataset?.play||''};
+  lazyHomeObserver?.disconnect?.();lazyHomeObserver=null;
+  artworkObserver?.disconnect?.();artworkObserver=null;
+  visibleMetadataObserver?.disconnect?.();visibleMetadataObserver=null;
+  $app.removeChild(shell);
+}
+function restoreSuspendedBaseView(){
+  const snap=suspendedBaseView;suspendedBaseView=null;
+  if(!snap||snap.page!==state.page||!snap.shell)return false;
+  artworkObserver?.disconnect?.();artworkObserver=null;visibleMetadataObserver?.disconnect?.();visibleMetadataObserver=null;lazyHomeObserver?.disconnect?.();lazyHomeObserver=null;
+  $app.replaceChildren(snap.shell);applyTheme();bind();bindHeroControls(document);hydrateArtwork(document);
+  const restore=()=>{window.scrollTo(0,snap.scrollY||0);if(state.page==='home'){mountLazyHomeRows(document);scheduleHeroRotation();if(nativeCatalogMode)setTimeout(primeNativeHomeRows,180);setTimeout(()=>refreshDiscoveryRows(false),1500);}if(!profilePickerOpen&&state.catalog.length)setTimeout(scheduleMetadataEnrichment,600);const target=[...document.querySelectorAll('[data-detail],[data-play]')].find(el=>(snap.focusDetail&&el.dataset.detail===snap.focusDetail)||(snap.focusPlay&&el.dataset.play===snap.focusPlay));target?.focus?.({preventScroll:true});};
+  requestAnimationFrame(()=>{restore();requestAnimationFrame(()=>window.scrollTo(0,snap.scrollY||0))});
+  return true;
+}
+function clearSuspendedBaseView(){suspendedBaseView=null}
 let activeCatalogSourceRef=null,activeCatalogContext='',activeCatalogCache=[],metadataRevision=0;
 function activeCatalog(){
   const source=state.catalog.length?state.catalog:demoCatalog,profile=activeProfile(),enabledKey=state.catalog.length&&state.providers.length?enabledProviders().map(p=>p.id).join('|'):'all',context=`${enabledKey}|${profile?.kids?`${profile.id}:${metadataRevision}`:'standard'}`;
@@ -594,7 +614,13 @@ async function refreshDiscoveryRows(force=false){
     for(const id of staleIds){try{const result=await fetchBuiltInDiscovery(id,apiKey,false);state.webDiscovery[id]={itemIds:result.items.map(x=>x.id),items:nativeCatalogMode?result.items:undefined,updatedAt:Date.now(),error:'',enhanced:result.enhanced,source:result.source};}catch(err){state.webDiscovery[id]={...(state.webDiscovery[id]||{}),updatedAt:Date.now(),error:err.message||String(err)};}}
     for(const row of staleCustom){try{const payload=await getMDBListItems({apiKey,listId:row.source.listId,username:row.source.username,listName:row.source.listName});row.items=nativeCatalogMode?cacheNativeItems((await nativeCatalogMatchPayload(payload,'movie',{sourceLimit:200,limit:120,providerIds:nativeEnabledProviderIds()})).items||[]):matchMDBListToCatalog(payload,activeCatalog());row.updatedAt=Date.now();row.error='';}catch(err){row.updatedAt=Date.now();row.error=err.message||String(err);}}
     await persist('cache');discoveryMessage='Discovery updated';
-  }finally{discoveryRefreshing=false;if((state.page==='home'||modal==='homeRows')&&!detailItem&&!playerItem)render();setTimeout(()=>{discoveryMessage=''},1800)}
+  }finally{
+    discoveryRefreshing=false;
+    const changedIds=[...staleIds,...staleCustom.map(r=>`custom:${r.uid}`)];
+    if(modal==='homeRows'&&!detailItem&&!playerItem)render();
+    else if(state.page==='home'&&!detailItem&&!playerItem){patchMountedHomeRows(changedIds);if(changedIds.some(id=>String(id).startsWith('top20-')||String(id).startsWith('trending-')))replaceHomeHero();}
+    setTimeout(()=>{discoveryMessage='';if(state.page==='home'&&!detailItem&&!playerItem)patchMountedHomeRows([])},1800);
+  }
 }
 function card(item,poster=false,opts={}){
   if(!item)return'';
@@ -681,6 +707,20 @@ function homeRowMarkup(def){
   const data=homeRowItems(def.id);if(!data.length)return'';
   const limit=String(def.id).startsWith('top20-')?HOME_TOP20_LIMIT:HOME_STANDARD_ROW_LIMIT;
   return rail(def.label,data.slice(0,limit),def.poster,discoveryMeta(def.id,data),{page:def.page,ranked:def.ranked,rowId:def.id,priority:PINNED_HOME_ROWS.includes(def.id)});
+}
+function patchMountedHomeRows(ids=[]){
+  if(state.page!=='home'||detailItem||playerItem)return false;
+  let changed=false;
+  for(const id of [...new Set((ids||[]).filter(Boolean))]){
+    const current=[...document.querySelectorAll('[data-home-row-mounted]')].find(el=>el.dataset.homeRowMounted===String(id));
+    if(!current)continue;
+    const def=homeRowDef(id);if(!def)continue;
+    const wrap=document.createElement('div');wrap.innerHTML=homeRowMarkup(def);const next=wrap.firstElementChild;
+    if(!next)continue;
+    const left=current.querySelector('.rail')?.scrollLeft||0;current.replaceWith(next);const railEl=next.querySelector('.rail');if(railEl)railEl.scrollLeft=left;hydrateArtwork(next);bindDynamicCards(next);changed=true;
+  }
+  const status=document.querySelector('.discovery-status');if(status){status.textContent=discoveryRefreshing?'Refreshing Swoop discovery…':discoveryMessage||'Trending refreshes about every 90 minutes · Top 20 every 4 hours';status.classList.toggle('busy',discoveryRefreshing)}
+  return changed;
 }
 function lazyHomePlaceholder(def){return `<section class="section lazy-home-row swoop-render-section ${def.poster?'poster-placeholder':'landscape-placeholder'}" data-lazy-home-row="${esc(def.id)}"><div class="section-head"><div><h2>${esc(def.label)}</h2><span class="section-meta">Ready as you scroll</span></div></div><div class="lazy-row-skeleton ${def.poster?'poster-skeleton':'landscape-skeleton'}">${Array.from({length:5},()=>'<i></i>').join('')}</div></section>`}
 function mountLazyHomeRows(root=document){
@@ -987,7 +1027,7 @@ function detailMeta(item,payload){
   const providerYoutube=String(info.youtube_trailer||'').trim();
   const youtubeKey=enriched.trailerKey||(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{6,})/.exec(providerYoutube)?.[1]||(/^[A-Za-z0-9_-]{6,}$/.test(providerYoutube)?providerYoutube:''));
   return {
-    title:enriched.title||info.name||movie.name||item.name,
+    title:cleanDisplayTitle({name:enriched.title||info.name||movie.name||item.name}),
     plot:enriched.plot||info.plot||info.description||movie.plot||item.plot||'',
     cover,backdrop,backdrops:Array.isArray(item.backdrops)?item.backdrops:[],titleLogo:item.titleLogo||'',
     year:enriched.year||info.releasedate||info.releaseDate||info.year||movie.year||item.year||'',
@@ -1034,9 +1074,40 @@ function detailHtml(){
   const sourceProviders=Array.isArray(detailItem.sources)?[...new Set(detailItem.sources.map(x=>providerDisplayName(x)))]:[providerDisplayName(detailItem)];const facts=[['Genre',meta.genre],['Director / Creator',meta.director],['Country',meta.country],['Runtime',meta.duration],['Rating',meta.age],['Providers',sourceProviders.filter(Boolean).join(', ')],['Playback sources',detailItem.sourceCount>1?`${detailItem.sourceCount} available`:'']].filter(([,v])=>v);
   const castBlock=meta.castList.length?`<section class="detail-cast"><div class="detail-section-head"><div><span class="eyebrow">CAST</span><h3>Cast & Characters</h3></div></div><div class="cast-rail">${meta.castList.map(person=>`<div class="cast-card">${person.profile?`<img data-swoop-art="${esc(person.profile)}" alt="">`:`<div class="cast-fallback">${esc((person.name||'?').slice(0,1))}</div>`}<strong>${esc(person.name)}</strong><span>${esc(person.character||'')}</span></div>`).join('')}</div></section>`:'';
   const trailerButton=meta.youtube?`<button class="btn secondary detail-trailer" data-trailer="${esc(meta.youtube)}" data-trailer-title="${esc(meta.trailerName||meta.title)}"><span>▶</span> Trailer</button>`:'';
-  return `<main class="detail-overlay detail-route" aria-label="${esc(meta.title)}"><button class="detail-close" data-detail-close aria-label="Back">←</button><div class="detail-scroll"><section class="detail-hero ${hasCinematicBackdrop?'has-backdrop':'poster-fallback'}"><div class="detail-media"><div class="detail-fallback" style="--detail-fallback:${detailItem.demoColor||'linear-gradient(135deg,#151b2a,#050609)'}"></div>${backdrop?`<img class="detail-backdrop" data-swoop-art="${esc(backdrop)}" alt="">`:''}</div><div class="detail-vignette"></div><div class="detail-copy"><div class="eyebrow">${esc(kindLabel(detailItem).toUpperCase())}</div>${meta.titleLogo?`<img class="detail-title-logo" data-swoop-art="${esc(meta.titleLogo)}" alt="${esc(meta.title)}">`:`<h2>${esc(meta.title)}</h2>`}<div class="detail-meta">${[meta.year,meta.rating?`★ ${meta.rating}`:'',meta.age,detailItem.group].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>${esc(meta.plot||`Available from ${providerSummaryName()}.`)}</p><div class="cta-row">${primary}${trailerButton}<button class="btn secondary detail-list ${saved?'saved':''}" data-toggle-list="${esc(detailItem.id)}"><span>${saved?'✓':'＋'}</span> ${saved?'In My List':'My List'}</button>${watchedButton}</div></div>${meta.cover&&!hasCinematicBackdrop?`<img class="detail-poster" data-swoop-art="${esc(meta.cover)}" alt="">`:''}</section>
-  ${episodeBlock}${castBlock}<section class="detail-info"><div><span class="eyebrow">ABOUT</span><h3>More about ${esc(meta.title)}</h3></div><div class="detail-facts">${facts.length?facts.map(([k,v])=>`<div><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join(''):'<div><span>Source</span><strong>Your connected provider</strong></div>'}</div></section>${related.length?`<section class="detail-related">${rail('More Like This',related,detailItem.kind!=='live')}</section>`:''}</div></main>`;
+  return `<main class="detail-overlay detail-route" aria-label="${esc(meta.title)}"><button class="detail-close" data-detail-close aria-label="Back">←</button><div class="detail-scroll"><section class="detail-hero ${hasCinematicBackdrop?'has-backdrop':'poster-fallback'}"><div class="detail-media"><div class="detail-fallback" style="--detail-fallback:${detailItem.demoColor||'linear-gradient(135deg,#151b2a,#050609)'}"></div>${backdrop?`<img class="detail-backdrop" data-swoop-art="${esc(backdrop)}" alt="">`:''}</div><div class="detail-vignette"></div><div class="detail-copy"><div class="eyebrow">${esc(kindLabel(detailItem).toUpperCase())}</div><div class="detail-title-slot" data-detail-title><h2 class="detail-title-text">${esc(meta.title)}</h2>${meta.titleLogo?`<img class="detail-title-logo" data-swoop-art="${esc(meta.titleLogo)}" alt="${esc(meta.title)}">`:''}</div><div class="detail-meta">${[meta.year,meta.rating?`★ ${meta.rating}`:'',meta.age,detailItem.group].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>${esc(meta.plot||`Available from ${providerSummaryName()}.`)}</p><div class="cta-row">${primary}${trailerButton}<button class="btn secondary detail-list ${saved?'saved':''}" data-toggle-list="${esc(detailItem.id)}"><span>${saved?'✓':'＋'}</span> ${saved?'In My List':'My List'}</button>${watchedButton}</div></div>${meta.cover&&!hasCinematicBackdrop?`<img class="detail-poster" data-swoop-art="${esc(meta.cover)}" alt="">`:''}</section>
+  <div class="detail-body" data-detail-body>${episodeBlock}${castBlock}<section class="detail-info"><div><span class="eyebrow">ABOUT</span><h3>More about ${esc(meta.title)}</h3></div><div class="detail-facts">${facts.length?facts.map(([k,v])=>`<div><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join(''):'<div><span>Source</span><strong>Your connected provider</strong></div>'}</div></section>${related.length?`<section class="detail-related">${rail('More Like This',related,detailItem.kind!=='live')}</section>`:''}</div></div></main>`;
 }
+function patchDetailHeroFromState(){
+  if(!detailItem)return false;
+  const route=document.querySelector('.detail-route'),hero=route?.querySelector('.detail-hero');if(!route||!hero)return false;
+  const meta=detailMeta(detailItem,detailPayload||{}),title=cleanDisplayTitle({name:meta.title||detailItem.name});route.setAttribute('aria-label',title);
+  const slot=hero.querySelector('[data-detail-title]'),titleText=slot?.querySelector('.detail-title-text');if(titleText&&titleText.textContent!==title)titleText.textContent=title;
+  if(slot&&meta.titleLogo){const current=[...slot.querySelectorAll('.detail-title-logo')].find(x=>x.dataset.swoopArt===meta.titleLogo),old=[...slot.querySelectorAll('.detail-title-logo')].find(x=>x.dataset.swoopArt!==meta.titleLogo);if(!current){const logo=document.createElement('img');logo.className='detail-title-logo detail-title-logo-next';logo.dataset.swoopArt=meta.titleLogo;logo.alt=title;logo.addEventListener('load',()=>setTimeout(()=>{old?.classList.add('detail-title-logo-retiring');setTimeout(()=>old?.remove(),260);logo.classList.remove('detail-title-logo-next')},180),{once:true});slot.appendChild(logo);loadArtwork(logo)}}
+  const metaEl=hero.querySelector('.detail-meta');if(metaEl)metaEl.innerHTML=[meta.year,meta.rating?`★ ${meta.rating}`:'',meta.age,detailItem.group].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('');
+  const plot=hero.querySelector('.detail-copy>p');if(plot)plot.textContent=meta.plot||`Available from ${providerSummaryName()}.`;
+  const cta=hero.querySelector('.detail-copy .cta-row'),currentTrailer=cta?.querySelector('.detail-trailer');if(cta){if(meta.youtube&&!currentTrailer){const btn=document.createElement('button');btn.className='btn secondary detail-trailer';btn.dataset.trailer=meta.youtube;btn.dataset.trailerTitle=meta.trailerName||meta.title;btn.innerHTML='<span>▶</span> Trailer';const anchor=cta.querySelector('.detail-list');cta.insertBefore(btn,anchor||null);bindPatchedDetail(btn)}else if(meta.youtube&&currentTrailer){currentTrailer.dataset.trailer=meta.youtube;currentTrailer.dataset.trailerTitle=meta.trailerName||meta.title}else if(!meta.youtube&&currentTrailer)currentTrailer.remove()}
+  const desired=meta.backdrop||meta.cover||detailItem.logo||'',media=hero.querySelector('.detail-media'),currentBackdrop=media?[...media.querySelectorAll('.detail-backdrop')].find(x=>!x.classList.contains('detail-backdrop-next')):null;
+  if(media&&desired&&currentBackdrop?.dataset.swoopArt!==desired&&![...media.querySelectorAll('.detail-backdrop-next')].some(x=>x.dataset.swoopArt===desired)){
+    const next=document.createElement('img');next.className='detail-backdrop detail-backdrop-next';next.dataset.swoopArt=desired;next.alt='';next.addEventListener('load',()=>setTimeout(()=>{currentBackdrop?.classList.add('detail-backdrop-retiring');hero.classList.toggle('has-backdrop',Boolean(meta.backdrop&&meta.backdrop!==meta.cover));hero.classList.toggle('poster-fallback',!Boolean(meta.backdrop&&meta.backdrop!==meta.cover));if(meta.backdrop&&meta.backdrop!==meta.cover)hero.querySelector('.detail-poster')?.classList.add('detail-poster-retiring');setTimeout(()=>{currentBackdrop?.remove();next.classList.remove('detail-backdrop-next');hero.querySelector('.detail-poster-retiring')?.remove()},380)},120),{once:true});media.appendChild(next);loadArtwork(next)
+  }else if(media&&desired&&!currentBackdrop){const img=document.createElement('img');img.className='detail-backdrop';img.dataset.swoopArt=desired;img.alt='';media.appendChild(img);loadArtwork(img)}
+  return true;
+}
+function bindPatchedDetail(root=document){
+  bindDynamicCards(root);
+  root.querySelectorAll('[data-season]').forEach(el=>el.onclick=()=>{detailSeason=el.dataset.season;patchDetailSectionsFromState({controls:true})});
+  root.querySelectorAll('[data-toggle-list]').forEach(el=>el.onclick=()=>toggleMyList(savedItem(el.dataset.toggleList)||detailItem));
+  root.querySelectorAll('[data-toggle-watched]').forEach(el=>el.onclick=()=>toggleWatched(savedItem(el.dataset.toggleWatched)||detailItem));
+  root.querySelectorAll('[data-trailer]').forEach(el=>el.onclick=()=>{trailerKey=el.dataset.trailer||'';trailerTitle=el.dataset.trailerTitle||detailItem?.name||'Trailer';render()});
+}
+function patchDetailSectionsFromState({controls=false}={}){
+  if(!detailItem)return false;const route=document.querySelector('.detail-route');if(!route)return false;
+  const scroll=route.querySelector('.detail-scroll'),scrollTop=scroll?.scrollTop||0,wrap=document.createElement('div');wrap.innerHTML=detailHtml();const fresh=wrap.firstElementChild;if(!fresh)return false;
+  const currentBody=route.querySelector('[data-detail-body]'),freshBody=fresh.querySelector('[data-detail-body]');if(currentBody&&freshBody){currentBody.innerHTML=freshBody.innerHTML;hydrateArtwork(currentBody);bindPatchedDetail(currentBody)}
+  if(controls){const currentCta=route.querySelector('.detail-copy .cta-row'),freshCta=fresh.querySelector('.detail-copy .cta-row');if(currentCta&&freshCta){currentCta.innerHTML=freshCta.innerHTML;bindPatchedDetail(currentCta)}}
+  if(scroll)scroll.scrollTop=scrollTop;return true;
+}
+function patchDetailFromState({sections=true,controls=false}={}){const ok=patchDetailHeroFromState();if(sections)patchDetailSectionsFromState({controls});return ok}
+
 function trailerHtml(){return trailerKey?`<div class="trailer-shell" role="dialog" aria-modal="true"><div class="trailer-card"><button class="trailer-close" data-trailer-close>✕</button><iframe src="https://www.youtube.com/embed/${esc(trailerKey)}?autoplay=1&rel=0" title="${esc(trailerTitle||'Trailer')}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe><div class="trailer-caption"><span class="eyebrow">TRAILER</span><strong>${esc(trailerTitle||'Official Trailer')}</strong></div></div></div>`:''}
 
 async function resolveNativeCatalogItem(item,{includeSources=true}={}){
@@ -1057,27 +1128,32 @@ async function resolveNativeCatalogItem(item,{includeSources=true}={}){
 
 async function openDetail(item){
   if(!item)return;
-  if(!detailItem){detailReturnScroll=window.scrollY||document.documentElement.scrollTop||0;detailScrollTop=0;}
-  // Route immediately. Native source hydration must never make a thumbnail click feel dead.
-  detailItem=item;detailSeason='';detailError='';detailPayload=detailCache.get(item.id)||null;detailLoading=false;render();
+  if(!detailItem){detailReturnScroll=window.scrollY||document.documentElement.scrollTop||0;detailScrollTop=0;suspendBaseViewForDetail();}
+  // Route immediately. The detail shell renders once; background metadata/source work patches it in place
+  // so buttons are never replaced underneath a click and loaded artwork never flashes back to black.
+  detailItem=item;detailSeason='';detailError='';detailPayload=detailCache.get(item.id)||null;detailLoading=Boolean(!detailPayload&&item.kind==='series'&&item.source==='xtream');render();
   const openingId=item.id;
-  if(['movie','series'].includes(item.kind))setTimeout(()=>enrichItemMetadata(item,{rerender:true}),0);
+  if(['movie','series'].includes(item.kind))setTimeout(async()=>{await enrichItemMetadata(item,{rerender:false});if(detailItem?.id===openingId)patchDetailFromState({sections:true,controls:false})},0);
   let resolved=item;
   try{resolved=await resolveNativeCatalogItem(item,{includeSources:true})||item}catch{}
   if(detailItem?.id!==openingId)return;
-  if(resolved!==detailItem){detailItem=resolved;cacheNativeItems([resolved]);}
-  if(detailPayload||resolved.source!=='xtream'||!['movie','series'].includes(resolved.kind)){if(resolved!==item)render();return;}
+  if(resolved!==detailItem){detailItem=resolved;cacheNativeItems([resolved]);patchDetailFromState({sections:true,controls:false});}
+  if(detailPayload||resolved.source!=='xtream'||!['movie','series'].includes(resolved.kind)){detailLoading=false;patchDetailFromState({sections:true,controls:resolved.kind==='series'});return;}
   const cfg=providerConfigFor(resolved);
-  if(!cfg.server||!cfg.username||!cfg.password){detailError=`Reconnect ${providerDisplayName(resolved)} or save its Xtream login to load full title details.`;render();return;}
-  detailLoading=true;render();
+  if(!cfg.server||!cfg.username||!cfg.password){detailLoading=false;detailError=`Reconnect ${providerDisplayName(resolved)} or save its Xtream login to load full title details.`;patchDetailSectionsFromState({controls:false});return;}
+  detailLoading=true;patchDetailSectionsFromState({controls:false});
   try{
     const payload=resolved.kind==='series'?await fetchXtreamSeriesInfo(cfg,resolved.seriesId):await fetchXtreamVodInfo(cfg,resolved.streamId);
     detailCache.set(resolved.id,payload||{});
-    if(detailItem?.id===openingId){detailPayload=payload||{};detailLoading=false;render();}
-  }catch(err){if(detailItem?.id===openingId){detailLoading=false;detailError=err.message||'Could not load title details.';render();}}
+    if(detailItem?.id===openingId){detailPayload=payload||{};detailLoading=false;patchDetailFromState({sections:true,controls:resolved.kind==='series'});}
+  }catch(err){if(detailItem?.id===openingId){detailLoading=false;detailError=err.message||'Could not load title details.';patchDetailSectionsFromState({controls:false});}}
 }
-function closeDetail(){detailItem=null;detailPayload=null;detailLoading=false;detailError='';detailSeason='';detailEpisodeItems.clear();detailScrollTop=0;render();requestAnimationFrame(()=>window.scrollTo(0,detailReturnScroll||0))}
-function toggleMyList(item){if(!item)return;const ids=new Set(logicalItemIds(item)),saved=state.myList.some(id=>ids.has(id));if(saved){state.myList=state.myList.filter(id=>!ids.has(id));toast('Removed from My List')}else{state.myList.unshift(item.id);toast('Added to My List')}persist();render()}
+function closeDetail(){
+  detailItem=null;detailPayload=null;detailLoading=false;detailError='';detailSeason='';detailEpisodeItems.clear();detailScrollTop=0;
+  if(restoreSuspendedBaseView())return;
+  render();requestAnimationFrame(()=>window.scrollTo(0,detailReturnScroll||0));
+}
+function toggleMyList(item){if(!item)return;const ids=new Set(logicalItemIds(item)),saved=state.myList.some(id=>ids.has(id));if(saved){state.myList=state.myList.filter(id=>!ids.has(id));toast('Removed from My List')}else{state.myList.unshift(item.id);toast('Added to My List')}persist();if(detailItem)patchDetailSectionsFromState({controls:true});else render()}
 function watchHistoryEntry(itemOrId){
   const item=typeof itemOrId==='string'?savedItem(itemOrId):itemOrId,id=typeof itemOrId==='string'?itemOrId:itemOrId?.id;
   const ids=new Set(item?logicalItemIds(item):[id]);
@@ -1098,7 +1174,7 @@ function toggleWatched(item){
     state.continueWatching=state.continueWatching.filter(x=>!ids.has(String(x?.id||'')));
     toast('Marked as watched');
   }
-  persist();render();
+  persist();if(detailItem)patchDetailSectionsFromState({controls:true});else render();
 }
 function recordWatchHistory(item,{completed=false}={}){
   if(!item)return;
@@ -1371,7 +1447,7 @@ function bind(){
   document.querySelectorAll('[data-detail-close]').forEach(el=>el.onclick=closeDetail);
   document.querySelectorAll('[data-toggle-list]').forEach(el=>el.onclick=()=>toggleMyList(savedItem(el.dataset.toggleList)||detailItem));
   document.querySelectorAll('[data-toggle-watched]').forEach(el=>el.onclick=()=>toggleWatched(savedItem(el.dataset.toggleWatched)||detailItem));
-  document.querySelectorAll('[data-season]').forEach(el=>el.onclick=()=>{detailSeason=el.dataset.season;render()});
+  document.querySelectorAll('[data-season]').forEach(el=>el.onclick=()=>{detailSeason=el.dataset.season;patchDetailSectionsFromState({controls:true})});
   document.querySelectorAll('[data-close-player]').forEach(el=>el.onclick=()=>{if(playerItem?.kind==='live'){playerUiHidden=true;state.page='live';render()}else closePlayer()});
   document.querySelectorAll('[data-live-controls]').forEach(el=>el.onclick=()=>{playerUiHidden=false;render()});
   document.querySelectorAll('[data-live-stop]').forEach(el=>el.onclick=()=>closePlayer());

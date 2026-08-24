@@ -349,7 +349,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0713-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.13 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0714-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.14 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -358,7 +358,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.13'")&&swHotfix.includes('swoop-tv-v0713-shell'),'v0.7.13 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.14'")&&swHotfix.includes('swoop-tv-v0714-shell'),'v0.7.14 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -381,4 +381,12 @@ assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handl
 assert(appSource.includes('IMDB_RATING_SCHEMA=2')&&appSource.includes('delete meta.imdbRating')&&appSource.includes('delete meta.imdbRatingCheckedAt'),'IMDb rating cache must selectively refresh without clearing artwork metadata');
 assert(appSource.includes('visibleMetadataQueue')&&appSource.includes('hydrateVisibleImdbRatings')&&appSource.includes('data-imdb-item')&&appSource.includes('fetchTitleImdbRating'),'Viewport-driven IMDb rating hydration missing');
 assert(appSource.includes('imdbRatingCheckedAt')&&appSource.includes('30*86400000'),'Long-lived IMDb rating cache missing');
-console.log('Swoop TV v0.7.13 tests passed');
+assert(appSource.includes('suspendBaseViewForDetail')&&appSource.includes('restoreSuspendedBaseView'),'Detail route must preserve and restore the rendered browse DOM');
+assert(appSource.includes('patchDetailHeroFromState')&&appSource.includes('patchDetailSectionsFromState')&&appSource.includes("enrichItemMetadata(item,{rerender:false})"),'Detail metadata/source hydration must patch in place rather than force full rerenders');
+assert(appSource.includes('detail-title-slot')&&appSource.includes("title:cleanDisplayTitle({name:enriched.title||info.name||movie.name||item.name})"),'Detail title must use stable slot + cleaned provider title');
+assert(appSource.includes('patchMountedHomeRows')&&appSource.includes('primeNativeHomeRows'),'Home background hydration must patch mounted rows instead of rebuilding the whole page');
+const detailCss=fs.readFileSync(new URL('./styles.css',import.meta.url),'utf8');
+assert(detailCss.includes('.detail-title-slot:has(.detail-title-logo.loaded) .detail-title-text')&&detailCss.includes('.detail-backdrop-retiring'),'Stable title-logo/backdrop crossfade CSS missing');
+const tmdbClientSource=fs.readFileSync(new URL('./src/tmdb.js',import.meta.url),'utf8');
+assert(tmdbClientSource.includes('cleanMetadataTitle')&&tmdbClientSource.includes("'amz'")&&tmdbClientSource.includes("'netflix'"),'Metadata client must strip common provider prefixes before TMDb matching');
+console.log('Swoop TV v0.7.14 tests passed');

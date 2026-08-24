@@ -1,8 +1,18 @@
 # Swoop TV
 
-**Current build: v0.7.13 — Viewport IMDb Rating Hydration**
+**Current build: v0.7.14 — Detail Navigation + Interaction Stability**
 
-This build fixes IMDb badges across long category/Home rails by loading ratings for movie/TV poster cards as they approach the viewport. The gold **IMDb x.x** badge now progressively fills visible 100-item rails instead of depending on the small general metadata queue. Ratings are cached for 30 days and update in place without a full page re-render. The client uses the lightweight Worker v0.1.9 rating route when available and remains compatible with the v0.1.8 full-metadata route. The clean poster presentation, provider-priority Settings layout and proven Windows mpv playback profile are preserved.
+This build stabilizes movie/TV detail navigation and interaction after reviewing a real Windows screen recording. Detail pages now keep a cleaned title visible while title-logo artwork loads, swap artwork without flashing the hero back to black, patch metadata/source results in place instead of rebuilding the whole detail DOM, and preserve the already-rendered browse screen so Back returns instantly to the exact loaded Home position. Background Home discovery/catalog hydration now patches mounted rows instead of repeatedly rebuilding the entire page. The existing IMDb, provider, SQLite and Windows/mpv behavior is preserved.
+
+## Detail navigation + interaction stability
+
+- Detail pages use cleaned presentation titles immediately, so provider prefixes such as `EN -`, `NF -` and `AMZ -` stay in Smart Source Selection but do not flash as the large on-screen title.
+- The text title and TMDb title-logo share one stable title slot. The text remains visible until the logo image has actually loaded, then crossfades away instead of disappearing into a blank gap.
+- Metadata, native source hydration and Xtream detail results patch the existing detail route in place. Background requests no longer replace the Play, My List, Watched or Back controls underneath an in-progress click.
+- Back restores the exact detached browse DOM and scroll position rather than recreating Home from skeleton rows. Already-loaded posters remain loaded and the screen no longer jumps through blank/lazy states.
+- Native Home-row priming and web-discovery refreshes patch only mounted rows. They no longer trigger whole-Home rebuilds that could cause visible bouncing while browsing.
+- Metadata lookup requests now strip common provider/source prefixes before TMDb matching, improving canonical title/logo resolution without changing the raw source labels used for playback selection.
+- Adds immediate press feedback to buttons/cards and keeps the existing proven Windows/mpv playback profile unchanged.
 
 
 ## Viewport IMDb rating hydration
