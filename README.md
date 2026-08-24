@@ -1,7 +1,12 @@
 # Swoop TV
 
-**Current build: v0.7.33 — Continue Watching Series Poster Fix**
+**Current build: v0.7.34 — TV Hero + Title Logo Reliability**
 
+
+
+### v0.7.34 — TV Hero + Title Logo Reliability
+
+TV-series title cleanup now handles chained provider decorations such as `4K-MAX - Lanterns`, `4K-NF - Outer Banks`, `4K-AMZ - Reacher` and `D+ - Lucky Luke`. The Home hero now follows the same logo-first presentation as title details: the raw provider title is never exposed while metadata is being checked, the active hero is hydrated first, and the cleaned text title is shown only when TMDb has no usable title logo. Previously cached no-logo results from the older prefix parser are retried once automatically. The bundled Worker is **v0.1.18** and mirrors the same parser. No provider refresh or SQLite rebuild is required.
 
 
 ### v0.7.33 — Continue Watching Series Poster Fix
@@ -76,7 +81,7 @@ The TV Guide now uses the provider's **channel categories as the primary navigat
 
 Swoop TV uses a curated set of **Snoak's actively maintained MDBList lists as the primary external discovery layer** for Top 100, Trending, New & Hot and selected genre rails. The app still displays only titles that confidently exist in the user's enabled TV-provider library; Snoak/MDBList determines ranking and candidate order, never playability.
 
-The bundled Cloudflare Worker is **v0.1.17**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable.
+The bundled Cloudflare Worker is **v0.1.18**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable.
 
 ### Snoak-backed discovery
 

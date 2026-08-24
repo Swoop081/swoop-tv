@@ -2,19 +2,30 @@ const DEFAULT_METADATA_SERVICE = 'https://swoop-tv-connection.justinbelot8.worke
 
 
 function cleanMetadataTitle(value='') {
-  let s=String(value||'').trim().replace(/^\s*(?:[-–—|:•·]+\s*)+/, '').trim();
-  for(let i=0;i<4;i++){
-    const m=s.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s[-–—]\s)\s*(.+)$/);
-    if(!m)break;
-    const key=m[1].trim().toLowerCase();
-    if(!['amz','amazon','prime','prime video','nf','netflix','en','eng','english','atv','a+','apple tv','apple tv+','appletv+','apl','dsnp','disney','disney+','hmax','max','hbo max','pmtp','paramount','paramount+','top','new','movie','movies','film','films','vod','4k','uhd','fhd','hd','sd','us','uk','au','ca'].includes(key))break;
-    s=m[2].trim();
+  const prefixes=new Set(['amz','amazon','prime','prime video','nf','netflix','en','eng','english','atv','a+','apple tv','apple tv+','appletv+','apl','dsnp','d+','dplus','disney','disney+','hmax','max','hbo max','pmtp','paramount','paramount+','top','new','movie','movies','film','films','vod','us','uk','au','ca']);
+  const qualityPrefix=/^(?:4320p|2160p|1080p|1080i|720p|576p|576i|480p|480i|8k|4k|uhd|fhd|hd|sd)\s*(?:[-–—|:•·]+\s*)+/i;
+  let s=String(value||'').trim();
+  for(let i=0;i<10;i++){
+    const before=s;
+    s=s.replace(/^\s*(?:[-–—|:•·]+\s*)+/, '').trim();
+    const qualityStripped=s.replace(qualityPrefix,'').trim();
+    if(qualityStripped!==s){s=qualityStripped;continue}
+    const m=s.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s*[-–—]\s*)\s*(.+)$/);
+    if(m&&prefixes.has(m[1].trim().toLowerCase())){s=m[2].trim();continue}
+    if(s===before)break;
   }
-  s=s.replace(/\b(?:4320p|2160p|1080p|1080i|720p|576p|576i|480p|480i|8k|4k|uhd|fhd|hdr10\+?|hdr|hlg|dolby\s*vision|dovi|dv|web[- .]?dl|webrip|bluray|brrip|x26[45]|h26[45]|hevc|av1)\b/gi,' ');
-  // Series catalogues frequently suffix both a year and market tag, e.g.
-  // `Lioness (2023) (US)`. Remove only those unambiguous trailing tags.
+  s=s.replace(/\b(?:4320p|2160p|1080p|1080i|720p|576p|576i|480p|480i|8k|4k|uhd|fhd|hdr10\+?|hdr|hlg|dolby\s*vision|dovi|dv|web[- .]?dl|webrip|bluray|brrip|x26[45]|h26[45]|hevc|av1)\b/gi,' ').replace(/\s+/g,' ').trim();
+  // A global quality cleanup can expose another provider token, so run the
+  // same conservative prefix parser again before strict identity matching.
   for(let i=0;i<6;i++){
-    const next=s.replace(/\s*[\[(]\s*(?:(?:19|20)\d{2}|US|USA|UK|GB|AU|AUS|CA|CAN|NZ|EN|ENG|ENGLISH)\s*[\])]\s*$/i,'').trim();
+    const before=s;
+    s=s.replace(/^\s*(?:[-–—|:•·]+\s*)+/, '').trim();
+    const m=s.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s*[-–—]\s*)\s*(.+)$/);
+    if(m&&prefixes.has(m[1].trim().toLowerCase())){s=m[2].trim();continue}
+    if(s===before)break;
+  }
+  for(let i=0;i<6;i++){
+    const next=s.replace(/\s*[\[(]\s*(?:(?:19|20)\d{2}|US|USA|UK|GB|AU|AUS|CA|CAN|NZ|FR|FRA|EN|ENG|ENGLISH)\s*[\])]\s*$/i,'').trim();
     if(next===s.trim())break;
     s=next;
   }

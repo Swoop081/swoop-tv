@@ -104,11 +104,13 @@ if(invalidateDiscovery){state.webDiscovery={};state.settings.discoverySchemaVers
 const METADATA_ARTWORK_SCHEMA=4;
 const invalidateMetadataArtwork=Number(state.settings.metadataArtworkSchemaVersion||0)!==METADATA_ARTWORK_SCHEMA;
 if(invalidateMetadataArtwork){state.metadataCache={};state.settings.metadataArtworkSchemaVersion=METADATA_ARTWORK_SCHEMA;}
-const TITLE_LOOKUP_SCHEMA=2;
+const TITLE_LOOKUP_SCHEMA=3;
 function needsTitleLookupPrefixRepair(item={}){
   const raw=String(item?.name||'').trim();
-  return /^\s*[-–—|:•·]+\s*(?:MAX|HMAX|HBO\s+MAX|AMZ|AMAZON|PRIME(?:\s+VIDEO)?|NF|NETFLIX|A\+|ATV|APPLE\s*TV\+?|APPLETV\+|APL|DSNP|DISNEY\+?|PMTP|PARAMOUNT\+?)\s*(?:\||:|[-–—])/i.test(raw)
-    || /^\s*(?:A\+|APPLE\s*TV\+|APPLETV\+)\s*(?:\||:|[-–—])/i.test(raw);
+  // v0.7.34: provider catalogues commonly chain quality + service markers, e.g.
+  // `4K-MAX - Lanterns`, `4K-NF - Outer Banks`, `4K-AMZ - Reacher`, or
+  // `D+ - Lucky Luke`. These were missed by the earlier one-prefix repair.
+  return /^\s*[-–—|:•·]*\s*(?:(?:8K|4K|UHD|FHD|HD|SD)\s*[-–—|:•·]+\s*)?(?:MAX|HMAX|HBO\s+MAX|AMZ|AMAZON|PRIME(?:\s+VIDEO)?|NF|NETFLIX|A\+|ATV|APPLE\s*TV\+?|APPLETV\+|APL|DSNP|D\+|DPLUS|DISNEY\+?|PMTP|PARAMOUNT\+?)\s*(?:\||:|[-–—])/i.test(raw);
 }
 const IMDB_RATING_SCHEMA=2;
 const invalidateImdbRatings=Number(state.settings.imdbRatingSchemaVersion||0)!==IMDB_RATING_SCHEMA;
@@ -343,12 +345,16 @@ async function enrichItemMetadata(item,{rerender=true}={}){
 }
 function scheduleMetadataEnrichment(){
   const queue=[];
-  for(const heroItem of heroCandidates().slice(0,largeLibraryMode()?4:10))if(heroItem)queue.push(heroItem);
+  // Always hydrate the hero the user can actually see first. In large libraries the
+  // old `first four candidates` shortcut meant later TV hero slides could sit on raw
+  // provider names forever even after the user rotated to them.
+  const activeHero=state.page==='home'?featureItem():null;if(activeHero)queue.push(activeHero);
+  for(const heroItem of heroCandidates().slice(0,largeLibraryMode()?6:10))if(heroItem)queue.push(heroItem);
   if(state.page==='home')for(const def of selectedHomeRows().slice(0,largeLibraryMode()?3:8))for(const item of homeRowItems(def.id).slice(0,largeLibraryMode()?3:5))queue.push(item);
   if(detailItem)queue.unshift(detailItem);
   for(const watched of watchHistoryItems().slice(0,largeLibraryMode()?2:6)){const source=watched.kind==='episode'?(savedItem(watched.parentSeriesId)||watched):watched;queue.push(source)}
   const unique=[...new Map(queue.filter(Boolean).map(x=>[x.id,x])).values()].filter(x=>!isDemoItem(x)&&['movie','series'].includes(x.kind)).slice(0,largeLibraryMode()?6:12);
-  let i=0;const next=()=>{if(i>=unique.length)return;enrichItemMetadata(unique[i++],{rerender:false}).finally(()=>setTimeout(next,largeLibraryMode()?450:140))};next();
+  let i=0;const next=()=>{if(i>=unique.length)return;const target=unique[i++];enrichItemMetadata(target,{rerender:false}).then(()=>patchHomeHeroTitle(target)).finally(()=>setTimeout(next,largeLibraryMode()?450:140))};next();
 }
 function visibleMetadataLimit(){return largeLibraryMode()?2:4}
 function visibleMetadataDelay(){return largeLibraryMode()?180:70}
@@ -871,10 +877,18 @@ function heroCandidates(){
   return out;
 }
 function featureItem(){const pool=heroCandidates();if(!pool.length)return null;heroRotationIndex=((heroRotationIndex%pool.length)+pool.length)%pool.length;return pool[heroRotationIndex]}
+function heroTitleLogoState(item={}){
+  const cached=state.metadataCache?.[item.id]||{},logo=String(item.titleLogo||cached.titleLogo||'');
+  const media=Boolean(item&&!isDemoItem(item)&&['movie','series'].includes(item.kind));
+  const settled=Boolean(logo||cached.titleLogoCheckedAt);
+  return {logo,pending:media&&!settled,settled};
+}
 function hero(feature,providerName,rotation={}){
   if(!feature)return'';
   feature=visualItem(feature);
   const isLive=feature.kind==='live',isSeries=feature.kind==='series';
+  const displayTitle=cleanDisplayTitle({name:feature.title||feature.name});
+  const titleState=heroTitleLogoState(feature),titleLogo=feature.titleLogo||titleState.logo||'';
   const typeLabel=feature._heroFeed?`${feature._heroFeed}${feature._heroRank?` · #${feature._heroRank}`:''}`:isLive?'LIVE TV':feature.kind==='movie'?'FEATURED MOVIE':'FEATURED SERIES';
   const heroRating=displayRating(feature),meta=[feature.year,heroRating?`★ ${heroRating}`:'',feature.sourceCount>1?`${feature.sourceCount} sources`:'',feature.group].filter(Boolean);
   const backdrop=feature.backdrop||feature.logo;
@@ -884,10 +898,13 @@ function hero(feature,providerName,rotation={}){
   const mainAction=isSeries?`<button class="btn play-btn" data-detail="${esc(feature.id)}"><span>▶</span> View Series</button>`:`<button class="btn play-btn" data-play="${esc(feature.id)}"><span>▶</span> Play</button>`;
   const total=Number(rotation.total||0),current=Number(rotation.index||0);
   const rotationControls=total>1?`<div class="hero-rotation-controls"><button data-hero-step="-1" aria-label="Previous featured title">‹</button><div class="hero-rotation-dots">${Array.from({length:total},(_,i)=>`<button class="${i===current?'active':''}" data-hero-go="${i}" aria-label="Show featured title ${i+1}"></button>`).join('')}</div><button data-hero-step="1" aria-label="Next featured title">›</button></div>`:'';
-  return `<section class="hero hero-rotating" data-home-hero><div class="hero-media">${art}${poster}<div class="hero-fallback" style="--hero-fallback:${feature.demoColor||'linear-gradient(135deg,#1d2a44,#080a0e)'}"></div></div><div class="hero-vignette"></div>
-    <div class="hero-content"><div class="hero-brandline"><span class="swoop-mini">S</span><span>${esc(typeLabel)}</span></div>${feature.titleLogo?`<img class="hero-title-logo" data-swoop-art="${esc(feature.titleLogo)}" alt="${esc(feature.name)}">`:`<h1>${esc(feature.name)}</h1>`}<div class="hero-meta">${meta.map(x=>`<span>${esc(x)}</span>`).join('')}<span class="hero-source">${esc(providerName)}</span></div><p>${feature.plot?esc(feature.plot):isLive?`Watch ${esc(feature.name)} live from your connected TV provider.`:`Discover ${esc(feature.name)} in your connected ${esc(providerName)} library.`}</p><div class="cta-row hero-actions">${mainAction}${!isLive?`<button class="btn secondary hero-secondary" data-detail="${esc(feature.id)}"><span>ⓘ</span> More Info</button>`:`<button class="btn secondary hero-secondary" data-page="guide"><span>▤</span> TV Guide</button>`}</div></div>${rotationControls}
+  const titleMarkup=`<div class="hero-title-slot ${titleLogo?'has-logo':''} ${titleState.pending?'logo-pending':''} ${titleState.settled&&!titleLogo?'logo-unavailable':''}" data-hero-title data-hero-item="${esc(feature.id)}"><h1 class="hero-title-text">${esc(displayTitle)}</h1><span class="hero-title-wait" aria-hidden="true"></span>${titleLogo?`<img class="hero-title-logo" data-swoop-art="${esc(titleLogo)}" alt="${esc(displayTitle)}">`:''}</div>`;
+  const description=feature.plot?esc(feature.plot):isLive?`Watch ${esc(displayTitle)} live from your connected TV provider.`:`Discover ${esc(displayTitle)} in your connected ${esc(providerName)} library.`;
+  return `<section class="hero hero-rotating" data-home-hero data-hero-item="${esc(feature.id)}"><div class="hero-media">${art}${poster}<div class="hero-fallback" style="--hero-fallback:${feature.demoColor||'linear-gradient(135deg,#1d2a44,#080a0e)'}"></div></div><div class="hero-vignette"></div>
+    <div class="hero-content"><div class="hero-brandline"><span class="swoop-mini">S</span><span>${esc(typeLabel)}</span></div>${titleMarkup}<div class="hero-meta">${meta.map(x=>`<span>${esc(x)}</span>`).join('')}<span class="hero-source">${esc(providerName)}</span></div><p>${description}</p><div class="cta-row hero-actions">${mainAction}${!isLive?`<button class="btn secondary hero-secondary" data-detail="${esc(feature.id)}"><span>ⓘ</span> More Info</button>`:`<button class="btn secondary hero-secondary" data-page="guide"><span>▤</span> TV Guide</button>`}</div></div>${rotationControls}
   </section>`;
 }
+
 function listItems(){const out=[],seen=new Set();for(const id of state.myList){const item=savedItem(id);if(item&&!seen.has(item.id)){seen.add(item.id);out.push(item)}}return out}
 function continueDisplayItem(item){
   if(!item||item.kind!=='episode'||!item.parentSeriesId)return item;
@@ -1269,18 +1286,36 @@ async function loadGuideEpg(){
 }
 function updateGuideRow(ch){const row=[...document.querySelectorAll('[data-guide-row]')].find(x=>x.dataset.guideRow===ch.id);if(!row)return;const box=row.querySelector('.guide-programs');const cached=epgCache.get(ch.id);if(box&&cached)box.innerHTML=guideProgramsHtml(ch,cached.list,3);hydrateArtwork(row)}
 
+function bindHomeHeroTitleLogoFailure(root=document){
+  const logos=root?.matches?.('.hero-title-logo')?[root]:[...(root?.querySelectorAll?.('.hero-title-logo')||[])];
+  for(const logo of logos){if(logo.dataset.boundHeroTitleLogoFailure)return;logo.dataset.boundHeroTitleLogoFailure='1';logo.addEventListener('swoop-artwork-failed',()=>{const slot=logo.closest('.hero-title-slot');logo.remove();if(slot){slot.classList.remove('has-logo','logo-pending');slot.classList.add('logo-unavailable')}})}
+}
+function patchHomeHeroTitle(item){
+  if(!item||state.page!=='home'||modal||detailItem||playerItem)return false;
+  const heroEl=document.querySelector('[data-home-hero]');if(!heroEl||heroEl.dataset.heroItem!==String(item.id))return false;
+  const refreshed=visualItem(item),slot=heroEl.querySelector('[data-hero-title]');if(!slot)return false;
+  const displayTitle=cleanDisplayTitle({name:refreshed.title||refreshed.name}),stateLogo=heroTitleLogoState(refreshed),logoUrl=refreshed.titleLogo||stateLogo.logo||'';
+  const text=slot.querySelector('.hero-title-text');if(text)text.textContent=displayTitle;
+  slot.classList.toggle('logo-pending',stateLogo.pending);slot.classList.toggle('has-logo',Boolean(logoUrl));slot.classList.toggle('logo-unavailable',stateLogo.settled&&!logoUrl);
+  if(logoUrl&&!slot.querySelector(`.hero-title-logo[data-swoop-art="${CSS.escape(logoUrl)}"]`)){
+    slot.querySelectorAll('.hero-title-logo').forEach(x=>x.remove());const logo=document.createElement('img');logo.className='hero-title-logo';logo.dataset.swoopArt=logoUrl;logo.alt=displayTitle;slot.appendChild(logo);bindHomeHeroTitleLogoFailure(logo);loadArtwork(logo);
+  }else if(!logoUrl&&stateLogo.settled)slot.querySelectorAll('.hero-title-logo').forEach(x=>x.remove());
+  return true;
+}
 function bindHeroControls(root=document){
   root.querySelectorAll('[data-hero-step]').forEach(el=>el.onclick=()=>{const pool=heroCandidates();if(!pool.length)return;heroRotationIndex=(heroRotationIndex+Number(el.dataset.heroStep||1)+pool.length)%pool.length;replaceHomeHero()});
   root.querySelectorAll('[data-hero-go]').forEach(el=>el.onclick=()=>{const pool=heroCandidates();if(!pool.length)return;heroRotationIndex=Math.max(0,Math.min(pool.length-1,Number(el.dataset.heroGo||0)));replaceHomeHero()});
+  bindHomeHeroTitleLogoFailure(root);
 }
 function replaceHomeHero(){
   if(state.page!=='home'||modal||detailItem||playerItem)return;
   const current=document.querySelector('[data-home-hero]'),pool=heroCandidates();if(!current||!pool.length)return;
   heroRotationIndex=((heroRotationIndex%pool.length)+pool.length)%pool.length;
-  const wrap=document.createElement('div');wrap.innerHTML=hero(pool[heroRotationIndex],providerSummaryName(),{total:pool.length,index:heroRotationIndex});
+  const item=pool[heroRotationIndex],wrap=document.createElement('div');wrap.innerHTML=hero(item,providerSummaryName(),{total:pool.length,index:heroRotationIndex});
   const next=wrap.firstElementChild;if(!next)return;current.replaceWith(next);hydrateArtwork(next);bindDynamicCards(next);bindHeroControls(next);
-  const item=pool[heroRotationIndex];if(item&&['movie','series'].includes(item.kind))enrichItemMetadata(item,{rerender:false});
+  if(item&&['movie','series'].includes(item.kind))enrichItemMetadata(item,{rerender:false}).then(()=>patchHomeHeroTitle(item));
 }
+
 function scheduleHeroRotation(){
   if(heroRotationTimer){clearInterval(heroRotationTimer);heroRotationTimer=null}
   if(state.page!=='home'||heroCandidates().length<2)return;
@@ -1338,6 +1373,9 @@ function render(){
   if(!profilePickerOpen&&!mediaRoute&&state.page==='series')setTimeout(async()=>{const changed=await ensureMediaProviderCategoryOrder('series').catch(()=>false);if(changed&&state.page==='series'&&!detailItem&&!personView){render();return}primeMediaCategoryRails('series')},0);
   if(!profilePickerOpen&&!mediaRoute&&state.page==='home'){
     mountLazyHomeRows(document);
+    // The visible hero is presentation-critical: begin its logo lookup immediately
+    // instead of waiting for the broader large-library metadata queue.
+    const heroNow=featureItem();if(heroNow&&['movie','series'].includes(heroNow.kind))setTimeout(()=>enrichItemMetadata(heroNow,{rerender:false}).then(()=>patchHomeHeroTitle(heroNow)),40);
     if(state.catalog.length)setTimeout(()=>refreshDiscoveryRows(false),largeLibraryMode()?1200:0);
     if(nativeCatalogMode)setTimeout(primeNativeHomeRows,140);
   }

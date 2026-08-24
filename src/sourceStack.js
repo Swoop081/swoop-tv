@@ -27,7 +27,7 @@ const PREFIX_MAP=new Map([
   ['amz','AMZ'],['amazon','AMZ'],['prime','AMZ'],['prime video','AMZ'],
   ['nf','NF'],['netflix','NF'],['en','EN'],['eng','EN'],['english','EN'],
   ['atv','Apple TV'],['a+','Apple TV'],['apple tv','Apple TV'],['apple tv+','Apple TV'],['appletv+','Apple TV'],['apl','Apple TV'],
-  ['dsnp','Disney+'],['disney','Disney+'],['disney+','Disney+'],
+  ['dsnp','Disney+'],['d+','Disney+'],['dplus','Disney+'],['disney','Disney+'],['disney+','Disney+'],
   ['hmax','Max'],['max','Max'],['hbo max','Max'],['pmtp','Paramount+'],['paramount','Paramount+']
 ]);
 
@@ -35,13 +35,38 @@ function stripLeadingProviderOrnaments(value='') {
   return String(value||'').trim().replace(/^\s*(?:[-–—|:•·]+\s*)+/, '').trim();
 }
 
+const LEADING_QUALITY_PREFIX=/^(?:4320p|2160p|1080p|1080i|720p|576p|576i|480p|480i|8k|4k|uhd|fhd|hd|sd)\s*(?:[-–—|:•·]+\s*)+/i;
+const GENERIC_PREFIX=/^(?:top|new|movie|movies|film|films|vod|us|uk|au|ca)$/i;
+
+function stripLeadingTitleDecorators(value='') {
+  let raw=stripLeadingProviderOrnaments(value);
+  for(let i=0;i<10;i++){
+    const before=raw;
+    raw=stripLeadingProviderOrnaments(raw);
+    const qualityStripped=raw.replace(LEADING_QUALITY_PREFIX,'').trim();
+    if(qualityStripped!==raw){raw=qualityStripped;continue}
+    const m=raw.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s*[-–—]\s*)\s*(.+)$/);
+    if(m){
+      const key=m[1].trim().toLowerCase();
+      if(PREFIX_MAP.has(key)||GENERIC_PREFIX.test(m[1].trim())){raw=m[2].trim();continue}
+    }
+    if(raw===before)break;
+  }
+  return raw.trim();
+}
+
 export function sourceTag(item={}) {
-  const raw=stripLeadingProviderOrnaments(item.name||'');
-  const m=raw.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s[-–—]\s)\s*(.+)$/);
-  if(m){
+  let raw=stripLeadingProviderOrnaments(item.name||'');
+  for(let i=0;i<4;i++){
+    const qualityStripped=raw.replace(LEADING_QUALITY_PREFIX,'').trim();
+    if(qualityStripped!==raw){raw=qualityStripped;continue}
+    const m=raw.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s*[-–—]\s*)\s*(.+)$/);
+    if(!m)break;
     const key=m[1].trim().toLowerCase();
     if(PREFIX_MAP.has(key))return PREFIX_MAP.get(key);
+    if(GENERIC_PREFIX.test(m[1].trim())){raw=m[2].trim();continue}
     if(/^[A-Z0-9+]{2,8}$/i.test(m[1].trim()))return m[1].trim().toUpperCase();
+    break;
   }
   return '';
 }
@@ -107,7 +132,7 @@ function stripProviderTailTags(value='') {
   // IPTV series names commonly arrive as `Title (2023) (US)`. Strip only
   // clearly decorative trailing tags, one at a time, so the real title remains intact.
   for(let i=0;i<6;i++){
-    const next=raw.replace(/\s*[\[(]\s*(?:(?:19|20)\d{2}|US|USA|UK|GB|AU|AUS|CA|CAN|NZ|EN|ENG|ENGLISH)\s*[\])]\s*$/i,'').trim();
+    const next=raw.replace(/\s*[\[(]\s*(?:(?:19|20)\d{2}|US|USA|UK|GB|AU|AUS|CA|CAN|NZ|FR|FRA|EN|ENG|ENGLISH)\s*[\])]\s*$/i,'').trim();
     if(next===raw)break;
     raw=next;
   }
@@ -115,16 +140,13 @@ function stripProviderTailTags(value='') {
 }
 
 export function cleanDisplayTitle(item={}) {
-  let raw=stripLeadingProviderOrnaments(item.name||'');
-  for(let i=0;i<4;i++){
-    const m=raw.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s[-–—]\s)\s*(.+)$/);
-    if(!m)break;
-    const key=m[1].trim().toLowerCase();
-    if(!PREFIX_MAP.has(key)&&!/^(?:top|new|movie|vod|4k|uhd|fhd|hd|sd|us|uk|au|ca)$/i.test(m[1].trim()))break;
-    raw=m[2].trim();
-  }
-  raw=stripProviderTailTags(raw.replace(/\b(?:4320p|2160p|1080p|1080i|720p|576p|576i|480p|480i|8k|4k|uhd|fhd|hdr10\+?|hdr|hlg|dolby\s*vision|dovi|dv|web[- .]?dl|webrip|bluray|brrip|x26[45]|h26[45]|hevc|av1)\b/gi,' '))
-    .replace(/\s+/g,' ').trim();
+  let raw=stripLeadingTitleDecorators(item.name||'');
+  raw=raw.replace(/\b(?:4320p|2160p|1080p|1080i|720p|576p|576i|480p|480i|8k|4k|uhd|fhd|hdr10\+?|hdr|hlg|dolby\s*vision|dovi|dv|web[- .]?dl|webrip|bluray|brrip|x26[45]|h26[45]|hevc|av1)\b/gi,' ').replace(/\s+/g,' ').trim();
+  // Removing a quality marker can expose a second provider token in unusually
+  // decorated series names (for example `4K-MAX - Lanterns`). Run the
+  // prefix parser once more before removing year/market suffixes.
+  raw=stripLeadingTitleDecorators(raw);
+  raw=stripProviderTailTags(raw).replace(/\s+/g,' ').trim();
   return raw||String(item.name||'Untitled');
 }
 

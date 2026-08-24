@@ -21,21 +21,33 @@ const MDBLIST_BASE = 'https://api.mdblist.com';
 function tmdbHeaders(env) {
   const token=String(env.TMDB_API_TOKEN || '').trim();
   if (!token) throw new Error('TMDb metadata is not configured on the Swoop TV service.');
-  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.5'};
+  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.6'};
 }
 
 function safeYear(value='') { const m=String(value||'').match(/(?:19|20)\d{2}/); return m?m[0]:''; }
 function cleanSearchTitle(value='') {
-  let s=String(value||'').trim().replace(/^\s*(?:[-–—|:•·]+\s*)+/, '').trim();
-  for(let i=0;i<4;i++){
-    const m=s.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s[-–—]\s)\s*(.+)$/);
-    if(!m)break;
-    const key=m[1].trim().toLowerCase();
-    if(!['amz','amazon','prime','prime video','nf','netflix','en','eng','english','atv','a+','apple tv','apple tv+','appletv+','apl','dsnp','disney','disney+','hmax','max','hbo max','pmtp','paramount','paramount+','top','new','movie','movies','film','films','vod','4k','uhd','fhd','hd','sd','us','uk','au','ca'].includes(key))break;
-    s=m[2].trim();
+  const prefixes=new Set(['amz','amazon','prime','prime video','nf','netflix','en','eng','english','atv','a+','apple tv','apple tv+','appletv+','apl','dsnp','d+','dplus','disney','disney+','hmax','max','hbo max','pmtp','paramount','paramount+','top','new','movie','movies','film','films','vod','us','uk','au','ca']);
+  const qualityPrefix=/^(?:4320p|2160p|1080p|1080i|720p|576p|576i|480p|480i|8k|4k|uhd|fhd|hd|sd)\s*(?:[-–—|:•·]+\s*)+/i;
+  let s=String(value||'').trim();
+  for(let i=0;i<10;i++){
+    const before=s;
+    s=s.replace(/^\s*(?:[-–—|:•·]+\s*)+/, '').trim();
+    const qualityStripped=s.replace(qualityPrefix,'').trim();
+    if(qualityStripped!==s){s=qualityStripped;continue}
+    const m=s.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s*[-–—]\s*)\s*(.+)$/);
+    if(m&&prefixes.has(m[1].trim().toLowerCase())){s=m[2].trim();continue}
+    if(s===before)break;
+  }
+  s=s.replace(/\b(?:4320p|2160p|1080p|1080i|720p|576p|576i|480p|480i|8k|4k|uhd|fhd|hdr10\+?|hdr|hlg|dolby\s*vision|dovi|dv|web[- .]?dl|webrip|bluray|brrip|x26[45]|h26[45]|hevc|av1)\b/gi,' ').replace(/\s+/g,' ').trim();
+  for(let i=0;i<6;i++){
+    const before=s;
+    s=s.replace(/^\s*(?:[-–—|:•·]+\s*)+/, '').trim();
+    const m=s.match(/^\s*([^|:\-]{1,24})\s*(?:\||:|\s*[-–—]\s*)\s*(.+)$/);
+    if(m&&prefixes.has(m[1].trim().toLowerCase())){s=m[2].trim();continue}
+    if(s===before)break;
   }
   for(let i=0;i<6;i++){
-    const next=s.replace(/\s*[\[(]\s*(?:(?:19|20)\d{2}|US|USA|UK|GB|AU|AUS|CA|CAN|NZ|EN|ENG|ENGLISH)\s*[\])]\s*$/i,'').trim();
+    const next=s.replace(/\s*[\[(]\s*(?:(?:19|20)\d{2}|US|USA|UK|GB|AU|AUS|CA|CAN|NZ|FR|FRA|EN|ENG|ENGLISH)\s*[\])]\s*$/i,'').trim();
     if(next===s.trim())break;
     s=next;
   }
@@ -168,7 +180,7 @@ async function fetchMdbImdbRating(env,imdbId,type='movie') {
   url.searchParams.set('apikey',key);
   const res=await fetch(url.toString(),{
     method:'POST',
-    headers:{'Accept':'application/json','Content-Type':'application/json','User-Agent':'SwoopTV-Metadata/0.4.5'},
+    headers:{'Accept':'application/json','Content-Type':'application/json','User-Agent':'SwoopTV-Metadata/0.4.6'},
     body:JSON.stringify({ids:[String(imdbId)],provider:'imdb'})
   });
   if(!res.ok)return'';
@@ -601,7 +613,7 @@ async function handlePost(request, env) {
     const qs = new URLSearchParams({username, password});
     const target = `${server}/xmltv.php?${qs.toString()}`;
     try {
-      const upstream = await fetch(target,{method:'GET',headers:{'Accept':'application/xml,text/xml,text/plain,*/*','User-Agent':'SwoopTV-Connection-Helper/0.1.17'},redirect:'follow'});
+      const upstream = await fetch(target,{method:'GET',headers:{'Accept':'application/xml,text/xml,text/plain,*/*','User-Agent':'SwoopTV-Connection-Helper/0.1.18'},redirect:'follow'});
       const headers=corsHeaders(request);headers['Content-Type']=upstream.headers.get('Content-Type')||'application/xml; charset=utf-8';headers['X-Swoop-Upstream-Status']=String(upstream.status);
       return new Response(upstream.body,{status:upstream.status,headers});
     } catch (error) { return json(request,{error:`Could not reach the Xtream XMLTV guide from Cloudflare: ${error.message || error}`},502); }
@@ -640,7 +652,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.17',
+        version:'0.1.18',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
         discoveryConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),

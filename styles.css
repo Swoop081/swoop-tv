@@ -643,3 +643,15 @@ button,.btn,.card,.nav-btn,.icon-btn{touch-action:manipulation;-webkit-tap-highl
   .search-person-card img,.search-person-fallback{width:92px;height:92px}
   .search-person-card strong{font-size:12px}
 }
+
+/* v0.7.34 — hero title-logo parity for provider-decorated TV series */
+.hero-title-slot{display:grid;align-items:end;max-width:min(760px,100%);margin:0 0 22px;position:relative;min-height:64px}
+.hero-title-slot>*{grid-area:1/1}
+.hero-title-slot .hero-title-text{margin:0!important;align-self:end;opacity:1;transition:opacity .2s ease,visibility .2s ease}
+.hero-title-slot .hero-title-logo{margin:0!important;align-self:end}
+.hero-title-slot.has-logo .hero-title-text,.hero-title-slot.logo-pending .hero-title-text{opacity:0!important;visibility:hidden}
+.hero-title-wait{display:none;width:min(340px,42vw);height:64px;border-radius:10px;background:linear-gradient(100deg,rgba(255,255,255,.045),rgba(255,255,255,.11),rgba(255,255,255,.045));background-size:220% 100%;animation:swoop-skeleton 1.25s ease-in-out infinite;align-self:end}
+.hero-title-slot.logo-pending:not(.has-logo) .hero-title-wait{display:block}
+.hero-title-slot.has-logo .hero-title-wait,.hero-title-slot.logo-unavailable .hero-title-wait{display:none}
+.hero-title-slot.logo-unavailable .hero-title-text{opacity:1!important;visibility:visible}
+@media(max-width:700px){.hero-title-slot{margin-bottom:15px;min-height:48px}.hero-title-wait{width:min(270px,68vw);height:46px}}

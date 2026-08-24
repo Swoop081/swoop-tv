@@ -1,3 +1,13 @@
+## v0.7.34 — TV Hero + Title Logo Reliability
+
+- Fixes remaining TV-series title-logo failures caused by chained quality/provider prefixes including `4K-MAX -`, `4K-NF -`, `4K-AMZ -` and Disney shorthand such as `D+ -`.
+- Title cleanup now repeatedly strips leading quality markers, provider/service tags and separator ornaments before strict title/year identity matching. Decorative market suffixes such as `(US)` / `(FR)` are removed from the search/display title while the release year remains a hard identity constraint.
+- Home hero presentation now uses the same **logo-first** policy as title detail pages: raw provider titles are hidden while logo metadata is being resolved; a cleaned text fallback appears only after Swoop TV has confirmed that no usable title logo exists.
+- The currently visible Home hero is now the first metadata-enrichment target, including in large-library Auto mode. Rotating to another hero triggers immediate enrichment and patches the title/logo in place when the lookup completes.
+- Previously cached no-logo results created by the older one-prefix parser automatically retry once through title-lookup schema 3. No provider refresh or SQLite rebuild is required.
+- The bundled Cloudflare Worker advances to **v0.1.18** / metadata parser 0.4.6 and mirrors the same chained-prefix cleanup. Redeploy is recommended for complete server-side parity, while the client also sends the cleaned title itself.
+- Existing Continue Watching poster fixes, People search, category rails, EPG, Snoak discovery, strict wrong-release protection, IMDb hydration and Windows/mpv playback remain unchanged.
+
 ## v0.7.33 — Continue Watching Series Poster Fix
 
 - Fixes TV episodes in **Continue Watching** using episode screenshots/stills as the large poster artwork.

@@ -1,4 +1,4 @@
-# Swoop TV Cloudflare Connection + Metadata Service v0.1.17
+# Swoop TV Cloudflare Connection + Metadata Service v0.1.18
 
 This Worker provides:
 

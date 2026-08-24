@@ -72,9 +72,15 @@ assert(cleanDisplayTitle({name:'-MAX - Lanterns'})==='Lanterns','Leading-ornamen
 assert(cleanDisplayTitle({name:'-AMZ - Reacher'})==='Reacher','Leading-ornament Amazon prefix cleanup failed');
 assert(cleanDisplayTitle({name:'-A+ - Ted Lasso'})==='Ted Lasso','Apple TV+ shorthand prefix cleanup failed');
 assert(cleanDisplayTitle({name:'-NF - Stranger Things'})==='Stranger Things','Leading-ornament Netflix prefix cleanup failed');
+assert(cleanDisplayTitle({name:'4K-MAX - Lanterns (2026) (US)'})==='Lanterns','Chained 4K/Max TV prefix cleanup failed');
+assert(cleanDisplayTitle({name:'4K-NF - Outer Banks (2020) (US)'})==='Outer Banks','Chained 4K/Netflix TV prefix cleanup failed');
+assert(cleanDisplayTitle({name:'4K-AMZ - Reacher (2022) (US)'})==='Reacher','Chained 4K/Amazon TV prefix cleanup failed');
+assert(cleanDisplayTitle({name:'D+ - Lucky Luke (2026) (FR)'})==='Lucky Luke','Disney shorthand TV prefix cleanup failed');
 assert(sourceTraits({name:'-A+ - Ted Lasso'}).tag==='Apple TV','Apple TV+ provider source-tag normalization failed');
 assert(metadataIdentityMatches({kind:'series',name:'-NF - Stranger Things',year:'2016'},{title:'Stranger Things',year:'2016'})===true,'Provider-prefixed TV metadata identity cleanup failed');
 assert(metadataIdentityMatches({kind:'series',name:'Lioness (2023) (US)',year:''},{title:'Lioness',year:'2023'})===true,'TV series metadata identity should preserve year while cleaning market suffixes');
+assert(metadataIdentityMatches({kind:'series',name:'4K-MAX - Lanterns (2026) (US)',year:'2026'},{title:'Lanterns',year:'2026'})===true,'Chained quality/provider TV metadata identity cleanup failed');
+assert(metadataIdentityMatches({kind:'series',name:'D+ - Lucky Luke (2026) (FR)',year:'2026'},{title:'Lucky Luke',year:'2026'})===true,'Disney shorthand TV metadata identity cleanup failed');
 assert(normalizeMediaTitle('AMZ - Blade Runner 2049 (2017)')==='blade runner 2049','AMZ prefix normalization failed');
 
 const rankedSources=rankSources([
@@ -454,7 +460,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0733-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.33 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0734-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.34 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -463,7 +469,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.33'")&&swHotfix.includes('swoop-tv-v0733-shell'),'v0.7.33 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.34'")&&swHotfix.includes('swoop-tv-v0734-shell'),'v0.7.34 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -483,7 +489,7 @@ assert(appSource.includes("String(def.id).startsWith('top20-')?HOME_RANKED_ROW_L
 assert(appSource.includes('limit:HOME_STANDARD_ROW_LIMIT')&&appSource.includes('rowLimit=String(id).startsWith(\'top20-\')?HOME_RANKED_ROW_LIMIT:HOME_STANDARD_ROW_LIMIT'),'Native/web discovery Home row limits must support 100 items');
 assert(appSource.includes('function displayImdbRating')&&appSource.includes('card-imdb-rating')&&!appSource.includes("[item.year,trustedRating?`★ ${trustedRating}`"),'Poster cards must hide year/generic star metadata and expose the IMDb badge');
 const workerSource=fs.readFileSync(new URL('./cloudflare-worker/worker.js',import.meta.url),'utf8');
-assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.17'"),'IMDb viewport rating worker wiring missing');
+assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.18'"),'IMDb viewport rating worker wiring missing');
 assert(appSource.includes('IMDB_RATING_SCHEMA=2')&&appSource.includes('delete meta.imdbRating')&&appSource.includes('delete meta.imdbRatingCheckedAt'),'IMDb rating cache must selectively refresh without clearing artwork metadata');
 assert(appSource.includes('visibleMetadataQueue')&&appSource.includes('hydrateVisibleImdbRatings')&&appSource.includes('data-imdb-item')&&appSource.includes('fetchTitleImdbRating'),'Viewport-driven IMDb rating hydration missing');
 assert(appSource.includes('imdbRatingCheckedAt')&&appSource.includes('30*86400000'),'Long-lived IMDb rating cache missing');
@@ -496,7 +502,7 @@ assert(detailCss.includes('.detail-title-slot:has(.detail-title-logo.loaded) .de
 const tmdbClientSource=fs.readFileSync(new URL('./src/tmdb.js',import.meta.url),'utf8');
 assert(tmdbClientSource.includes('cleanMetadataTitle')&&tmdbClientSource.includes("'amz'")&&tmdbClientSource.includes("'netflix'"),'Metadata client must strip common provider prefixes before TMDb matching');
 assert(tmdbClientSource.includes("'a+'")&&tmdbClientSource.includes('[-–—|:•·]'),'Metadata client must handle punctuated provider prefixes and Apple TV+ shorthand');
-assert(appSource.includes('TITLE_LOOKUP_SCHEMA=2')&&appSource.includes('needsTitleLookupPrefixRepair')&&appSource.includes('titleLookupSchema:TITLE_LOOKUP_SCHEMA'),'Corrected provider-prefixed title lookups must selectively retry stale no-logo cache entries once');
+assert(appSource.includes('TITLE_LOOKUP_SCHEMA=3')&&appSource.includes('needsTitleLookupPrefixRepair')&&appSource.includes('titleLookupSchema:TITLE_LOOKUP_SCHEMA'),'Corrected provider-prefixed title lookups must selectively retry stale no-logo cache entries once');
 
 assert(appSource.includes("label:'Recently Added Movies'")&&appSource.includes("label:'Recently Added TV Shows'")&&appSource.includes("sort:'provider-added'"),'Provider recently-added Home rails missing');
 assert(appSource.includes('function providerAddedNumber')&&appSource.includes('providerAddedNumber(b)-providerAddedNumber(a)'),'Browser provider-added sort/fallback missing');
@@ -506,7 +512,7 @@ assert(workerSource.includes('strictSearchMatch')&&workerSource.includes('resolv
 assert(tmdbClientSource.includes('metadataIdentityMatches')&&tmdbClientSource.includes('requestedYear!==resolvedYear'),'Client-side metadata identity guard missing');
 assert(tmdbClientSource.includes("year:item.year || identityYear(item.name || '')"),'Metadata requests must extract a provider year from TV series names when the year field is blank');
 assert(appSource.includes('titleLogoCheckedAt')&&appSource.includes('detailTitleLogoState')&&appSource.includes("classList.toggle('logo-pending'")&&cssSource.includes('.detail-title-slot.logo-pending .detail-title-text'),'Logo-first detail title fallback wiring missing');
-assert(workerSource.includes('US|USA|UK|GB|AU|AUS|CA|CAN|NZ')&&workerSource.includes("version:'0.1.17'"),'Worker TV series suffix cleanup/version missing');
+assert(workerSource.includes('US|USA|UK|GB|AU|AUS|CA|CAN|NZ')&&workerSource.includes("version:'0.1.18'"),'Worker TV series suffix cleanup/version missing');
 
 // v0.7.20 ranked rail stability / strict discovery matching.
 assert(appSource.includes('DISCOVERY_MATCH_SCHEMA=5')&&appSource.includes('if(!invalidateDiscovery&&aux.webDiscovery)'), 'Discovery cache schema must invalidate pre-fix ranked matches, including native aux cache');
@@ -531,7 +537,7 @@ assert(appSource.includes('SNOAK_CURATED_ROWS')&&appSource.includes('fetchSwoopC
 assert(appSource.includes('snoakJustwatch:1.8')&&appSource.includes('snoakTrakt:2.05')&&appSource.includes('snoakLatest:2.0'),'Snoak primary discovery weights missing');
 assert(appSource.includes('DISCOVERY_MATCH_SCHEMA=5'),'Snoak discovery release must invalidate older ranked caches');
 assert(workerSource.includes('SNOAK_LISTS')&&workerSource.includes("'movies-justwatch'")&&workerSource.includes("mode || '') === 'snoak-list'")&&workerSource.includes('SNOAK_STALE_MS'),'Worker Snoak allow-list/freshness route missing');
-assert(workerSource.includes('cacheTtl:21600')&&workerSource.includes("version:'0.1.17'"),'Snoak Worker cache/version wiring missing');
+assert(workerSource.includes('cacheTtl:21600')&&workerSource.includes("version:'0.1.18'"),'Snoak Worker cache/version wiring missing');
 
 // v0.7.23 category-first TV Guide.
 assert(appSource.includes("let guideLimit=48,guideCategory=''"),'TV Guide must start with a bounded 48-channel category window');
@@ -547,7 +553,7 @@ assert(detailCss.includes('.guide-browser{display:grid;grid-template-columns:250
 assert(appSource.includes('ensureGuideProviderCategoryOrder')&&appSource.includes('fetchXtreamLiveCategories')&&appSource.includes('guideProviderCategoryCache'),'Guide category order must come from the provider category API');
 assert(sqlitePsHotfix.includes("json_extract(raw_json,'$.providerCategoryOrder')")&&sqlitePsHotfix.includes('provider_order ASC,first_seen ASC'),'Native category fallback must preserve provider/first-seen order');
 assert(appSource.includes('fetchXtreamSimpleEpg')&&appSource.includes('fetchXtreamXmltvText')&&appSource.includes('xtreamGuideTextCache'),'Guide EPG must use short/simple APIs plus XMLTV fallback');
-assert(workerSource.includes("mode || '') === 'xmltv'")&&workerSource.includes('/xmltv.php?')&&workerSource.includes("'limit', 'epg_limit'")&&workerSource.includes("version:'0.1.17'"),'Worker Xtream EPG/XMLTV repair wiring missing');
+assert(workerSource.includes("mode || '') === 'xmltv'")&&workerSource.includes('/xmltv.php?')&&workerSource.includes("'limit', 'epg_limit'")&&workerSource.includes("version:'0.1.18'"),'Worker Xtream EPG/XMLTV repair wiring missing');
 assert(sqlitePsHotfix.includes("'/native/xtream-xmltv'")&&sqlitePsHotfix.includes('Invoke-XtreamXmltv'),'Windows native XMLTV fallback missing');
 
 // v0.7.30 Live TV landing-page category rails; Guide stays a separate EPG route.
@@ -574,6 +580,13 @@ assert(appSource.includes('actors, actresses, directors…')||appSource.includes
 assert(appSource.includes("else if(!suspendBaseViewForDetail())return")&&appSource.includes('if(restoreSuspendedBaseView())return'),'People opened from Search must preserve/restore the underlying Search page');
 assert(detailCss.includes('.search-people-rail')&&detailCss.includes('.search-person-card'),'People search styling missing');
 
+// v0.7.34 TV hero/title-logo reliability.
+assert(appSource.includes('const TITLE_LOOKUP_SCHEMA=3')&&appSource.includes('4K-MAX - Lanterns')&&appSource.includes('D+ - Lucky Luke'),'TV title-lookup schema/prefix repair wiring missing');
+assert(appSource.includes('function heroTitleLogoState')&&appSource.includes('hero-title-slot')&&appSource.includes('patchHomeHeroTitle'),'Home hero logo-first title hydration missing');
+assert(appSource.includes("const activeHero=state.page==='home'?featureItem():null")&&appSource.includes('patchHomeHeroTitle(target)'),'Visible Home hero must be hydrated/patched first');
+assert(detailCss.includes('.hero-title-slot.logo-pending')&&detailCss.includes('.hero-title-slot.logo-unavailable'),'Home hero pending/fallback title styling missing');
+assert(workerSource.includes("'d+'")&&workerSource.includes('SwoopTV-Metadata/0.4.6')&&workerSource.includes("version:'0.1.18'"),'Worker chained TV prefix cleanup/version missing');
+
 // v0.7.33 Continue Watching uses season/series posters for episodic playback cards.
 assert(appSource.includes('function continueDisplayItem')&&appSource.includes('_continueSeriesPoster')&&appSource.includes('_continueSeriesTitle'),'Continue Watching series-poster presentation helper missing');
 assert(appSource.includes('seasonPoster:seasonPoster||seriesPoster')&&appSource.includes('seriesPoster,seriesBackdrop')&&appSource.includes('seriesTitle:item.name'), 'Episode snapshots must retain season/series artwork identity');
@@ -591,4 +604,4 @@ assert(appSource.includes('guide-load-progress')&&appSource.includes('data-guide
 assert(appSource.includes('activity-progress indeterminate')&&detailCss.includes('.activity-progress.indeterminate')&&detailCss.includes('@keyframes swoopProgressShine'),'Indeterminate/moving activity feedback missing for unknown-duration work');
 assert(!appSource.includes('SWOOP TV <b>TV</b>')&&!appSource.includes('<span>SWOOP TV</span><b>TV</b>'),'Brand lockup must not render SWOOP TV TV');
 assert(appSource.includes('<span>SWOOP <b>TV</b></span>')&&appSource.includes('<span>SWOOP</span><b>TV</b>'),'Brand lockup should render a single SWOOP TV label');
-console.log('Swoop TV v0.7.33 tests passed');
+console.log('Swoop TV v0.7.34 tests passed');
