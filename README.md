@@ -1,6 +1,6 @@
 # Swoop TV
 
-**Current build: v0.7.42 — Persistent Views + Browse Prewarm**
+**Current build: v0.7.44 — People Search Black-Screen Hotfix**
 
 
 
@@ -10,6 +10,24 @@
 
 
 
+
+### v0.7.44 — People Search Black-Screen Hotfix
+
+- Fixes the intermittent/route-specific black screen when opening an actor, actress or director directly from global Search.
+- Root cause: the shared base-view suspension helper detached the Search page successfully but returned no success value, so the People route treated the detach as a failure and exited before rendering anything.
+- Base-view suspension now returns an explicit success/failure result, so Search → Person navigation always proceeds after the page is safely preserved.
+- Adds a guarded People-route render fallback: if an unexpected render exception occurs, Swoop TV restores the preserved Search/detail screen instead of leaving an empty black app surface.
+- Existing person filmography matching, strict provider-library intersection and Back navigation remain unchanged.
+- No provider refresh, SQLite rebuild or Cloudflare Worker redeploy is required.
+
+### v0.7.43 — Continue Watching + Home Layout Recovery
+
+- Fixes **Remove from Continue Watching** so it works reliably on normal, lazy-loaded and persistent/restored Home DOM. TV episode removals carry the parent series identity explicitly, so removing a show clears that series from Continue Watching immediately.
+- Uses one delegated removal handler so cached/restored page DOM cannot silently lose the button action. A removed title cannot be resurrected by returning to an older detached Home snapshot.
+- Repairs partial Home layouts by reconciling every profile against the locked curated Home contract on startup and whenever a profile is applied, rather than trusting only a one-time schema flag.
+- Restores the complete agreed Snoak block: all 28 rows in the locked order, with **Recently Added Movies / Recently Added TV Shows** above it and **Recommended For You / My List** at the bottom.
+- Previously approved Home removals remain removed, while unrelated custom/optional rows are preserved.
+- No provider refresh, SQLite rebuild, Cloudflare Worker redeploy, watched-history reset or playback change is required.
 
 ### v0.7.42 — Persistent Views + Browse Prewarm
 - Home, Live TV, Guide, Movies, TV Shows, My List, Search and Settings keep their rendered DOM in memory when switching tabs, preserving loaded artwork, horizontal rail positions and vertical scroll positions.

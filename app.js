@@ -89,11 +89,14 @@ const CURATED_SNOAK_HOME_ORDER=[
 const BOTTOM_HOME_ROWS=['recommended','mylist'];
 const HOME_REMOVED_ROWS=new Set(['recently-watched','recent-live','trending-movies','trending-shows','live-now','top-rated-movies','top-rated-shows','action-movies','comedy-movies','drama-shows','new-hot-movies','new-hot-shows']);
 function normalizeHomeRows(rows=[]){const source=Array.isArray(rows)?rows:[],rest=[];for(const id of source){if(!id||id==='because-you-watched'||PINNED_HOME_ROWS.includes(id)||rest.includes(id))continue;rest.push(id)}return [...PINNED_HOME_ROWS,...rest]}
-function migrateCuratedHomeRows(rows=[]){
+function reconcileCuratedHomeRows(rows=[]){
   const source=normalizeHomeRows(rows),locked=new Set([...PINNED_HOME_ROWS,...PRIMARY_HOME_ROWS,...CURATED_SNOAK_HOME_ORDER,...BOTTOM_HOME_ROWS]);
   const retained=source.filter(id=>!HOME_REMOVED_ROWS.has(id)&&!locked.has(id));
+  // The curated Home contract is authoritative: always restore every agreed core/Snoak row,
+  // preserve any unrelated optional/custom rows, and keep Recommended/My List at the bottom.
   return normalizeHomeRows([...PRIMARY_HOME_ROWS,...CURATED_SNOAK_HOME_ORDER,...retained,...BOTTOM_HOME_ROWS]);
 }
+const migrateCuratedHomeRows=reconcileCuratedHomeRows;
 const DEFAULT_HOME_ROWS=normalizeHomeRows([...PRIMARY_HOME_ROWS,...CURATED_SNOAK_HOME_ORDER,...BOTTOM_HOME_ROWS]);
 const DEFAULT_STATE={page:'home',catalog:[],provider:null,providers:[],myList:[],favourites:[],liveFavourites:[],continueWatching:[],watchHistory:[],recentLive:[],profiles:[],activeProfileId:'',mdblistRows:[],webDiscovery:{},metadataCache:{},settings:{mdblistApiKey:'',xtreamRelayUrl:'',xtreamRelayToken:'',metadataServiceUrl:'',themeId:'chill',backgroundColor:'#050505',backgroundOverride:false,movieSourcePreferences:{},homeRows:[...DEFAULT_HOME_ROWS],smartHomeOrder:true,performanceMode:'auto'}};
 const loaded=loadState()||{};
@@ -110,12 +113,15 @@ syncLegacyProvider();
 if(!Array.isArray(state.settings.homeRows)||!state.settings.homeRows.length)state.settings.homeRows=[...DEFAULT_HOME_ROWS];
 state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);
 if(Number(state.settings.personalizationSchemaVersion||0)<2){for(const id of ['recommended','recently-watched','recent-live'])if(!state.settings.homeRows.includes(id))state.settings.homeRows.push(id);state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);state.settings.personalizationSchemaVersion=2;}
-const HOME_LAYOUT_SCHEMA=5;
+const HOME_LAYOUT_SCHEMA=6;
 if(Number(state.settings.homeLayoutSchemaVersion||0)<HOME_LAYOUT_SCHEMA){
   state.settings.homeRows=migrateCuratedHomeRows(state.settings.homeRows);
   if(Array.isArray(state.profiles))state.profiles=state.profiles.map(p=>({...p,profileSettings:{...(p?.profileSettings||{}),homeRows:migrateCuratedHomeRows(p?.profileSettings?.homeRows||DEFAULT_HOME_ROWS)}}));
   state.settings.homeLayoutSchemaVersion=HOME_LAYOUT_SCHEMA;
 }
+// Repair partial/stale per-profile Home layouts even when an older build incorrectly marked the schema current.
+state.settings.homeRows=reconcileCuratedHomeRows(state.settings.homeRows);
+if(Array.isArray(state.profiles))state.profiles=state.profiles.map(p=>({...p,profileSettings:{...(p?.profileSettings||{}),homeRows:reconcileCuratedHomeRows(p?.profileSettings?.homeRows||DEFAULT_HOME_ROWS)}}));
 const DISCOVERY_MATCH_SCHEMA=6;
 const invalidateDiscovery=Number(state.settings.discoverySchemaVersion||0)!==DISCOVERY_MATCH_SCHEMA;
 if(invalidateDiscovery){state.webDiscovery={};state.settings.discoverySchemaVersion=DISCOVERY_MATCH_SCHEMA;}
@@ -163,7 +169,7 @@ function ensureProfiles(){
   }
 }
 function syncActiveProfileFromState(){const i=state.profiles.findIndex(p=>p.id===state.activeProfileId);if(i<0)return;state.profiles[i]=currentProfileSnapshot(state.profiles[i])}
-function applyProfileToState(profile){if(!profile)return;state.myList=[...(profile.myList||[])];state.continueWatching=[...(profile.continueWatching||[])];state.watchHistory=[...(profile.watchHistory||[])];state.recentLive=[...(profile.recentLive||[])];state.liveFavourites=[...(profile.liveFavourites||[])];const ps=profile.profileSettings||{},legacyBg=ps.backgroundColor||'#050505';state.settings.themeId=themeById(ps.themeId||'chill').id;state.settings.backgroundColor=legacyBg;state.settings.backgroundOverride=typeof ps.backgroundOverride==='boolean'?ps.backgroundOverride:Boolean(!ps.themeId&&String(legacyBg).toLowerCase()!=='#050505');state.settings.movieSourcePreferences={...(ps.movieSourcePreferences||{})};state.settings.homeRows=normalizeHomeRows(Array.isArray(ps.homeRows)&&ps.homeRows.length?[...ps.homeRows]:[...DEFAULT_HOME_ROWS]);state.settings.smartHomeOrder=ps.smartHomeOrder!==false}
+function applyProfileToState(profile){if(!profile)return;state.myList=[...(profile.myList||[])];state.continueWatching=[...(profile.continueWatching||[])];state.watchHistory=[...(profile.watchHistory||[])];state.recentLive=[...(profile.recentLive||[])];state.liveFavourites=[...(profile.liveFavourites||[])];const ps=profile.profileSettings||{},legacyBg=ps.backgroundColor||'#050505';state.settings.themeId=themeById(ps.themeId||'chill').id;state.settings.backgroundColor=legacyBg;state.settings.backgroundOverride=typeof ps.backgroundOverride==='boolean'?ps.backgroundOverride:Boolean(!ps.themeId&&String(legacyBg).toLowerCase()!=='#050505');state.settings.movieSourcePreferences={...(ps.movieSourcePreferences||{})};state.settings.homeRows=reconcileCuratedHomeRows(Array.isArray(ps.homeRows)&&ps.homeRows.length?[...ps.homeRows]:[...DEFAULT_HOME_ROWS]);state.settings.smartHomeOrder=ps.smartHomeOrder!==false}
 ensureProfiles();
 applyProfileToState(activeProfile());
 
@@ -309,13 +315,17 @@ async function warmBrowseTabs(){
 }
 function scheduleBrowseWarmup(delay=900){if(browseWarmupTimer)clearTimeout(browseWarmupTimer);browseWarmupTimer=setTimeout(()=>{browseWarmupTimer=null;warmBrowseTabs().catch(()=>null)},delay)}
 function suspendBaseViewForDetail(){
-  if(suspendedBaseView||detailItem||!$app?.firstElementChild)return;
+  // Callers such as People Search need a truthful success/failure signal.  The
+  // old helper detached the current page but returned undefined, so openPerson()
+  // interpreted a successful detach as failure and exited before rendering the
+  // person route — leaving the app container completely black.
+  if(suspendedBaseView||detailItem||!$app?.firstElementChild)return false;
   const shell=$app.firstElementChild,active=document.activeElement;
   suspendedBaseView={shell,page:state.page,scrollY:window.scrollY||document.documentElement.scrollTop||0,focusDetail:active?.dataset?.detail||'',focusPlay:active?.dataset?.play||'',focusPerson:active?.dataset?.personName||''};
   lazyHomeObserver?.disconnect?.();lazyHomeObserver=null;
   artworkObserver?.disconnect?.();artworkObserver=null;
   visibleMetadataObserver?.disconnect?.();visibleMetadataObserver=null;
-  $app.removeChild(shell);
+  try{$app.removeChild(shell);return true}catch{ suspendedBaseView=null;return false }
 }
 function restoreSuspendedBaseView(){
   const snap=suspendedBaseView;suspendedBaseView=null;
@@ -969,7 +979,7 @@ function rail(title,data,poster=false,meta='',opts={}){
     const markup=card(x,poster,{progress:continueEntry(x.id)?.progress,rank:opts.ranked?i+1:null});
     if(opts.rowId!=='continue')return markup;
     const label=cleanDisplayTitle({name:x._continueSeriesTitle||x.name||'title'});
-    return `<div class="continue-card-shell">${markup}<button type="button" class="continue-remove-btn" data-remove-continue="${esc(x.id)}" aria-label="Remove ${esc(label)} from Continue Watching" title="Remove from Continue Watching"><span>✕</span> Remove</button></div>`;
+    return `<div class="continue-card-shell">${markup}<button type="button" class="continue-remove-btn" data-remove-continue="${esc(x.id)}" data-remove-continue-series="${esc(x.parentSeriesId||'')}" aria-label="Remove ${esc(label)} from Continue Watching" title="Remove from Continue Watching"><span>✕</span> Remove</button></div>`;
   }).join('');
   return `<section class="section swoop-render-section ${poster?'poster-section':'landscape-section'} ${opts.ranked?'ranked-section':''} ${opts.priority?'home-priority-row':''}"${opts.rowId?` data-home-row-mounted="${esc(opts.rowId)}"`:''}><div class="section-head"><div><h2>${esc(title)}</h2>${meta?`<span class="section-meta">${esc(meta)}</span>`:''}</div>${opts.page?`<button class="section-link" data-page="${opts.page}">Explore all →</button>`:'<span class="rail-arrow">›</span>'}</div><div class="rail">${cards}</div></section>`;
 }
@@ -1070,16 +1080,19 @@ function hero(feature,providerName,rotation={}){
 }
 
 function listItems(){const out=[],seen=new Set();for(const id of state.myList){const item=savedItem(id);if(item&&!seen.has(item.id)){seen.add(item.id);out.push(item)}}return out}
-function removeFromContinueWatching(id){
-  const target=savedItem(id)||state.continueWatching.find(x=>String(x?.id||'')===String(id))?.item||null;
-  const targetSeriesId=target?.kind==='series'?String(target.id||''):target?.kind==='episode'?String(target.parentSeriesId||''):'';
-  const ids=new Set([String(id||''),...(target?logicalItemIds(target).map(String):[])]);
+function removeFromContinueWatching(id,explicitSeriesId=''){
+  const wantedId=String(id||''),directEntry=state.continueWatching.find(x=>String(x?.id||'')===wantedId)||null;
+  const target=directEntry?.item||savedItem(wantedId)||null;
+  const targetSeriesId=String(explicitSeriesId||target?.parentSeriesId||(target?.kind==='series'?target.id:'')||'');
+  const ids=new Set([wantedId,...(target?logicalItemIds(target).map(String):[])]);
   const before=state.continueWatching.length;
   state.continueWatching=state.continueWatching.filter(entry=>{
-    const entryId=String(entry?.id||''),entryItem=entry?.item||savedItem(entryId);
-    if(targetSeriesId&&(String(entryItem?.parentSeriesId||'')===targetSeriesId||String(entryItem?.id||'')===targetSeriesId))return false;
+    const entryId=String(entry?.id||''),entryItem=entry?.item||savedItem(entryId)||{};
+    const entrySeriesId=String(entryItem?.parentSeriesId||(entryItem?.kind==='series'?entryItem?.id:'')||'');
+    if(targetSeriesId&&entrySeriesId===targetSeriesId)return false;
     if(ids.has(entryId))return false;
-    return !(entryItem&&logicalItemIds(entryItem).some(value=>ids.has(String(value))));
+    if(entryItem&&logicalItemIds(entryItem).some(value=>ids.has(String(value))))return false;
+    return true;
   });
   return state.continueWatching.length!==before;
 }
@@ -1684,9 +1697,18 @@ async function loadPersonView(){
 }
 function openPerson(person={}){
   const name=String(person.name||'').trim();if(!name)return;
-  if(detailItem){if(!suspendDetailViewForPerson())return}
-  else if(!suspendBaseViewForDetail())return;
-  personView={id:String(person.id||''),name,profile:String(person.profile||''),character:String(person.character||''),knownForDepartment:String(person.knownForDepartment||person.department||'Person')};personLoading=true;personError='';personMovies=[];personShows=[];personProgress=5;personStatus=`Opening ${name}…`;personScrollTop=0;render();setTimeout(loadPersonView,0);
+  const fromDetail=Boolean(detailItem);
+  const suspended=fromDetail?suspendDetailViewForPerson():suspendBaseViewForDetail();
+  if(!suspended)return;
+  personView={id:String(person.id||''),name,profile:String(person.profile||''),character:String(person.character||''),knownForDepartment:String(person.knownForDepartment||person.department||'Person')};personLoading=true;personError='';personMovies=[];personShows=[];personProgress=5;personStatus=`Opening ${name}…`;personScrollTop=0;
+  try{render()}catch(err){
+    resetPersonState();
+    if(fromDetail)restoreSuspendedDetailView();else restoreSuspendedBaseView();
+    toast(`Could not open ${name}. Please try again.`);
+    console.error('Swoop TV person route render failed',err);
+    return;
+  }
+  setTimeout(loadPersonView,0);
 }
 function closePerson(){resetPersonState();if(restoreSuspendedDetailView())return;if(restoreSuspendedBaseView())return;render()}
 function bindPersonLinks(root=document){
@@ -2149,18 +2171,27 @@ function providerFiltered(list){return providerFilter==='all'?list:list.filter(x
 
 function bindDynamicCards(root=document){
   hydrateVisibleImdbRatings(root);bindRailStability(root);
-  root.querySelectorAll('[data-remove-continue]').forEach(el=>{
-    if(el.dataset.boundRemoveContinue)return;el.dataset.boundRemoveContinue='1';
-    el.onclick=async event=>{
+  // Continue Watching removal is handled by one delegated listener so lazy rows and
+  // persistent/restored page DOM cannot lose the action binding.
+  if(!document.documentElement.dataset.swoopContinueRemoveDelegated){
+    document.documentElement.dataset.swoopContinueRemoveDelegated='1';
+    document.addEventListener('click',async event=>{
+      const el=event.target?.closest?.('[data-remove-continue]');if(!el)return;
       event.preventDefault();event.stopPropagation();
-      const id=String(el.dataset.removeContinue||'');if(!id)return;
-      if(!removeFromContinueWatching(id))return;
+      const id=String(el.dataset.removeContinue||''),seriesId=String(el.dataset.removeContinueSeries||'');if(!id)return;
+      const changed=removeFromContinueWatching(id,seriesId);
+      if(!changed){toast('This title is no longer in Continue Watching');return;}
+      // Keep the active profile snapshot in lock-step before any cached view is restored.
+      syncActiveProfileFromState();
       await persist();
       if(detailItem){patchDetailHeroFromState();patchDetailSectionsFromState({controls:true});}
+      // Patch the visible Home row and also invalidate any detached cached Home snapshot,
+      // so a later return cannot resurrect the removed item.
       if(state.page==='home'&&!detailItem&&!playerItem)patchMountedHomeRows(['continue']);
+      else clearPersistentPageViews('home');
       toast('Removed from Continue Watching');
-    };
-  });
+    },true);
+  }
   root.querySelectorAll('[data-play]').forEach(el=>{
     if(el.dataset.boundPlay)return;el.dataset.boundPlay='1';
     el.onclick=async()=>{

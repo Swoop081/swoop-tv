@@ -1,3 +1,22 @@
+## v0.7.44 — People Search Black-Screen Hotfix
+
+- Fixes the black/frozen screen that could occur when selecting an actor, actress or director directly from global Search.
+- The problem was a navigation return-value bug: Swoop TV detached and preserved the Search page, but the suspension helper returned `undefined`; People Search interpreted that as failure and returned before rendering the person page, leaving the app container empty.
+- The base-view suspension helper now returns explicit `true` / `false` status and safely rolls back if detaching fails.
+- People-route opening now has an additional guarded render fallback that restores the preserved Search or title-detail view if an unexpected render exception occurs.
+- Existing person credits, local provider matching, persistent Search state and Back navigation are preserved.
+- No provider refresh, SQLite rebuild, Cloudflare Worker redeploy, profile reset or playback change is required.
+
+## v0.7.43 — Continue Watching + Home Layout Recovery
+
+- Fixes the **Remove from Continue Watching** control across normal rendering, lazy Home rows and persistent/restored views.
+- Episodic Continue Watching cards pass their parent-series identity directly to removal, ensuring the whole in-progress series disappears when requested.
+- Continue Watching removal now uses delegated event handling and invalidates a detached cached Home snapshot when needed, preventing removed titles from reappearing after navigation.
+- Home layout reconciliation now runs on startup and whenever a profile is applied. This repairs profiles that were missing part of the agreed curated layout even if an older build had already marked its Home schema current.
+- Restores and locks the complete 28-row Snoak sequence, keeps **Recently Added Movies / TV Shows** above it, and keeps **Recommended For You / My List** at the bottom. Previously approved Home removals remain removed.
+- Preserves unrelated custom/optional rows.
+- No provider refresh, SQLite rebuild, Cloudflare Worker redeploy, profile reset, watched-history reset or playback change is required.
+
 ## v0.7.42 — Persistent Views + Browse Prewarm
 
 - **Tabs stay loaded:** top-level Home, Live TV, Guide, Movies, TV Shows, My List, Search and Settings views are detached and retained in memory rather than destroyed when navigating to another tab. Returning restores the same DOM, loaded poster images, horizontal rail scroll positions and vertical page position.
