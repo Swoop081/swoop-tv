@@ -1,6 +1,6 @@
 # Swoop TV
 
-**Current build: v0.7.44 — People Search Black-Screen Hotfix**
+**Current build: v0.7.45 — Production Polish + Playlist Expiry**
 
 
 
@@ -10,6 +10,14 @@
 
 
 
+
+### v0.7.45 — Production Polish + Playlist Expiry
+
+- Adds **Expiry** to each connected provider in TV Provider details. Xtream account expiry is read from the provider account and updated whenever the provider is refreshed; accounts without an expiry show **No expiry** or **Not provided**.
+- Removes the bundled demo catalogue and sample playlist. A fresh Swoop TV install now opens with a genuinely empty library until a TV provider is connected.
+- Cleans legacy sample data from upgraded installs, including saved demo providers, native-library rows, Continue Watching, viewing history, favourites, My List and cached discovery references.
+- Rewrites customer-facing setup, loading, search, playback and Settings copy to remove development notes, internal source attribution, implementation details and unnecessary refresh explanations.
+- Preserves the v0.7.44 People Search black-screen fix and all existing provider, discovery, playback and profile features.
 
 ### v0.7.44 — People Search Black-Screen Hotfix
 

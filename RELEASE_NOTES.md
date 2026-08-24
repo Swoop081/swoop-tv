@@ -1,3 +1,11 @@
+## v0.7.45 — Production Polish + Playlist Expiry
+
+- Adds an **Expiry** field to connected provider details. Xtream expiry data is stored on connection and refreshed with the provider account.
+- Removes all bundled demo channels, movies, TV shows and the sample M3U playlist. With no connected provider, Swoop TV now presents an empty library.
+- Purges legacy demo references from saved catalogues, profiles and native Windows library state so sample content cannot return after upgrading.
+- Removes customer-facing development/source attribution and over-explained implementation copy across Home, Search, Settings, provider setup, loading states and playback.
+- Keeps the v0.7.44 People Search hotfix intact.
+
 ## v0.7.44 — People Search Black-Screen Hotfix
 
 - Fixes the black/frozen screen that could occur when selecting an actor, actress or director directly from global Search.

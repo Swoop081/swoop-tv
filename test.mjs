@@ -462,7 +462,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0744-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.41 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0745-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.41 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -471,7 +471,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.44'")&&swHotfix.includes('swoop-tv-v0744-shell'),'v0.7.41 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.45'")&&swHotfix.includes('swoop-tv-v0745-shell'),'v0.7.41 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -547,7 +547,7 @@ assert(appSource.includes('function guideCategories()')&&appSource.includes('dat
 assert(appSource.includes("nativeCatalogQuery({kind:'live',providerIds:nativeEnabledProviderIds(),group:guideCategory,limit:guideLimit"),'Native Guide must query only the selected live category');
 assert(appSource.includes('guideLimit+=48')&&appSource.includes('guideChannelCache')&&appSource.includes('guideChannelRequests'),'Guide category pagination/cache/request coalescing missing');
 assert(appSource.includes('m3uGuideTextCache')&&appSource.includes('10*60*1000')&&appSource.includes('parseXMLTV(text,wanted)'),'Category-aware cached XMLTV loading missing');
-assert(appSource.includes("nativeCatalogCategories('live',{providerIds:nativeEnabledProviderIds(),limit:200})"),'Native Guide category discovery depth missing');
+assert(appSource.includes("nativeCatalogCategories('live',{providerIds:nativeEnabledProviderIds(),limit:200})")||appSource.includes("nativeCatalogCategories('live',{providerIds:enabledIds,limit:200})"),'Native Guide category discovery depth missing');
 assert(sqlitePsHotfix.includes('[Math]::Min(200,[int]($Data.limit))'),'Native Windows category endpoint must permit 200 live categories');
 assert(detailCss.includes('.guide-browser{display:grid;grid-template-columns:250px minmax(0,1fr)')&&detailCss.includes('.guide-category.active'),'Category-first Guide desktop layout styling missing');
 
@@ -571,7 +571,7 @@ assert(appSource.includes('fetchXtreamVodCategories')&&appSource.includes('fetch
 assert(appSource.includes('data-media-more-categories')&&appSource.includes('Swipe across each provider category'),'Movie/TV category-row paging UI missing');
 assert(detailCss.includes('.media-category-browser')&&detailCss.includes('.media-category-rail-track')&&detailCss.includes('.media-rail-skeleton'),'Movie/TV swipe-rail styling missing');
 assert(xtreamSource.includes('vodCategoryOrder')&&xtreamSource.includes('seriesCategoryOrder')&&xtreamSource.includes('providerCategoryOrder:Number(vodCategoryOrder')&&xtreamSource.includes('providerCategoryOrder:Number(seriesCategoryOrder'),'Movie/TV Xtream category-order persistence missing');
-assert(appSource.includes("nativeCatalogCategories('movie',{providerIds:nativeEnabledProviderIds(),limit:200})")&&appSource.includes("nativeCatalogCategories('series',{providerIds:nativeEnabledProviderIds(),limit:200})"),'Native Movie/TV category discovery must support deep provider category lists');
+assert((appSource.includes("nativeCatalogCategories('movie',{providerIds:nativeEnabledProviderIds(),limit:200})")||appSource.includes("nativeCatalogCategories('movie',{providerIds:enabledIds,limit:200})"))&&(appSource.includes("nativeCatalogCategories('series',{providerIds:nativeEnabledProviderIds(),limit:200})")||appSource.includes("nativeCatalogCategories('series',{providerIds:enabledIds,limit:200})")),'Native Movie/TV category discovery must support deep provider category lists');
 
 // v0.7.32 global People search for actors / actresses / directors.
 assert(tmdbClientSource.includes('searchPeople')&&tmdbClientSource.includes("mode:'person-search'"),'Client People-search service missing');
@@ -600,7 +600,7 @@ assert(detailCss.includes('.guide-grid-scroll .guide-header{position:sticky;top:
 
 // v0.7.18 visible progress / long-task reassurance.
 assert(appSource.includes('provider-inline-progress')&&appSource.includes('data-provider-progress-percent')&&appSource.includes('refreshProgress'),'Provider refresh percentage/progress UI missing');
-assert(appSource.includes('task-progress-hud')&&appSource.includes('Still running — Swoop TV has not frozen.')&&appSource.includes('longTaskElapsedLabel'),'Persistent long-task progress HUD/reassurance missing');
+assert(appSource.includes('task-progress-hud')&&appSource.includes('Keep Swoop TV open while this finishes.')&&appSource.includes('longTaskElapsedLabel'),'Persistent long-task progress HUD/reassurance missing');
 assert(appSource.includes('providerProgressPercent')&&appSource.includes('restoreProgressPercent'),'Provider-connect / restore numeric percentages missing');
 assert(appSource.includes('guide-load-progress')&&appSource.includes('data-guide-load-percent')&&appSource.includes('updateGuideProgress'),'TV Guide progress feedback missing');
 assert(appSource.includes('activity-progress indeterminate')&&detailCss.includes('.activity-progress.indeterminate')&&detailCss.includes('@keyframes swoopProgressShine'),'Indeterminate/moving activity feedback missing for unknown-duration work');
@@ -623,7 +623,7 @@ assert(appSource.includes("img.loading=eager?'eager':'lazy'")&&appSource.include
 assert(appSource.includes('function startupRefreshPage')&&appSource.includes('function updateStartupRefreshProgress')&&appSource.includes('UPDATING SWOOP TV'),'v0.7.39 startup refresh progress gate missing');
 assert(appSource.includes('function providerCanRefreshOnLaunch')&&appSource.includes("provider?.type==='xtream'")&&appSource.includes("provider?.type==='m3u'"),'v0.7.39 launch refresh eligibility missing');
 assert(appSource.includes('async function bootstrapApp')&&appSource.includes('refreshProvider(provider.id,{quiet:true,manageTask:false')&&appSource.includes('bootstrapApp();'),'v0.7.39 automatic provider refresh bootstrap missing');
-assert(appSource.includes('const nativeReady=await activateNativeCatalogIfAvailable()')&&appSource.includes('last saved provider catalogue')&&appSource.includes("startupRefreshActive=false;\n  render();"),'v0.7.39 startup fallback/final-open sequencing missing');
+assert(appSource.includes('const nativeReady=await activateNativeCatalogIfAvailable()')&&appSource.includes('if(!nativeReady&&!state.catalog.length)await ensureDurableLibraryRestored()')&&appSource.includes("startupRefreshActive=false;\n  render();"),'v0.7.39 startup fallback/final-open sequencing missing');
 
 // v0.7.40 Continue Watching exposes per-title removal without clearing viewing history.
 assert(appSource.includes('function removeFromContinueWatching')&&appSource.includes('data-remove-continue')&&appSource.includes('Removed from Continue Watching'),'v0.7.40 per-title Continue Watching removal missing');
@@ -637,4 +637,10 @@ assert(appSource.includes('data-remove-continue-series')&&appSource.includes('sw
 assert(appSource.includes('state.settings.homeRows=reconcileCuratedHomeRows')&&appSource.includes('profileSettings:{...(p?.profileSettings||{}),homeRows:reconcileCuratedHomeRows'),'v0.7.43 Home layout recovery missing');
 assert(appSource.includes('if(suspendedBaseView||detailItem||!$app?.firstElementChild)return false')&&appSource.includes('$app.removeChild(shell);return true')&&appSource.includes('const suspended=fromDetail?suspendDetailViewForPerson():suspendBaseViewForDetail()'),'v0.7.44 People Search base-view suspension return-value fix missing');
 assert(appSource.includes("console.error('Swoop TV person route render failed'")&&appSource.includes('restoreSuspendedBaseView()'),'v0.7.44 People route render rollback missing');
-console.log('Swoop TV v0.7.44 tests passed');
+assert(!appSource.includes("from './src/demo.js'")&&!fs.existsSync(new URL('./src/demo.js',import.meta.url))&&!fs.existsSync(new URL('./sample-playlist.m3u',import.meta.url)),'Bundled demo/sample media must not ship');
+assert(appSource.includes('const source=state.catalog')&&!appSource.includes('state.catalog.length?state.catalog:demoCatalog'),'Empty libraries must not fall back to demo media');
+assert(appSource.includes('providerExpiryFromProfile')&&appSource.includes('providerExpiryLabel')&&appSource.includes('expiresAt,expiryNever')&&appSource.includes('> Expiry</span>'),'Playlist expiry details missing');
+assert(!appSource.includes("Snoak's daily MDBList feeds")&&!appSource.includes('Snoak lists refresh about every 4 hours'),'Internal discovery sourcing/frequency copy must not appear in product UI');
+assert(appSource.includes('sanitizeLegacyDemoRefs(state)')&&appSource.includes("nativeCatalogRemoveProvider('demo')")&&appSource.includes('if(!enabledIds.length){nativeCatalogMode=false;state.catalog=[];return false}'),'Legacy demo state/native database must never reopen as a real library');
+assert(!appSource.includes('Still working —')&&!appSource.includes('Snoak lists refresh')&&!appSource.includes('Artwork source:')&&!appSource.includes('every second and resumes'),'Production-facing copy cleanup regressed');
+console.log('Swoop TV v0.7.45 tests passed');
