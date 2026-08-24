@@ -10,9 +10,15 @@ function cleanMetadataTitle(value='') {
     if(!['amz','amazon','prime','prime video','nf','netflix','en','eng','english','atv','apple tv','apl','dsnp','disney','disney+','hmax','max','hbo max','pmtp','paramount','paramount+','top','new','movie','movies','film','films','vod','4k','uhd','fhd','hd','sd','us','uk','au','ca'].includes(key))break;
     s=m[2].trim();
   }
-  return s.replace(/\b(?:4320p|2160p|1080p|1080i|720p|576p|576i|480p|480i|8k|4k|uhd|fhd|hdr10\+?|hdr|hlg|dolby\s*vision|dovi|dv|web[- .]?dl|webrip|bluray|brrip|x26[45]|h26[45]|hevc|av1)\b/gi,' ')
-    .replace(/\s*[\[(](?:19|20)\d{2}[\])]\s*$/,' ')
-    .replace(/\s+/g,' ').trim() || String(value||'').trim();
+  s=s.replace(/\b(?:4320p|2160p|1080p|1080i|720p|576p|576i|480p|480i|8k|4k|uhd|fhd|hdr10\+?|hdr|hlg|dolby\s*vision|dovi|dv|web[- .]?dl|webrip|bluray|brrip|x26[45]|h26[45]|hevc|av1)\b/gi,' ');
+  // Series catalogues frequently suffix both a year and market tag, e.g.
+  // `Lioness (2023) (US)`. Remove only those unambiguous trailing tags.
+  for(let i=0;i<6;i++){
+    const next=s.replace(/\s*[\[(]\s*(?:(?:19|20)\d{2}|US|USA|UK|GB|AU|AUS|CA|CAN|NZ|EN|ENG|ENGLISH)\s*[\])]\s*$/i,'').trim();
+    if(next===s.trim())break;
+    s=next;
+  }
+  return s.replace(/\s+/g,' ').trim() || String(value||'').trim();
 }
 
 
@@ -49,7 +55,7 @@ export async function fetchTitleMetadata({settings={}, item}) {
     tmdbId:item.tmdbId || '',
     imdbId:item.imdbId || '',
     title:cleanMetadataTitle(item.name || ''),
-    year:item.year || ''
+    year:item.year || identityYear(item.name || '')
   };
   const res = await fetch(service, {
     method:'POST',
@@ -77,7 +83,7 @@ export async function fetchTitleImdbRating({settings={}, item}) {
     tmdbId:item.tmdbId || '',
     imdbId:item.imdbId || '',
     title:cleanMetadataTitle(item.name || ''),
-    year:item.year || ''
+    year:item.year || identityYear(item.name || '')
   };
   const res = await fetch(service, {
     method:'POST',
@@ -117,7 +123,7 @@ export async function fetchPersonCredits({settings={}, personId='', name=''}) {
   if (!res.ok) {
     let detail='';
     try { detail=(await res.json())?.error || ''; } catch {}
-    if(res.status===401||/connection helper token/i.test(detail))throw new Error('Cast browsing needs the bundled Swoop TV Worker v0.1.13 to be deployed.');
+    if(res.status===401||/connection helper token/i.test(detail))throw new Error('Cast browsing needs the bundled Swoop TV Worker v0.1.14 to be deployed.');
     throw new Error(detail || `Swoop TV cast service returned HTTP ${res.status}.`);
   }
   const data=await res.json();

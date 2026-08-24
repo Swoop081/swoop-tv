@@ -1,3 +1,14 @@
+## v0.7.24 — TV Title Logo Reliability
+
+- Fixed TV-show title-logo enrichment failing on common Xtream/provider series names such as `Lioness (2023) (US)`. Swoop TV now removes chained market/language/year suffixes from the metadata search title while preserving the provider year as a strict match constraint.
+- Detail pages now use a **logo-first title slot**: provider/raw title text stays hidden while the logo lookup is unresolved, a lightweight placeholder holds the layout, and the cleaned text title is shown only after Swoop TV has confirmed that no usable title logo is available.
+- Existing metadata cache entries without an explicit title-logo lookup result retry once automatically, so TV shows cached by older builds are repaired without a provider refresh or SQLite rebuild.
+- Title-logo requests load immediately rather than waiting for normal artwork lazy-loading. Final artwork failure safely reveals the cleaned text fallback.
+- Artwork fallback handling is hardened so a failed relay cannot recurse indefinitely.
+- `cleanDisplayTitle` now also turns names like `Lioness (2023) (US)` into `Lioness` for fallback presentation without weakening title/year identity matching.
+- Bundled Cloudflare Worker **v0.1.14** mirrors the same series-name cleanup. Redeploy is recommended for server-side parity, but the v0.7.24 client sends a cleaned title + extracted year and therefore works with the already deployed v0.1.13 Worker.
+- Existing Category-First TV Guide, Snoak discovery, Top 100 rails, strict discovery matching, IMDb hydration, provider data, watched/resume state and Windows/mpv playback are unchanged.
+
 # Swoop TV Release Notes
 
 ## v0.7.23 — Category-First TV Guide

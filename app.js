@@ -304,19 +304,20 @@ async function enrichItemMetadata(item,{rerender=true}={}){
   if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind))return null;
   if(metadataPending.has(item.id))return metadataPending.get(item.id);
   const cached=state.metadataCache?.[item.id]||{},now=Date.now();
-  const metadataFresh=Boolean(cached.checkedAt&&now-cached.checkedAt<7*86400000);
+  const titleLogoKnown=Boolean(cached.titleLogo||cached.titleLogoCheckedAt);
+  const metadataFresh=Boolean(cached.checkedAt&&now-cached.checkedAt<7*86400000&&titleLogoKnown);
   const imdbFresh=Boolean(cached.imdbRatingCheckedAt&&now-cached.imdbRatingCheckedAt<30*86400000);
   if(metadataFresh&&imdbFresh)return cached;
   const task=(async()=>{
     try{
       const metadata=await fetchTitleMetadata({settings:state.settings,item}),stamp=Date.now(),hasImdbField=Boolean(tenPointRating(metadata?.imdbRating));
-      state.metadataCache[item.id]={...cached,...(metadata||{}),checkedAt:stamp,...(hasImdbField?{imdbRatingCheckedAt:stamp}:{})};metadataRevision++;
+      state.metadataCache[item.id]={...cached,...(metadata||{}),checkedAt:stamp,titleLogoCheckedAt:stamp,...(hasImdbField?{imdbRatingCheckedAt:stamp}:{})};metadataRevision++;
       if(metadata?.tmdbId&&!item.tmdbId)item.tmdbId=metadata.tmdbId;
       if(metadata?.imdbId&&!item.imdbId)item.imdbId=metadata.imdbId;
       persist('cache');
       if(rerender&&(state.page==='home'||detailItem?.id===item.id||modal==='homeRows'))render();
       return state.metadataCache[item.id];
-    }catch(err){state.metadataCache[item.id]={...cached,checkedAt:Date.now(),error:err.message||String(err)};metadataRevision++;persist('cache');return state.metadataCache[item.id];}
+    }catch(err){const stamp=Date.now();state.metadataCache[item.id]={...cached,checkedAt:stamp,titleLogoCheckedAt:stamp,error:err.message||String(err)};metadataRevision++;persist('cache');return state.metadataCache[item.id];}
   })().finally(()=>metadataPending.delete(item.id));
   metadataPending.set(item.id,task);
   return task;
@@ -1219,6 +1220,14 @@ function bindPersonLinks(root=document){
   root.querySelectorAll('[data-person-retry]').forEach(el=>{if(el.dataset.boundPersonRetry)return;el.dataset.boundPersonRetry='1';el.onclick=()=>{personError='';personLoading=true;personMovies=[];personShows=[];loadPersonView()}});
 }
 
+function detailTitleLogoState(item,meta={}) {
+  const cached=state.metadataCache?.[item?.id]||{};
+  const hasLogo=Boolean(meta.titleLogo||cached.titleLogo);
+  const media=Boolean(item&&!isDemoItem(item)&&['movie','series'].includes(item.kind));
+  const settled=Boolean(hasLogo||cached.titleLogoCheckedAt);
+  return {hasLogo,pending:media&&!settled,settled};
+}
+
 function detailMeta(item,payload){
   item=visualItem(item);
   const enriched=isDemoItem(item)?{}:(state.metadataCache?.[item.id]||{});
@@ -1278,7 +1287,7 @@ function detailHtml(){
   const sourceProviders=Array.isArray(detailItem.sources)?[...new Set(detailItem.sources.map(x=>providerDisplayName(x)))]:[providerDisplayName(detailItem)];const facts=[['Genre',meta.genre],['Director / Creator',meta.director],['Country',meta.country],['Runtime',meta.duration],['Rating',meta.age],['Providers',sourceProviders.filter(Boolean).join(', ')],['Playback sources',detailItem.sourceCount>1?`${detailItem.sourceCount} available`:'']].filter(([,v])=>v);
   const castBlock=meta.castList.length?`<section class="detail-cast"><div class="detail-section-head"><div><span class="eyebrow">CAST</span><h3>Cast & Characters</h3></div><span class="cast-hint">Select a cast member to browse titles in your library</span></div><div class="cast-rail">${meta.castList.map(person=>`<button class="cast-card" data-person-id="${esc(person.id||'')}" data-person-name="${esc(person.name||'')}" data-person-profile="${esc(person.profile||'')}" data-person-character="${esc(person.character||'')}" aria-label="Browse ${esc(person.name||'cast member')} titles in your Swoop TV library">${person.profile?`<img data-swoop-art="${esc(person.profile)}" alt="">`:`<div class="cast-fallback">${esc((person.name||'?').slice(0,1))}</div>`}<strong>${esc(person.name)}</strong><span>${esc(person.character||'')}</span></button>`).join('')}</div></section>`:'';
   const trailerButton=meta.youtube?`<button class="btn secondary detail-trailer" data-trailer="${esc(meta.youtube)}" data-trailer-title="${esc(meta.trailerName||meta.title)}"><span>▶</span> Trailer</button>`:'';
-  return `<main class="detail-overlay detail-route" aria-label="${esc(meta.title)}"><button class="detail-close" data-detail-close aria-label="Back">←</button><div class="detail-scroll"><section class="detail-hero ${hasCinematicBackdrop?'has-backdrop':'poster-fallback'}"><div class="detail-media"><div class="detail-fallback" style="--detail-fallback:${detailItem.demoColor||'linear-gradient(135deg,#151b2a,#050609)'}"></div>${backdrop?`<img class="detail-backdrop" data-swoop-art="${esc(backdrop)}" alt="">`:''}</div><div class="detail-vignette"></div><div class="detail-copy"><div class="eyebrow">${esc(kindLabel(detailItem).toUpperCase())}</div><div class="detail-title-slot" data-detail-title><h2 class="detail-title-text">${esc(meta.title)}</h2>${meta.titleLogo?`<img class="detail-title-logo" data-swoop-art="${esc(meta.titleLogo)}" alt="${esc(meta.title)}">`:''}</div><div class="detail-meta">${[meta.year,meta.rating?`★ ${meta.rating}`:'',meta.age,detailItem.group].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>${esc(meta.plot||`Available from ${providerSummaryName()}.`)}</p><div class="cta-row">${primary}${trailerButton}<button class="btn secondary detail-list ${saved?'saved':''}" data-toggle-list="${esc(detailItem.id)}"><span>${saved?'✓':'＋'}</span> ${saved?'In My List':'My List'}</button>${watchedButton}</div></div>${meta.cover&&!hasCinematicBackdrop?`<img class="detail-poster" data-swoop-art="${esc(meta.cover)}" alt="">`:''}</section>
+  return `<main class="detail-overlay detail-route" aria-label="${esc(meta.title)}"><button class="detail-close" data-detail-close aria-label="Back">←</button><div class="detail-scroll"><section class="detail-hero ${hasCinematicBackdrop?'has-backdrop':'poster-fallback'}"><div class="detail-media"><div class="detail-fallback" style="--detail-fallback:${detailItem.demoColor||'linear-gradient(135deg,#151b2a,#050609)'}"></div>${backdrop?`<img class="detail-backdrop" data-swoop-art="${esc(backdrop)}" alt="">`:''}</div><div class="detail-vignette"></div><div class="detail-copy"><div class="eyebrow">${esc(kindLabel(detailItem).toUpperCase())}</div>${(()=>{const logoState=detailTitleLogoState(detailItem,meta);return `<div class="detail-title-slot ${logoState.pending?'logo-pending':''} ${meta.titleLogo?'has-logo':''}" data-detail-title><h2 class="detail-title-text">${esc(meta.title)}</h2><span class="detail-title-wait" aria-hidden="true"></span>${meta.titleLogo?`<img class="detail-title-logo" data-swoop-art="${esc(meta.titleLogo)}" alt="${esc(meta.title)}">`:''}</div>`})()}<div class="detail-meta">${[meta.year,meta.rating?`★ ${meta.rating}`:'',meta.age,detailItem.group].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>${esc(meta.plot||`Available from ${providerSummaryName()}.`)}</p><div class="cta-row">${primary}${trailerButton}<button class="btn secondary detail-list ${saved?'saved':''}" data-toggle-list="${esc(detailItem.id)}"><span>${saved?'✓':'＋'}</span> ${saved?'In My List':'My List'}</button>${watchedButton}</div></div>${meta.cover&&!hasCinematicBackdrop?`<img class="detail-poster" data-swoop-art="${esc(meta.cover)}" alt="">`:''}</section>
   <div class="detail-body" data-detail-body>${episodeBlock}${castBlock}<section class="detail-info"><div><span class="eyebrow">ABOUT</span><h3>More about ${esc(meta.title)}</h3></div><div class="detail-facts">${facts.length?facts.map(([k,v])=>`<div><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join(''):'<div><span>Source</span><strong>Your connected provider</strong></div>'}</div></section>${related.length?`<section class="detail-related">${rail('More Like This',related,detailItem.kind!=='live')}</section>`:''}</div></div></main>`;
 }
 function patchDetailHeroFromState(){
@@ -1286,7 +1295,8 @@ function patchDetailHeroFromState(){
   const route=document.querySelector('.detail-route'),hero=route?.querySelector('.detail-hero');if(!route||!hero)return false;
   const meta=detailMeta(detailItem,detailPayload||{}),title=cleanDisplayTitle({name:meta.title||detailItem.name});route.setAttribute('aria-label',title);
   const slot=hero.querySelector('[data-detail-title]'),titleText=slot?.querySelector('.detail-title-text');if(titleText&&titleText.textContent!==title)titleText.textContent=title;
-  if(slot&&meta.titleLogo){const current=[...slot.querySelectorAll('.detail-title-logo')].find(x=>x.dataset.swoopArt===meta.titleLogo),old=[...slot.querySelectorAll('.detail-title-logo')].find(x=>x.dataset.swoopArt!==meta.titleLogo);if(!current){const logo=document.createElement('img');logo.className='detail-title-logo detail-title-logo-next';logo.dataset.swoopArt=meta.titleLogo;logo.alt=title;logo.addEventListener('load',()=>setTimeout(()=>{old?.classList.add('detail-title-logo-retiring');setTimeout(()=>old?.remove(),260);logo.classList.remove('detail-title-logo-next')},180),{once:true});slot.appendChild(logo);loadArtwork(logo)}}
+  const logoState=detailTitleLogoState(detailItem,meta);if(slot){slot.classList.toggle('logo-pending',logoState.pending);slot.classList.toggle('has-logo',Boolean(meta.titleLogo));}
+  if(slot&&meta.titleLogo){const current=[...slot.querySelectorAll('.detail-title-logo')].find(x=>x.dataset.swoopArt===meta.titleLogo),old=[...slot.querySelectorAll('.detail-title-logo')].find(x=>x.dataset.swoopArt!==meta.titleLogo);if(!current){const logo=document.createElement('img');logo.className='detail-title-logo detail-title-logo-next';logo.dataset.swoopArt=meta.titleLogo;logo.alt=title;bindDetailTitleLogoFailure(logo);logo.addEventListener('load',()=>setTimeout(()=>{old?.classList.add('detail-title-logo-retiring');setTimeout(()=>old?.remove(),260);logo.classList.remove('detail-title-logo-next')},180),{once:true});slot.appendChild(logo);loadArtwork(logo)}}else if(slot&&!meta.titleLogo&&logoState.settled){slot.querySelectorAll('.detail-title-logo').forEach(x=>x.remove());slot.classList.remove('has-logo','logo-pending')}
   const metaEl=hero.querySelector('.detail-meta');if(metaEl)metaEl.innerHTML=[meta.year,meta.rating?`★ ${meta.rating}`:'',meta.age,detailItem.group].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('');
   const plot=hero.querySelector('.detail-copy>p');if(plot)plot.textContent=meta.plot||`Available from ${providerSummaryName()}.`;
   const cta=hero.querySelector('.detail-copy .cta-row'),currentTrailer=cta?.querySelector('.detail-trailer');if(cta){if(meta.youtube&&!currentTrailer){const btn=document.createElement('button');btn.className='btn secondary detail-trailer';btn.dataset.trailer=meta.youtube;btn.dataset.trailerTitle=meta.trailerName||meta.title;btn.innerHTML='<span>▶</span> Trailer';const anchor=cta.querySelector('.detail-list');cta.insertBefore(btn,anchor||null);bindPatchedDetail(btn)}else if(meta.youtube&&currentTrailer){currentTrailer.dataset.trailer=meta.youtube;currentTrailer.dataset.trailerTitle=meta.trailerName||meta.title}else if(!meta.youtube&&currentTrailer)currentTrailer.remove()}
@@ -1296,8 +1306,13 @@ function patchDetailHeroFromState(){
   }else if(media&&desired&&!currentBackdrop){const img=document.createElement('img');img.className='detail-backdrop';img.dataset.swoopArt=desired;img.alt='';media.appendChild(img);loadArtwork(img)}
   return true;
 }
+function bindDetailTitleLogoFailure(root=document){
+  const logos=root?.matches?.('.detail-title-logo')?[root]:[...(root?.querySelectorAll?.('.detail-title-logo')||[])];
+  for(const logo of logos){if(logo.dataset.boundTitleLogoFailure)return;logo.dataset.boundTitleLogoFailure='1';logo.addEventListener('swoop-artwork-failed',()=>{const slot=logo.closest('.detail-title-slot');logo.remove();if(slot){slot.classList.remove('has-logo','logo-pending');slot.classList.add('logo-unavailable')}})}
+}
+
 function bindPatchedDetail(root=document){
-  bindDynamicCards(root);bindPersonLinks(root);
+  bindDynamicCards(root);bindPersonLinks(root);bindDetailTitleLogoFailure(root);
   root.querySelectorAll('[data-season]').forEach(el=>el.onclick=()=>{detailSeason=el.dataset.season;patchDetailSectionsFromState({controls:true})});
   root.querySelectorAll('[data-toggle-list]').forEach(el=>el.onclick=()=>toggleMyList(savedItem(el.dataset.toggleList)||detailItem));
   root.querySelectorAll('[data-toggle-watched]').forEach(el=>el.onclick=()=>toggleWatched(savedItem(el.dataset.toggleWatched)||detailItem));
@@ -1559,8 +1574,9 @@ async function relayArtworkUrl(url){if(artworkCache.has(url))return artworkCache
 function canRelayArtwork(){return !NATIVE_WINDOWS&&Boolean(sessionRelay.url&&sessionRelay.token&&enabledProviders().some(p=>p.type==='xtream'))}
 function optimizedArtworkUrl(url,img){const raw=String(url||'');if(!/image\.tmdb\.org\/t\/p\//i.test(raw))return raw;const cls=img?.className||'';let size='w500';if(/backdrop|hero-art|hero-backdrop|detail-backdrop/i.test(cls))size='w1280';else if(/title-logo/i.test(cls))size='w500';else if(/cast/i.test(cls))size='w185';else if(img?.closest?.('.poster, .poster-content-grid'))size='w342';return raw.replace(/\/t\/p\/(?:original|w\d+)\//i,`/t/p/${size}/`)}
 function revealArtwork(img){const show=()=>img.classList.add('loaded');if(typeof img.decode==='function')img.decode().then(show).catch(show);else show()}
-function loadArtwork(img){if(img.dataset.swoopLoaded==='1')return;img.dataset.swoopLoaded='1';const original=img.dataset.swoopArt||'';if(!original)return;const url=optimizedArtworkUrl(original,img);img.decoding='async';if(!/hero|detail-backdrop|title-logo/i.test(img.className||'')){img.loading='lazy';try{img.fetchPriority='low'}catch{}}const fallback=async()=>{if(!canRelayArtwork())return;try{img.onload=()=>revealArtwork(img);img.src=await relayArtworkUrl(original)}catch{img.removeAttribute('src')}};if(location.protocol==='https:'&&/^http:\/\//i.test(original)&&canRelayArtwork()){fallback();return}img.onload=()=>revealArtwork(img);img.onerror=()=>fallback();img.src=url}
-function hydrateArtwork(root=document){const imgs=[...root.querySelectorAll('img[data-swoop-art]')].filter(img=>img.dataset.swoopLoaded!=='1');if(!imgs.length)return;if(!('IntersectionObserver'in window)){imgs.forEach(loadArtwork);return}if(!artworkObserver)artworkObserver=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){artworkObserver?.unobserve(entry.target);loadArtwork(entry.target)}},{rootMargin:largeLibraryMode()?'120px 0px':'280px 0px',threshold:.01});imgs.forEach(img=>artworkObserver.observe(img))}
+function artworkLoadFailed(img){img.dataset.swoopFailed='1';img.classList.add('artwork-failed');img.removeAttribute('src');try{img.dispatchEvent(new Event('swoop-artwork-failed'))}catch{}}
+function loadArtwork(img){if(img.dataset.swoopLoaded==='1')return;img.dataset.swoopLoaded='1';const original=img.dataset.swoopArt||'';if(!original)return;const url=optimizedArtworkUrl(original,img);img.decoding='async';if(!/hero|detail-backdrop|title-logo/i.test(img.className||'')){img.loading='lazy';try{img.fetchPriority='low'}catch{}}let relayTried=false;const fallback=async()=>{if(relayTried||!canRelayArtwork()){artworkLoadFailed(img);return}relayTried=true;try{const relay=await relayArtworkUrl(original);img.onload=()=>revealArtwork(img);img.onerror=()=>artworkLoadFailed(img);img.src=relay}catch{artworkLoadFailed(img)}};if(location.protocol==='https:'&&/^http:\/\//i.test(original)&&canRelayArtwork()){fallback();return}img.onload=()=>revealArtwork(img);img.onerror=()=>fallback();img.src=url}
+function hydrateArtwork(root=document){const imgs=[...root.querySelectorAll('img[data-swoop-art]')].filter(img=>img.dataset.swoopLoaded!=='1');if(!imgs.length)return;const immediate=imgs.filter(img=>/title-logo/i.test(img.className||''));immediate.forEach(loadArtwork);const deferred=imgs.filter(img=>!immediate.includes(img));if(!deferred.length)return;if(!('IntersectionObserver'in window)){deferred.forEach(loadArtwork);return}if(!artworkObserver)artworkObserver=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){artworkObserver?.unobserve(entry.target);loadArtwork(entry.target)}},{rootMargin:largeLibraryMode()?'120px 0px':'280px 0px',threshold:.01});deferred.forEach(img=>artworkObserver.observe(img))}
 
 let searchIndexKey='',searchIndexCache=[];
 function searchIndex(){const key=`${activeCatalogContext}|${movieStackPriorityKey}|${liveStackPriorityKey}|${metadataRevision}`;if(searchIndexKey===key&&searchIndexCache.length)return searchIndexCache;const logical=[...items('movie'),...items('series'),...items('live')];searchIndexCache=logical.map(item=>({item,text:`${item.name||''} ${item.group||''} ${item.year||''}`.toLowerCase()}));searchIndexKey=key;return searchIndexCache}
@@ -1648,7 +1664,7 @@ function bind(){
   document.querySelectorAll('[data-modal]').forEach(el=>el.onclick=()=>{modal=el.dataset.modal;render()});
   document.querySelectorAll('[data-close]').forEach(el=>el.onclick=()=>{modal=null;render()});
   document.querySelectorAll('[data-close-modal]').forEach(el=>el.onclick=e=>{if(e.target===el){modal=null;render()}});
-  bindDynamicCards(document);bindPersonLinks(document);
+  bindDynamicCards(document);bindPersonLinks(document);bindDetailTitleLogoFailure(document);
   document.querySelectorAll('[data-source-close]').forEach(el=>el.onclick=()=>{sourceChoiceItem=null;render()});
   document.querySelectorAll('[data-source-play]').forEach(el=>el.onclick=()=>{const logical=sourceChoiceItem,source=logical?.sources?.find(x=>x.id===el.dataset.sourcePlay);if(logical&&source){rememberMovieSourcePreference(logical,source.id);play(playableFromSource(logical,source),{sourceSelected:true})}});
   document.querySelectorAll('[data-source-best]').forEach(el=>el.onclick=()=>{const logical=sourceChoiceItem,source=logical?.sources?.find(x=>x.id===el.dataset.sourceBest);if(logical&&source){rememberMovieSourcePreference(logical,source.id);play(playableFromSource(logical,source),{sourceSelected:true})}});
