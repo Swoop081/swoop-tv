@@ -6,7 +6,7 @@ import {nativeCatalogStatus,nativeCatalogReplaceProvider,nativeCatalogRemoveProv
 import {getMDBListItems, getMDBListOfficialItems, getMDBListStreamingChart, matchMDBListToCatalog, normalizeMediaTitle} from './src/mdblist.js';
 import {fetchTitleMetadata, metadataServiceUrl} from './src/tmdb.js';
 import {fetchSwoopDiscovery} from './src/discovery.js';
-import {buildMovieStackIndex, collapseMovieSources, rankSources, sourceTraits, qualityLabel} from './src/sourceStack.js';
+import {buildMovieStackIndex, collapseMovieSources, cleanDisplayTitle, rankSources, sourceTraits, qualityLabel} from './src/sourceStack.js';
 import {buildLiveStackIndex, selectLiveSource} from './src/liveStack.js';
 import {PROFILE_AVATARS, avatarById, makeProfile, normalizeProfile, profileAllowsMedia, profileGenreAffinity, smartRankRows} from './src/profiles.js';
 import {SWOOP_THEMES, themeById} from './src/themes.js';
@@ -34,7 +34,7 @@ async function loadNativeHomeRow(id){
   else if(NATIVE_HOME_SEARCH[id]){const [kind,term]=NATIVE_HOME_SEARCH[id],a=await nativeCatalogSearch(term,{providerIds:nativeEnabledProviderIds(),limit:24,kinds:[kind]});result=a.items||[]}
   result=cacheNativeItems(result);nativeHomeRowCache.set(id,result);return result;
 }
-async function primeNativeHomeRows(){if(!nativeCatalogMode||nativeHomePrimeBusy||state.page!=='home')return;const skip=new Set(['continue','recently-watched','recommended','recent-live','mylist','because-you-watched']);const ids=selectedHomeRows().map(x=>x.id).filter(id=>!WEB_ROW_IDS.has(id)&&!String(id).startsWith('custom:')&&!skip.has(id)&&!nativeHomeRowCache.has(id)).slice(0,10);if(!ids.length)return;nativeHomePrimeBusy=true;try{for(const id of ids){await loadNativeHomeRow(id).catch(()=>[]);await new Promise(r=>setTimeout(r,0))}}finally{nativeHomePrimeBusy=false;if(state.page==='home'&&!modal)render()}}
+async function primeNativeHomeRows(){if(!nativeCatalogMode||nativeHomePrimeBusy||state.page!=='home')return;const skip=new Set(['continue','recently-watched','recommended','recent-live','mylist']);const ids=selectedHomeRows().map(x=>x.id).filter(id=>!WEB_ROW_IDS.has(id)&&!String(id).startsWith('custom:')&&!skip.has(id)&&!nativeHomeRowCache.has(id)).slice(0,10);if(!ids.length)return;nativeHomePrimeBusy=true;try{for(const id of ids){await loadNativeHomeRow(id).catch(()=>[]);await new Promise(r=>setTimeout(r,0))}}finally{nativeHomePrimeBusy=false;if(state.page==='home'&&!modal&&!detailItem&&!playerItem)render()}}
 function cacheNativeItems(list=[]){
   for(const item of list||[]){
     if(!item?.id)continue;
@@ -56,7 +56,7 @@ async function activateNativeCatalogIfAvailable(){
   nativeCatalogMode=true;
   const aux=await loadAuxState().catch(()=>null);if(aux){if(aux.webDiscovery)state.webDiscovery=aux.webDiscovery;if(!invalidateMetadataArtwork&&aux.metadataCache)state.metadataCache=aux.metadataCache;metadataRevision++;if(Array.isArray(aux.mdblistRows)&&aux.mdblistRows.length){const compact=new Map((state.mdblistRows||[]).map(r=>[r.uid,r]));state.mdblistRows=aux.mdblistRows.map(r=>({...compact.get(r.uid),...r}))}}
   const [movies,series,live,catsM,catsS,catsL]=await Promise.all([
-    nativeCatalogQuery({kind:'movie',providerIds:nativeEnabledProviderIds(),limit:360,sort:'recent'}),nativeCatalogQuery({kind:'series',providerIds:nativeEnabledProviderIds(),limit:240,sort:'recent'}),nativeCatalogQuery({kind:'live',providerIds:nativeEnabledProviderIds(),limit:240,sort:'name'}),
+    nativeCatalogQuery({kind:'movie',providerIds:nativeEnabledProviderIds(),limit:144,sort:'recent'}),nativeCatalogQuery({kind:'series',providerIds:nativeEnabledProviderIds(),limit:96,sort:'recent'}),nativeCatalogQuery({kind:'live',providerIds:nativeEnabledProviderIds(),limit:144,sort:'name'}),
     nativeCatalogCategories('movie',{providerIds:nativeEnabledProviderIds(),limit:40}),nativeCatalogCategories('series',{providerIds:nativeEnabledProviderIds(),limit:40}),nativeCatalogCategories('live',{providerIds:nativeEnabledProviderIds(),limit:60})
   ]);
   state.catalog=[...cacheNativeItems(movies?.items||[]),...cacheNativeItems(series?.items||[]),...cacheNativeItems(live?.items||[])];
@@ -78,7 +78,9 @@ async function ensureNativePage(kind,{force=false}={}){
   try{const result=await nativeCatalogQuery({kind,providerId:providerFilter,providerIds:providerFilter==='all'?nativeEnabledProviderIds():[],group,limit,offset:0,sort:kind==='live'?'name':'recent'});cache.key=key;cache.items=cacheNativeItems(result?.items||[]);cache.total=Number(result?.total||cache.items.length);return cache}finally{cache.loading=false}
 }
 function scheduleNativePage(kind,force=false){if(!nativeCatalogMode)return;const cache=nativePageCache[kind],group=kind==='live'?liveCategory:(pageCategory[kind]||''),want=`${providerFilter}|${group}|${viewLimits[kind]||(kind==='live'?96:72)}`;if(!force&&cache.key===want&&cache.items.length)return;setTimeout(async()=>{const before=cache.key;await ensureNativePage(kind,{force});if((before!==cache.key||force)&&((state.page==='movies'&&kind==='movie')||(state.page==='series'&&kind==='series')||(state.page==='live'&&kind==='live')))render()},0)}
-const DEFAULT_HOME_ROWS=['continue','recently-watched','recommended','recent-live','mylist','top20-movies','top20-shows','trending-movies','trending-shows','new-hot-movies','new-hot-shows','live-now','new-movies','new-shows','action-movies','comedy-movies','drama-shows'];
+const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows'];
+function normalizeHomeRows(rows=[]){const source=Array.isArray(rows)?rows:[],rest=[];for(const id of source){if(!id||id==='because-you-watched'||PINNED_HOME_ROWS.includes(id)||rest.includes(id))continue;rest.push(id)}return [...PINNED_HOME_ROWS,...rest]}
+const DEFAULT_HOME_ROWS=normalizeHomeRows(['continue','top20-movies','top20-shows','recommended','recently-watched','recent-live','mylist','trending-movies','trending-shows','new-hot-movies','new-hot-shows','live-now','new-movies','new-shows','action-movies','comedy-movies','drama-shows']);
 const DEFAULT_STATE={page:'home',catalog:[],provider:null,providers:[],myList:[],favourites:[],liveFavourites:[],continueWatching:[],watchHistory:[],recentLive:[],profiles:[],activeProfileId:'',mdblistRows:[],webDiscovery:{},metadataCache:{},settings:{mdblistApiKey:'',xtreamRelayUrl:'',xtreamRelayToken:'',metadataServiceUrl:'',themeId:'chill',backgroundColor:'#050505',backgroundOverride:false,movieSourcePreferences:{},homeRows:[...DEFAULT_HOME_ROWS],smartHomeOrder:true,performanceMode:'auto'}};
 const loaded=loadState()||{};
 let savedProviderProfiles=loadProviderProfiles()||[];
@@ -92,7 +94,8 @@ state.providers=state.providers.map((p,i)=>({...p,enabled:p.enabled!==false,prio
 function syncLegacyProvider(){const enabled=state.providers.filter(p=>p.enabled!==false).sort((a,b)=>Number(a.priority)-Number(b.priority));state.provider=enabled[0]||null;return state.provider}
 syncLegacyProvider();
 if(!Array.isArray(state.settings.homeRows)||!state.settings.homeRows.length)state.settings.homeRows=[...DEFAULT_HOME_ROWS];
-if(Number(state.settings.personalizationSchemaVersion||0)<1){for(const id of ['recently-watched','recommended','recent-live'])if(!state.settings.homeRows.includes(id))state.settings.homeRows.splice(Math.min(2,state.settings.homeRows.length),0,id);state.settings.personalizationSchemaVersion=1;}
+state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);
+if(Number(state.settings.personalizationSchemaVersion||0)<2){for(const id of ['recommended','recently-watched','recent-live'])if(!state.settings.homeRows.includes(id))state.settings.homeRows.push(id);state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);state.settings.personalizationSchemaVersion=2;}
 if(state.settings.discoverySchemaVersion!==3){state.webDiscovery={};state.settings.discoverySchemaVersion=3;}
 const METADATA_ARTWORK_SCHEMA=3;
 const invalidateMetadataArtwork=Number(state.settings.metadataArtworkSchemaVersion||0)!==METADATA_ARTWORK_SCHEMA;
@@ -109,11 +112,11 @@ if(!loaded.settings?.homeRows&&state.mdblistRows.length)state.settings.homeRows.
 
 const PROFILE_SETTING_KEYS=['themeId','backgroundColor','backgroundOverride','movieSourcePreferences','homeRows','smartHomeOrder'];
 function profileSettingsSnapshot(){const out={};for(const key of PROFILE_SETTING_KEYS){const value=state.settings?.[key];out[key]=Array.isArray(value)?[...value]:value&&typeof value==='object'?{...value}:value}return out}
-function currentProfileSnapshot(base={}){return normalizeProfile({...base,id:base.id||state.activeProfileId,name:base.name||'Swoop',avatar:base.avatar||'cyan',kids:Boolean(base.kids),pinHash:base.pinHash||'',pinSalt:base.pinSalt||'',myList:[...(state.myList||[])],continueWatching:[...(state.continueWatching||[])],watchHistory:[...(state.watchHistory||[])],recentLive:[...(state.recentLive||[])],liveFavourites:[...(state.liveFavourites||[])],profileSettings:profileSettingsSnapshot()})}
+function currentProfileSnapshot(base={}){return normalizeProfile({...base,id:base.id||state.activeProfileId,name:base.name||'Swoop',avatar:base.avatar||'lion',kids:Boolean(base.kids),pinHash:base.pinHash||'',pinSalt:base.pinSalt||'',myList:[...(state.myList||[])],continueWatching:[...(state.continueWatching||[])],watchHistory:[...(state.watchHistory||[])],recentLive:[...(state.recentLive||[])],liveFavourites:[...(state.liveFavourites||[])],profileSettings:profileSettingsSnapshot()})}
 function activeProfile(){return state.profiles.find(p=>p.id===state.activeProfileId)||state.profiles[0]||null}
 function ensureProfiles(){
   if(!Array.isArray(state.profiles)||!state.profiles.length){
-    const first=makeProfile({id:'profile-main',name:'Swoop',avatar:'cyan',myList:state.myList,continueWatching:state.continueWatching,watchHistory:state.watchHistory,recentLive:state.recentLive,liveFavourites:state.liveFavourites,profileSettings:profileSettingsSnapshot()});
+    const first=makeProfile({id:'profile-main',name:'Swoop',avatar:'lion',myList:state.myList,continueWatching:state.continueWatching,watchHistory:state.watchHistory,recentLive:state.recentLive,liveFavourites:state.liveFavourites,profileSettings:profileSettingsSnapshot()});
     state.profiles=[first];state.activeProfileId=first.id;
   }else{
     state.profiles=state.profiles.map((p,i)=>normalizeProfile(p,{name:p?.name||`Profile ${i+1}`,avatar:p?.avatar||PROFILE_AVATARS[i%PROFILE_AVATARS.length].id,profileSettings:{themeId:'chill',backgroundColor:'#050505',backgroundOverride:false,movieSourcePreferences:{},homeRows:[...DEFAULT_HOME_ROWS],smartHomeOrder:true}}));
@@ -121,7 +124,7 @@ function ensureProfiles(){
   }
 }
 function syncActiveProfileFromState(){const i=state.profiles.findIndex(p=>p.id===state.activeProfileId);if(i<0)return;state.profiles[i]=currentProfileSnapshot(state.profiles[i])}
-function applyProfileToState(profile){if(!profile)return;state.myList=[...(profile.myList||[])];state.continueWatching=[...(profile.continueWatching||[])];state.watchHistory=[...(profile.watchHistory||[])];state.recentLive=[...(profile.recentLive||[])];state.liveFavourites=[...(profile.liveFavourites||[])];const ps=profile.profileSettings||{},legacyBg=ps.backgroundColor||'#050505';state.settings.themeId=themeById(ps.themeId||'chill').id;state.settings.backgroundColor=legacyBg;state.settings.backgroundOverride=typeof ps.backgroundOverride==='boolean'?ps.backgroundOverride:Boolean(!ps.themeId&&String(legacyBg).toLowerCase()!=='#050505');state.settings.movieSourcePreferences={...(ps.movieSourcePreferences||{})};state.settings.homeRows=Array.isArray(ps.homeRows)&&ps.homeRows.length?[...ps.homeRows]:[...DEFAULT_HOME_ROWS];state.settings.smartHomeOrder=ps.smartHomeOrder!==false}
+function applyProfileToState(profile){if(!profile)return;state.myList=[...(profile.myList||[])];state.continueWatching=[...(profile.continueWatching||[])];state.watchHistory=[...(profile.watchHistory||[])];state.recentLive=[...(profile.recentLive||[])];state.liveFavourites=[...(profile.liveFavourites||[])];const ps=profile.profileSettings||{},legacyBg=ps.backgroundColor||'#050505';state.settings.themeId=themeById(ps.themeId||'chill').id;state.settings.backgroundColor=legacyBg;state.settings.backgroundOverride=typeof ps.backgroundOverride==='boolean'?ps.backgroundOverride:Boolean(!ps.themeId&&String(legacyBg).toLowerCase()!=='#050505');state.settings.movieSourcePreferences={...(ps.movieSourcePreferences||{})};state.settings.homeRows=normalizeHomeRows(Array.isArray(ps.homeRows)&&ps.homeRows.length?[...ps.homeRows]:[...DEFAULT_HOME_ROWS]);state.settings.smartHomeOrder=ps.smartHomeOrder!==false}
 ensureProfiles();
 applyProfileToState(activeProfile());
 
@@ -209,8 +212,12 @@ function sourceTechSummary(source){const t=sourceTraits(source);return [t.qualit
 function isInMyList(item){if(!item)return false;const ids=new Set(logicalItemIds(item));return state.myList.some(id=>ids.has(id))}
 function continueEntry(id){const item=savedItem(id),ids=new Set(item?logicalItemIds(item):[id]);return state.continueWatching.find(x=>ids.has(x?.id))}
 function savedItem(id){const nativeHit=nativeItemCache.get(id);if(nativeHit)return nativeHit;const stack=getMovieStackIndex(),live=getLiveStackIndex();return stack.byStackId.get(id)||stack.bySourceId.get(id)||live.byStackId?.get(id)||live.bySourceId?.get(id)||activeCatalog().find(x=>x.id===id)||detailEpisodeItems.get(id)||state.continueWatching.find(x=>x?.id===id)?.item||null}
+function isDemoItem(item){return Boolean(item&&(item.source==='demo'||item.providerId==='demo'||String(item.id||'').startsWith('demo:')))}
 function visualItem(item){
   if(!item)return item;
+  // Demo titles are intentionally fictional UI placeholders. Never let cached/remote metadata
+  // turn a synthetic title into unrelated real-world artwork just because the names collide.
+  if(isDemoItem(item))return {...item,logo:'',backdrop:'',titleLogo:'',plot:'',rating:'',tmdbId:'',imdbId:''};
   const meta=state.metadataCache?.[item.id]||{};
   return {...item,...(meta||{}),logo:meta.poster||item.logo||'',backdrop:meta.backdrop||item.backdrop||'',plot:meta.plot||item.plot||'',year:meta.year||item.year||'',rating:meta.rating||item.rating||'',tmdbId:meta.tmdbId||item.tmdbId||''};
 }
@@ -220,7 +227,7 @@ function currentTheme(){return themeById(state.settings.themeId||'chill')}
 function profileTheme(profile){return themeById(profile?.profileSettings?.themeId||'chill')}
 function themePickerHtml(selectedId='chill',name='themeId'){const selected=themeById(selectedId).id;return `<div class="theme-picker-grid">${SWOOP_THEMES.map(t=>`<button type="button" class="theme-choice ${t.id===selected?'active':''}" data-profile-theme="${esc(t.id)}" data-theme-value="${esc(t.id)}"><span class="theme-swatch" style="--theme-swatch:${esc(t.swatch)}"><i></i><b>${esc(t.name)}</b></span><span><strong>${esc(t.name)}</strong><small>${esc(t.tagline)}</small></span></button>`).join('')}</div><input type="hidden" name="${esc(name)}" value="${esc(selected)}" id="profileThemeValue">`}
 async function enrichItemMetadata(item,{rerender=true}={}){
-  if(!item||!['movie','series'].includes(item.kind)||metadataPending.has(item.id))return;
+  if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind)||metadataPending.has(item.id))return;
   const cached=state.metadataCache?.[item.id];
   if(cached?.checkedAt&&Date.now()-cached.checkedAt<7*86400000)return;
   metadataPending.add(item.id);
@@ -239,7 +246,7 @@ function scheduleMetadataEnrichment(){
   if(state.page==='home')for(const def of selectedHomeRows().slice(0,largeLibraryMode()?3:8))for(const item of homeRowItems(def.id).slice(0,largeLibraryMode()?3:5))queue.push(item);
   if(detailItem)queue.unshift(detailItem);
   for(const watched of watchHistoryItems().slice(0,largeLibraryMode()?2:6)){const source=watched.kind==='episode'?(savedItem(watched.parentSeriesId)||watched):watched;queue.push(source)}
-  const unique=[...new Map(queue.filter(Boolean).map(x=>[x.id,x])).values()].filter(x=>['movie','series'].includes(x.kind)).slice(0,largeLibraryMode()?6:12);
+  const unique=[...new Map(queue.filter(Boolean).map(x=>[x.id,x])).values()].filter(x=>!isDemoItem(x)&&['movie','series'].includes(x.kind)).slice(0,largeLibraryMode()?6:12);
   let i=0;const next=()=>{if(i>=unique.length)return;enrichItemMetadata(unique[i++],{rerender:false}).finally(()=>setTimeout(next,largeLibraryMode()?450:140))};next();
 }
 function resolveProviderAsset(value='',providerId=''){
@@ -306,7 +313,6 @@ function providerCategoryDefs(){
   return [...make('movie','Provider Movie Categories'),...make('series','Provider TV Categories')];
 }
 function homeRowDef(id){
-  if(id==='because-you-watched'){const watched=becauseWatchedSource();return watched?{id,label:`Because You Watched ${watched.name}`,group:'For You',poster:true,description:'Personal recommendations based on your recent viewing'}:null;}
   if(String(id).startsWith('custom:')){
     const uid=String(id).slice(7),row=state.mdblistRows.find(x=>String(x.uid)===uid);
     return row?{id,label:row.name||'MDBList',group:'Custom MDBList',poster:true,custom:true,description:'Auto-refreshing MDBList row matched to your provider'}:null;
@@ -316,22 +322,24 @@ function homeRowDef(id){
 }
 function allHomeRowDefs(){return [...HOME_ROW_DEFS,...providerCategoryDefs(),...state.mdblistRows.map(r=>homeRowDef(`custom:${r.uid}`)).filter(Boolean)]}
 function selectedHomeRows(){
-  let defs=state.settings.homeRows.map(homeRowDef).filter(Boolean);
+  const normalized=normalizeHomeRows(state.settings.homeRows);
+  let defs=normalized.map(homeRowDef).filter(Boolean);
+  const pinned=PINNED_HOME_ROWS.map(id=>defs.find(x=>x.id===id)).filter(Boolean);
+  let rest=defs.filter(x=>!PINNED_HOME_ROWS.includes(x.id));
   if(state.settings.smartHomeOrder!==false){
     const affinity=profileGenreAffinity(state.watchHistory,id=>savedItem(id),item=>[...mediaGenres(item)]);
-    defs=smartRankRows(defs,affinity);
-    const because=homeRowDef('because-you-watched');if(because&&becauseWatchedItems().length&&!defs.some(x=>x.id==='because-you-watched')){const i=Math.max(0,defs.findIndex(x=>x.id==='recommended'));defs.splice(i>=0?i+1:Math.min(3,defs.length),0,because)}
+    rest=smartRankRows(rest,affinity);
   }
-  return defs;
+  return [...pinned,...rest];
 }
 function mediaSearchText(item){return `${item?.genre||''} ${item?.group||''} ${item?.name||''}`.toLowerCase()}
 function yearNumber(item){const m=String(item?.year||item?.name||'').match(/(?:19|20)\d{2}/);return m?Number(m[0]):0}
-function ratingNumber(item){const n=parseFloat(String(item?.rating||'').replace(',','.'));return Number.isFinite(n)?n:0}
+function tenPointRating(value){const n=parseFloat(String(value??'').replace(',','.'));return Number.isFinite(n)&&n>0&&n<=10?n.toFixed(1):''}
+function ratingNumber(item){const meta=state.metadataCache?.[item?.id]||{},trusted=tenPointRating(meta.rating)||tenPointRating(item?.rating);return trusted?Number(trusted):0}
+function displayRating(item){const meta=state.metadataCache?.[item?.id]||{};return tenPointRating(meta.rating)}
 function stableDailyOrder(list,key=''){const day=Math.floor(Date.now()/86400000);return [...list].sort((a,b)=>Math.abs(hash(`${day}|${key}|${a.id}`))-Math.abs(hash(`${day}|${key}|${b.id}`)))}
 function watchHistoryItems(){const out=[],seen=new Set();for(const x of [...state.watchHistory].sort((a,b)=>(b.lastPlayed||0)-(a.lastPlayed||0))){const item=savedItem(x.id)||x.item;if(item&&!seen.has(item.id)){seen.add(item.id);out.push(item)}}return out}
 function recentLiveItems(){return state.recentLive.map(savedItem).filter(Boolean)}
-function becauseWatchedSource(){for(const item of watchHistoryItems()){const resolved=item.kind==='episode'?(savedItem(item.parentSeriesId)||item):item;if(resolved&&['movie','series'].includes(resolved.kind))return resolved}return null}
-function becauseWatchedItems(limit=24){const watched=becauseWatchedSource();if(!watched)return[];const meta=state.metadataCache?.[watched.id]||{};const direct=matchTmdbRecommendations(meta.recommendations||[],watched.kind).filter(x=>x.id!==watched.id);if(direct.length>=8)return direct.slice(0,limit);const genres=mediaGenres(watched);const fallback=activeCatalog().filter(x=>['movie','series'].includes(x.kind)&&x.id!==watched.id&&x.kind===watched.kind).map(item=>({item,score:[...mediaGenres(item)].filter(g=>genres.has(g)).length,tie:Math.abs(hash(`because|${watched.id}|${item.id}`))})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score||a.tie-b.tie).map(x=>x.item);return collapseMovieSources([...new Map([...direct,...fallback].map(x=>[x.id,x])).values()],activeCatalog()).slice(0,limit)}
 function mediaGenres(item){
   const meta=state.metadataCache?.[item?.id]||{};
   const raw=Array.isArray(meta.genres)?meta.genres.join(' '):`${meta.genres||''} ${item?.genre||''} ${item?.group||''}`;
@@ -352,18 +360,22 @@ function matchTmdbRecommendations(recs=[],kind=''){
 }
 function personalizedRecommendations(limit=30){
   const history=[...new Map(watchHistoryItems().map(x=>x.kind==='episode'?(savedItem(x.parentSeriesId)||x):x).map(x=>[x.id,x])).values()].slice(0,12),exclude=new Set(history.map(x=>x.id));
+  if(!history.length)return[];
   const direct=[];
   for(const watched of history){
     const meta=state.metadataCache?.[watched.id];
     for(const hit of matchTmdbRecommendations(meta?.recommendations||[],watched.kind))if(!exclude.has(hit.id)&&!direct.some(x=>x.id===hit.id))direct.push(hit);
   }
+  const recommendationGenres=item=>{const meta=state.metadataCache?.[item?.id]||{},raw=Array.isArray(meta.genres)?meta.genres.join(' '):`${meta.genres||''} ${item?.genre||''}`;return new Set(String(raw).toLowerCase().split(/[,/|·]+|\s{2,}/).map(x=>x.trim()).filter(x=>x.length>2))};
   const genreScores=new Map();
-  for(const watched of history){for(const g of mediaGenres(watched))genreScores.set(g,(genreScores.get(g)||0)+1)}
+  for(const watched of history){for(const g of recommendationGenres(watched))genreScores.set(g,(genreScores.get(g)||0)+1)}
   const scored=activeCatalog().filter(x=>['movie','series'].includes(x.kind)&&!exclude.has(x.id)).map(item=>{
-    let score=0;for(const g of mediaGenres(item))score+=genreScores.get(g)||0;
-    if(history[0]?.kind===item.kind)score+=1.5;
+    let affinity=0;for(const g of recommendationGenres(item))affinity+=genreScores.get(g)||0;
+    if(affinity<=0)return {item,score:0,tie:0};
+    let score=affinity;
+    if(history[0]?.kind===item.kind)score+=.5;
     if(state.myList.includes(item.id))score-=4;
-    score+=Math.min(1.5,ratingNumber(item)/7);
+    score+=Math.min(.75,ratingNumber(item)/12);
     return {item,score,tie:Math.abs(hash(`${Math.floor(Date.now()/86400000)}|rec|${item.id}`))};
   }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score||a.tie-b.tie).map(x=>x.item);
   return collapseMovieSources([...new Map([...direct,...scored].map(x=>[x.id,x])).values()],activeCatalog()).slice(0,limit);
@@ -374,7 +386,6 @@ function localHomeRowItems(id){
   if(id==='continue')return continueItems();
   if(id==='recently-watched')return watchHistoryItems();
   if(id==='recommended')return personalizedRecommendations();
-  if(id==='because-you-watched')return becauseWatchedItems();
   if(id==='recent-live')return recentLiveItems();
   if(id==='mylist')return listItems();
   if(id==='live-now')return live;
@@ -512,14 +523,19 @@ async function refreshDiscoveryRows(force=false){
     for(const id of staleIds){try{const result=await fetchBuiltInDiscovery(id,apiKey,false);state.webDiscovery[id]={itemIds:result.items.map(x=>x.id),items:nativeCatalogMode?result.items:undefined,updatedAt:Date.now(),error:'',enhanced:result.enhanced,source:result.source};}catch(err){state.webDiscovery[id]={...(state.webDiscovery[id]||{}),updatedAt:Date.now(),error:err.message||String(err)};}}
     for(const row of staleCustom){try{const payload=await getMDBListItems({apiKey,listId:row.source.listId,username:row.source.username,listName:row.source.listName});row.items=nativeCatalogMode?cacheNativeItems((await nativeCatalogMatchPayload(payload,'movie',{sourceLimit:200,limit:120,providerIds:nativeEnabledProviderIds()})).items||[]):matchMDBListToCatalog(payload,activeCatalog());row.updatedAt=Date.now();row.error='';}catch(err){row.updatedAt=Date.now();row.error=err.message||String(err);}}
     await persist('cache');discoveryMessage='Discovery updated';
-  }finally{discoveryRefreshing=false;if(state.page==='home'||modal==='homeRows')render();setTimeout(()=>{discoveryMessage=''},1800)}
+  }finally{discoveryRefreshing=false;if((state.page==='home'||modal==='homeRows')&&!detailItem&&!playerItem)render();setTimeout(()=>{discoveryMessage=''},1800)}
 }
 function card(item,poster=false,opts={}){
   if(!item)return'';
   item=visualItem(item);
   const fallback=item.demoColor||`linear-gradient(135deg,hsl(${Math.abs(hash(item.name))%360} 44% 34%),#080b12)`;
-  const sub=item.kind==='live'?(item.group||'Live TV'):[item.year,item.rating?`★ ${item.rating}`:'',item.kind==='episode'&&item.season?`S${item.season} E${item.episodeNum||''}`:''].filter(Boolean).join('  ·  ');
+  const trustedRating=item.kind==='movie'||item.kind==='series'?displayRating(item):tenPointRating(item.rating);
+  const sub=item.kind==='live'?(item.group||'Live TV'):[item.year,trustedRating?`★ ${trustedRating}`:'',item.kind==='episode'&&item.season?`S${item.season} E${item.episodeNum||''}`:''].filter(Boolean).join('  ·  ');
   const art=item.logo?`<img class="card-art" data-swoop-art="${esc(item.logo)}" alt="" loading="lazy">`:'';
+  const posterOwnsTitle=Boolean(poster&&['movie','series'].includes(item.kind)&&item.logo);
+  const displayTitle=cleanDisplayTitle(item);
+  const titleHtml=posterOwnsTitle?'':`<div class="card-title">${esc(displayTitle)}</div>`;
+  const subHtml=sub?`<div class="card-sub">${esc(sub)}</div>`:'';
   const liveBadge=item.kind==='live'?`<div class="badge"><span class="live-dot"></span>LIVE</div>`:'';
   const action=item.kind==='live'||item.kind==='episode'?'data-play':'data-detail';
   const hoverAction=item.kind==='live'?'Play channel':item.kind==='episode'?'Play episode':'More info';
@@ -528,22 +544,23 @@ function card(item,poster=false,opts={}){
   const liveQuality=item.kind==='live'?qualityLabel(item):'';
   const qualityBadge=liveQuality?`<span class="card-quality">${esc(liveQuality)}</span>`:'';
   const sources=Number(item.sourceCount||item.sources?.length||0)>1?`<span class="card-sources">${Number(item.sourceCount||item.sources.length)} SOURCES</span>`:'';
+  const watched=item.kind!=='live'&&isWatched(item)?'<span class="card-watched">✓ WATCHED</span>':'';
   const progress=Number.isFinite(Number(opts.progress))?Math.max(0,Math.min(100,Number(opts.progress))):null;
   const rank=Number.isFinite(Number(opts.rank))&&Number(opts.rank)>0?Number(opts.rank):null;
   const rankBadge=rank?`<div class="rank-badge"><span>${rank}</span></div>`:'';
-  return `<button class="card ${poster?'poster':'landscape'} ${item.kind==='live'?'live-card':''} ${rank?'ranked-card':''}" ${action}="${esc(item.id)}" style="--card-bg:${fallback}" aria-label="${esc(item.name)}">
-    <div class="card-bg"></div>${art}<div class="card-shade"></div>${rankBadge}${liveBadge}${saved}${liveFav}${qualityBadge}${sources}
-    <div class="card-copy"><div class="card-title">${esc(item.name)}</div><div class="card-sub">${esc(sub)}</div><div class="card-hover"><span class="card-hover-icon">${item.kind==='live'||item.kind==='episode'?'▶':'ⓘ'}</span><span>${hoverAction}</span></div></div>
+  return `<button class="card ${poster?'poster':'landscape'} ${posterOwnsTitle?'poster-art-title':''} ${item.kind==='live'?'live-card':''} ${rank?'ranked-card':''}" ${action}="${esc(item.id)}" style="--card-bg:${fallback}" aria-label="${esc(displayTitle)}">
+    <div class="card-bg"></div>${art}<div class="card-shade"></div>${rankBadge}${liveBadge}${saved}${liveFav}${qualityBadge}${sources}${watched}
+    <div class="card-copy">${titleHtml}${subHtml}<div class="card-hover"><span class="card-hover-icon">${item.kind==='live'||item.kind==='episode'?'▶':'ⓘ'}</span><span>${hoverAction}</span></div></div>
     ${progress!==null?`<div class="progress"><i style="width:${progress}%"></i></div>`:''}</button>`;
 }
 function profileAvatarHtml(profile,cls=''){
-  const av=avatarById(profile?.avatar||'cyan');
-  const initial=profile?.kids?av.glyph:(profile?.name||av.glyph||'S').trim().slice(0,1).toUpperCase();
-  return `<span class="profile-avatar ${cls}" style="--profile-bg:${av.gradient}"><b>${esc(initial)}</b></span>`;
+  const av=avatarById(profile?.avatar||'lion');
+  const glyph=profile?.name==='+'?'+':(av.glyph||'🦁');
+  return `<span class="profile-avatar ${cls} animal-avatar" style="--profile-bg:${av.gradient}" title="${esc(av.label)}"><b>${esc(glyph)}</b></span>`;
 }
 function profilePickerPage(){
   const profiles=state.profiles||[];
-  return `<main class="profile-picker-page"><div class="profile-picker-brand"><span class="brand-mark">S</span><span>SWOOP <b>TV</b></span></div><div class="profile-picker-shell"><div class="eyebrow">PERSONALISED SWOOP</div><h1>Who’s watching?</h1><p>Every profile gets its own theme, Home layout, recommendations, Continue Watching, My List and favourite channels.</p><div class="profile-picker-grid">${profiles.map(p=>{const t=profileTheme(p);return `<button class="profile-choice profile-theme-${esc(t.id)}" data-profile-select="${esc(p.id)}">${profileAvatarHtml(p,'profile-avatar-xl')}<strong>${esc(p.name)}</strong><span>${p.kids?'Kids profile':'Personal profile'}${p.pinHash?' · PIN':''}</span><em class="profile-theme-chip" style="--theme-chip:${esc(t.swatch)}">${esc(t.name)}</em></button>`}).join('')}<button class="profile-choice profile-add-choice" data-profile-add>${profileAvatarHtml({name:'+',avatar:'ocean'},'profile-avatar-xl')}<strong>Add Profile</strong><span>Create another personalised Swoop</span><em class="profile-theme-chip">Choose a theme</em></button></div><div class="profile-picker-actions"><button class="btn secondary" data-profile-manage>Manage Profiles</button><button class="btn secondary" data-page="settings">⚙ Settings</button></div></div></main>`;
+  return `<main class="profile-picker-page"><div class="profile-picker-brand"><span class="brand-mark">S</span><span>SWOOP <b>TV</b></span></div><div class="profile-picker-shell"><div class="eyebrow">PERSONALISED SWOOP</div><h1>Who’s watching?</h1><p>Every profile gets its own theme, Home layout, recommendations, Continue Watching, My List and favourite channels.</p><div class="profile-picker-grid">${profiles.map(p=>{const t=profileTheme(p);return `<button class="profile-choice profile-theme-${esc(t.id)}" data-profile-select="${esc(p.id)}">${profileAvatarHtml(p,'profile-avatar-xl')}<strong>${esc(p.name)}</strong><span>${p.kids?'Kids profile':'Personal profile'}${p.pinHash?' · PIN':''}</span><em class="profile-theme-chip" style="--theme-chip:${esc(t.swatch)}">${esc(t.name)}</em></button>`}).join('')}<button class="profile-choice profile-add-choice" data-profile-add>${profileAvatarHtml({name:'+',avatar:'elephant'},'profile-avatar-xl')}<strong>Add Profile</strong><span>Create another personalised Swoop</span><em class="profile-theme-chip">Choose a theme</em></button></div><div class="profile-picker-actions"><button class="btn secondary" data-profile-manage>Manage Profiles</button><button class="btn secondary" data-page="settings">⚙ Settings</button></div></div></main>`;
 }
 function profilesModal(){
   return `<div class="modal-backdrop profile-manage-backdrop" data-close-modal><div class="modal profile-manage-modal" data-modal-card><div class="modal-head"><div><div class="eyebrow">HOUSEHOLD</div><h2>Profiles</h2><p>Each person can have a completely different Swoop presentation without changing your shared TV providers.</p></div><button class="icon-btn" data-close>✕</button></div><div class="modal-body"><div class="profile-manage-list">${state.profiles.map(p=>{const t=profileTheme(p);return `<div class="profile-manage-row">${profileAvatarHtml(p,'profile-avatar-lg')}<div><strong>${esc(p.name)}</strong><span>${p.kids?'Kids restrictions on':'Standard profile'}${p.pinHash?' · PIN protected':''} · ${esc(t.name)} theme</span></div><button class="btn secondary compact-btn" data-profile-select="${esc(p.id)}">Switch</button><button class="btn secondary compact-btn" data-profile-edit="${esc(p.id)}">Edit</button></div>`}).join('')}</div><button class="btn accent profile-add-btn" data-profile-add>＋ Add Profile</button></div></div></div>`;
@@ -583,13 +600,13 @@ function nav(){
 }
 function rail(title,data,poster=false,meta='',opts={}){
   if(!data.length)return'';
-  return `<section class="section swoop-render-section ${poster?'poster-section':'landscape-section'} ${opts.ranked?'ranked-section':''}"${opts.rowId?` data-home-row-mounted="${esc(opts.rowId)}"`:''}><div class="section-head"><div><h2>${esc(title)}</h2>${meta?`<span class="section-meta">${esc(meta)}</span>`:''}</div>${opts.page?`<button class="section-link" data-page="${opts.page}">Explore all →</button>`:'<span class="rail-arrow">›</span>'}</div><div class="rail">${data.map((x,i)=>card(x,poster,{progress:continueEntry(x.id)?.progress,rank:opts.ranked?i+1:null})).join('')}</div></section>`;
+  return `<section class="section swoop-render-section ${poster?'poster-section':'landscape-section'} ${opts.ranked?'ranked-section':''} ${opts.priority?'home-priority-row':''}"${opts.rowId?` data-home-row-mounted="${esc(opts.rowId)}"`:''}><div class="section-head"><div><h2>${esc(title)}</h2>${meta?`<span class="section-meta">${esc(meta)}</span>`:''}</div>${opts.page?`<button class="section-link" data-page="${opts.page}">Explore all →</button>`:'<span class="rail-arrow">›</span>'}</div><div class="rail">${data.map((x,i)=>card(x,poster,{progress:continueEntry(x.id)?.progress,rank:opts.ranked?i+1:null})).join('')}</div></section>`;
 }
 
 function homeRowMarkup(def){
   const data=homeRowItems(def.id);if(!data.length)return'';
   const baseLimit=def.ranked?20:(def.id==='live-now'?14:18),limit=largeLibraryMode()&&!def.ranked?Math.min(HOME_EAGER_CARDS,baseLimit):baseLimit;
-  return rail(def.label,data.slice(0,limit),def.poster,discoveryMeta(def.id,data),{page:def.page,ranked:def.ranked,rowId:def.id});
+  return rail(def.label,data.slice(0,limit),def.poster,discoveryMeta(def.id,data),{page:def.page,ranked:def.ranked,rowId:def.id,priority:PINNED_HOME_ROWS.includes(def.id)});
 }
 function lazyHomePlaceholder(def){return `<section class="section lazy-home-row swoop-render-section ${def.poster?'poster-placeholder':'landscape-placeholder'}" data-lazy-home-row="${esc(def.id)}"><div class="section-head"><div><h2>${esc(def.label)}</h2><span class="section-meta">Ready as you scroll</span></div></div><div class="lazy-row-skeleton ${def.poster?'poster-skeleton':'landscape-skeleton'}">${Array.from({length:5},()=>'<i></i>').join('')}</div></section>`}
 function mountLazyHomeRows(root=document){
@@ -631,7 +648,7 @@ function hero(feature,providerName,rotation={}){
   feature=visualItem(feature);
   const isLive=feature.kind==='live',isSeries=feature.kind==='series';
   const typeLabel=feature._heroFeed?`${feature._heroFeed}${feature._heroRank?` · #${feature._heroRank}`:''}`:isLive?'LIVE TV':feature.kind==='movie'?'FEATURED MOVIE':'FEATURED SERIES';
-  const meta=[feature.year,feature.rating?`★ ${feature.rating}`:'',feature.sourceCount>1?`${feature.sourceCount} sources`:'',feature.group].filter(Boolean);
+  const heroRating=displayRating(feature),meta=[feature.year,heroRating?`★ ${heroRating}`:'',feature.sourceCount>1?`${feature.sourceCount} sources`:'',feature.group].filter(Boolean);
   const backdrop=feature.backdrop||feature.logo;
   const artClass=feature.backdrop?'hero-backdrop hero-backdrop-clean':'hero-backdrop hero-backdrop-poster';
   const art=backdrop?`<img class="${artClass}" data-swoop-art="${esc(backdrop)}" alt="" loading="eager">`:'';
@@ -831,7 +848,7 @@ function render(){
   else if(state.page==='search')body=searchPage();
   else body=settingsPage();
   const shellNav=storageRestoring||profilePickerOpen||detailRoute?'':nav();
-  $app.innerHTML=`<div class="app-shell">${shellNav}${body}${modal?modalHtml():''}${!profilePickerOpen&&!detailRoute&&sourceChoiceItem?sourceChoiceHtml():''}${!profilePickerOpen&&!detailRoute&&playerItem&&!playerUiHidden?playerHtml():''}${!profilePickerOpen&&!detailRoute?backgroundLiveBar():''}${!profilePickerOpen&&trailerKey?trailerHtml():''}</div>`;
+  $app.innerHTML=`<div class="app-shell">${shellNav}${body}${modal?modalHtml():''}${!profilePickerOpen&&sourceChoiceItem?sourceChoiceHtml():''}${!profilePickerOpen&&playerItem&&!playerUiHidden?playerHtml():''}${!profilePickerOpen&&!detailRoute?backgroundLiveBar():''}${!profilePickerOpen&&trailerKey?trailerHtml():''}</div>`;
   if(detailRoute){const scroller=document.querySelector('.detail-scroll');if(scroller)scroller.scrollTop=detailScrollTop;}
   bind();bindHeroControls(document);
   if(!profilePickerOpen&&!detailRoute&&state.page==='search')runSearch('');
@@ -867,10 +884,10 @@ function homeRowsModal(){
   const feature=visualItem(featureItem()),featureArt=feature?(feature.backdrop||feature.logo):'',theme=currentTheme(),bg=state.settings.backgroundOverride?validHex(state.settings.backgroundColor):theme.bg;
   return `<div class="modal-backdrop" data-close-modal><div class="modal home-rows-modal" data-modal-card><div class="modal-head home-rows-head"><div><div class="eyebrow">HOME SCREEN</div><h2>Customize ${esc(activeProfile()?.name||'Swoop')}</h2><p>Pick a complete Swoop theme, then choose this profile’s Home rows and optional colour override.</p></div><button class="icon-btn" data-close>✕</button></div><div class="modal-body home-rows-body">
   <section class="theme-studio-card"><div class="theme-studio-copy"><span class="eyebrow">PROFILE THEME</span><h3>${esc(theme.name)}</h3><p>${esc(theme.description)}</p></div><div class="theme-picker-grid active-theme-picker">${SWOOP_THEMES.map(t=>`<button type="button" class="theme-choice ${t.id===theme.id?'active':''}" data-active-theme="${esc(t.id)}"><span class="theme-swatch" style="--theme-swatch:${esc(t.swatch)}"><i></i><b>${esc(t.name)}</b></span><span><strong>${esc(t.name)}</strong><small>${esc(t.tagline)}</small></span></button>`).join('')}</div></section>
-  <section class="home-look-card theme-preview-${esc(theme.id)}" style="--preview-bg:${esc(bg)}"><div class="home-look-preview">${featureArt?`<img data-swoop-art="${esc(featureArt)}" alt="">`:''}<div class="home-look-shade"></div><div class="home-look-copy"><span class="eyebrow">${esc(theme.name.toUpperCase())} PREVIEW</span><strong>${esc(feature?.name||'Your featured title')}</strong><small>${esc(theme.tagline)} · ${state.settings.backgroundOverride?'Custom background':'Theme background'}</small></div></div><div class="home-look-controls"><span class="eyebrow">ADVANCED APPEARANCE</span><h3>Background colour override</h3><p>Each theme has its own base palette. Turn this on only when you want a custom background behind that theme.</p><label class="remember-row theme-bg-toggle"><input type="checkbox" data-bg-override ${state.settings.backgroundOverride?'checked':''}><span><strong>Use a custom background colour</strong><small>Saved only to ${esc(activeProfile()?.name||'this profile')}.</small></span></label><div class="colour-row ${state.settings.backgroundOverride?'':'disabled'}"><input id="homeBgColor" type="color" value="${esc(bg)}" aria-label="Background colour" ${state.settings.backgroundOverride?'':'disabled'}><input id="homeBgHex" type="text" value="${esc(bg)}" maxlength="7" aria-label="Background hex colour" ${state.settings.backgroundOverride?'':'disabled'}><button type="button" class="btn secondary compact-btn" data-bg-reset>Use ${esc(theme.name)} default</button></div><small class="metadata-note">Artwork source: provider images first, enhanced with TMDb backdrops when configured on ${esc(metadataServiceUrl(state.settings))}.</small><label class="remember-row smart-home-toggle"><input type="checkbox" data-smart-home-toggle ${state.settings.smartHomeOrder!==false?'checked':''}><span><strong>Smart Home ordering for ${esc(activeProfile()?.name||'this profile')}</strong><small>Let viewing history move relevant rows higher and add a dynamic Because You Watched row. Your selected rows remain under your control.</small></span></label></div></section>
+  <section class="home-look-card theme-preview-${esc(theme.id)}" style="--preview-bg:${esc(bg)}"><div class="home-look-preview">${featureArt?`<img data-swoop-art="${esc(featureArt)}" alt="">`:''}<div class="home-look-shade"></div><div class="home-look-copy"><span class="eyebrow">${esc(theme.name.toUpperCase())} PREVIEW</span><strong>${esc(feature?.name||'Your featured title')}</strong><small>${esc(theme.tagline)} · ${state.settings.backgroundOverride?'Custom background':'Theme background'}</small></div></div><div class="home-look-controls"><span class="eyebrow">ADVANCED APPEARANCE</span><h3>Background colour override</h3><p>Each theme has its own base palette. Turn this on only when you want a custom background behind that theme.</p><label class="remember-row theme-bg-toggle"><input type="checkbox" data-bg-override ${state.settings.backgroundOverride?'checked':''}><span><strong>Use a custom background colour</strong><small>Saved only to ${esc(activeProfile()?.name||'this profile')}.</small></span></label><div class="colour-row ${state.settings.backgroundOverride?'':'disabled'}"><input id="homeBgColor" type="color" value="${esc(bg)}" aria-label="Background colour" ${state.settings.backgroundOverride?'':'disabled'}><input id="homeBgHex" type="text" value="${esc(bg)}" maxlength="7" aria-label="Background hex colour" ${state.settings.backgroundOverride?'':'disabled'}><button type="button" class="btn secondary compact-btn" data-bg-reset>Use ${esc(theme.name)} default</button></div><small class="metadata-note">Artwork source: provider images first, enhanced with TMDb backdrops when configured on ${esc(metadataServiceUrl(state.settings))}.</small><label class="remember-row smart-home-toggle"><input type="checkbox" data-smart-home-toggle ${state.settings.smartHomeOrder!==false?'checked':''}><span><strong>Smart Home ordering for ${esc(activeProfile()?.name||'this profile')}</strong><small>Let viewing history move relevant rows higher while Continue Watching and both Top 20 rows stay pinned at the top. Your selected rows remain under your control.</small></span></label></div></section>
   <section class="discovery-key-card"><div><span class="eyebrow">SWOOP DISCOVERY</span><h3>Built-in charts update automatically</h3><p>Top 20 and Trending now blend short-term TMDb activity with streaming/popularity signals supplied by the Swoop metadata service. End users do not need a Trakt or MDBList account. The key below is optional and is only used for custom MDBList rows you create yourself.</p></div><form id="homeDiscoveryForm"><div class="field"><label>Custom MDBList API key <span class="optional">Optional</span></label><input name="apiKey" type="password" value="${esc(state.settings.mdblistApiKey||'')}" placeholder="Only needed for your own MDBList rows"></div><div class="discovery-key-actions"><button class="btn accent" type="submit">Save Custom Key</button><button class="btn secondary" type="button" data-refresh-discovery>Refresh discovery now</button></div><small>${lastWeb?esc(relativeRefreshTime(lastWeb)):'No discovery refresh yet'}${discoveryRefreshing?' · Refreshing now…':''}</small></form></section>
-  <div class="home-row-toolbar"><div><strong>${state.settings.homeRows.length} rows selected</strong><span>${state.settings.smartHomeOrder!==false?'Smart ordering is on; ↑ ↓ sets your preferred baseline.':'Use ↑ ↓ to control the order.'}</span></div><div><button class="btn secondary compact-btn" data-modal="mdblist">＋ Custom MDBList Row</button><button class="btn secondary compact-btn" data-reset-home>Reset defaults</button></div></div>
-  <div class="home-row-picker">${groups.map(group=>`<section class="home-row-group"><div class="home-row-group-title"><span>${esc(group)}</span></div>${defs.filter(x=>x.group===group).map(def=>{const on=selected.has(def.id),index=state.settings.homeRows.indexOf(def.id),data=homeRowItems(def.id),cache=state.webDiscovery?.[def.id],err=cache?.error||(def.custom?state.mdblistRows.find(r=>`custom:${r.uid}`===def.id)?.error:'');return `<div class="home-row-option ${on?'selected':''}"><button class="home-row-toggle" data-home-toggle="${esc(def.id)}" aria-pressed="${on?'true':'false'}"><span class="home-row-check">${on?'✓':'＋'}</span><span><strong>${esc(def.label)}</strong><small>${esc(def.description||`${data.length.toLocaleString()} items currently available`)}</small>${err?`<em>${esc(err)}</em>`:''}</span></button><div class="home-row-order">${on?`<button data-home-up="${esc(def.id)}" ${index<=0?'disabled':''} aria-label="Move ${esc(def.label)} up">↑</button><button data-home-down="${esc(def.id)}" ${index<0||index>=state.settings.homeRows.length-1?'disabled':''} aria-label="Move ${esc(def.label)} down">↓</button>`:''}</div></div>`}).join('')}</section>`).join('')}</div>
+  <div class="home-row-toolbar"><div><strong>${state.settings.homeRows.length} rows selected</strong><span>Continue Watching, Top 20 Movies and Top 20 TV Shows are pinned first. ${state.settings.smartHomeOrder!==false?'Smart ordering personalises everything below them.':'Use ↑ ↓ to control the remaining rows.'}</span></div><div><button class="btn secondary compact-btn" data-modal="mdblist">＋ Custom MDBList Row</button><button class="btn secondary compact-btn" data-reset-home>Reset defaults</button></div></div>
+  <div class="home-row-picker">${groups.map(group=>`<section class="home-row-group"><div class="home-row-group-title"><span>${esc(group)}</span></div>${defs.filter(x=>x.group===group).map(def=>{const pinned=PINNED_HOME_ROWS.includes(def.id),on=pinned||selected.has(def.id),index=state.settings.homeRows.indexOf(def.id),data=homeRowItems(def.id),cache=state.webDiscovery?.[def.id],err=cache?.error||(def.custom?state.mdblistRows.find(r=>`custom:${r.uid}`===def.id)?.error:'');return `<div class="home-row-option ${on?'selected':''} ${pinned?'pinned':''}"><button class="home-row-toggle" ${pinned?'disabled':`data-home-toggle="${esc(def.id)}"`} aria-pressed="${on?'true':'false'}"><span class="home-row-check">${pinned?'PIN':on?'✓':'＋'}</span><span><strong>${esc(def.label)}</strong><small>${pinned?'Pinned at the top of Home · ':''}${esc(def.description||`${data.length.toLocaleString()} items currently available`)}</small>${err?`<em>${esc(err)}</em>`:''}</span></button><div class="home-row-order">${on&&!pinned?`<button data-home-up="${esc(def.id)}" ${index<=PINNED_HOME_ROWS.length?'disabled':''} aria-label="Move ${esc(def.label)} up">↑</button><button data-home-down="${esc(def.id)}" ${index<0||index>=state.settings.homeRows.length-1?'disabled':''} aria-label="Move ${esc(def.label)} down">↓</button>`:''}</div></div>`}).join('')}</section>`).join('')}</div>
   <div class="home-row-footer"><span>Theme, rows and background are stored independently for this profile.</span><button class="btn accent" data-close>Done</button></div>
   </div></div></div>`;
 }
@@ -886,7 +903,7 @@ function toast(msg){clearTimeout(toastTimer);document.querySelector('.toast')?.r
 
 function detailMeta(item,payload){
   item=visualItem(item);
-  const enriched=state.metadataCache?.[item.id]||{};
+  const enriched=isDemoItem(item)?{}:(state.metadataCache?.[item.id]||{});
   const info=payload?.info||{},movie=payload?.movie_data||{};
   const providerCover=resolveProviderAsset(info.movie_image||info.cover_big||info.cover||movie.stream_icon||'',item.providerId);
   const providerBackdrop=resolveProviderAsset((Array.isArray(info.backdrop_path)?info.backdrop_path[0]:info.backdrop_path)||(Array.isArray(payload?.backdrop_path)?payload.backdrop_path[0]:payload?.backdrop_path)||'',item.providerId);
@@ -900,7 +917,7 @@ function detailMeta(item,payload){
     plot:enriched.plot||info.plot||info.description||movie.plot||item.plot||'',
     cover,backdrop,backdrops:Array.isArray(item.backdrops)?item.backdrops:[],titleLogo:item.titleLogo||'',
     year:enriched.year||info.releasedate||info.releaseDate||info.year||movie.year||item.year||'',
-    rating:enriched.rating||info.rating||info.rating_5based||movie.rating||item.rating||'',
+    rating:tenPointRating(enriched.rating),
     genre:genres.length?genres.join(', '):(info.genre||item.genre||item.group||''),
     genres,
     cast:info.cast||'',castList:Array.isArray(enriched.cast)?enriched.cast:[],
@@ -935,13 +952,15 @@ function detailHtml(){
   }else if(detailItem.kind==='movie'){
     const ce=continueEntry(detailItem.id),pct=Math.round(Number(ce?.progress||0));primary=`<button class="btn play-btn detail-play" data-play="${esc(detailItem.id)}">▶ ${pct>1&&pct<95?`Resume · ${pct}%`:'Play'}</button>`;
   }else if(detailItem.kind==='live') primary=`<button class="btn play-btn detail-play" data-play="${esc(detailItem.id)}">▶ Watch Live</button>`;
+  const watched=isWatched(detailItem);
+  const watchedButton=detailItem.kind!=='live'?`<button class="btn secondary detail-watched-toggle ${watched?'watched':''}" data-toggle-watched="${esc(detailItem.id)}"><span>${watched?'✓':'○'}</span> ${watched?'Mark as Unwatched':'Mark as Watched'}</button>`:'';
   const tmdbRelated=matchTmdbRecommendations(meta.recommendations,detailItem.kind);
   const providerRelated=detailItem.kind==='movie'?items('movie').filter(x=>x.id!==detailItem.id&&x.group===detailItem.group):activeCatalog().filter(x=>x.id!==detailItem.id&&x.kind===detailItem.kind&&x.group===detailItem.group);
   const related=[...new Map([...tmdbRelated,...providerRelated].filter(x=>x.id!==detailItem.id).map(x=>[x.id,x])).values()].slice(0,18);
   const sourceProviders=Array.isArray(detailItem.sources)?[...new Set(detailItem.sources.map(x=>providerDisplayName(x)))]:[providerDisplayName(detailItem)];const facts=[['Genre',meta.genre],['Director / Creator',meta.director],['Country',meta.country],['Runtime',meta.duration],['Rating',meta.age],['Providers',sourceProviders.filter(Boolean).join(', ')],['Playback sources',detailItem.sourceCount>1?`${detailItem.sourceCount} available`:'']].filter(([,v])=>v);
   const castBlock=meta.castList.length?`<section class="detail-cast"><div class="detail-section-head"><div><span class="eyebrow">CAST</span><h3>Cast & Characters</h3></div></div><div class="cast-rail">${meta.castList.map(person=>`<div class="cast-card">${person.profile?`<img data-swoop-art="${esc(person.profile)}" alt="">`:`<div class="cast-fallback">${esc((person.name||'?').slice(0,1))}</div>`}<strong>${esc(person.name)}</strong><span>${esc(person.character||'')}</span></div>`).join('')}</div></section>`:'';
   const trailerButton=meta.youtube?`<button class="btn secondary detail-trailer" data-trailer="${esc(meta.youtube)}" data-trailer-title="${esc(meta.trailerName||meta.title)}"><span>▶</span> Trailer</button>`:'';
-  return `<main class="detail-overlay detail-route" aria-label="${esc(meta.title)}"><button class="detail-close" data-detail-close aria-label="Back">←</button><div class="detail-scroll"><section class="detail-hero ${hasCinematicBackdrop?'has-backdrop':'poster-fallback'}"><div class="detail-media"><div class="detail-fallback" style="--detail-fallback:${detailItem.demoColor||'linear-gradient(135deg,#151b2a,#050609)'}"></div>${backdrop?`<img class="detail-backdrop" data-swoop-art="${esc(backdrop)}" alt="">`:''}</div><div class="detail-vignette"></div><div class="detail-copy"><div class="eyebrow">${esc(kindLabel(detailItem).toUpperCase())}</div>${meta.titleLogo?`<img class="detail-title-logo" data-swoop-art="${esc(meta.titleLogo)}" alt="${esc(meta.title)}">`:`<h2>${esc(meta.title)}</h2>`}<div class="detail-meta">${[meta.year,meta.rating?`★ ${meta.rating}`:'',meta.age,detailItem.group].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>${esc(meta.plot||`Available from ${providerSummaryName()}.`)}</p><div class="cta-row">${primary}${trailerButton}<button class="btn secondary detail-list ${saved?'saved':''}" data-toggle-list="${esc(detailItem.id)}"><span>${saved?'✓':'＋'}</span> ${saved?'In My List':'My List'}</button></div></div>${meta.cover&&!hasCinematicBackdrop?`<img class="detail-poster" data-swoop-art="${esc(meta.cover)}" alt="">`:''}</section>
+  return `<main class="detail-overlay detail-route" aria-label="${esc(meta.title)}"><button class="detail-close" data-detail-close aria-label="Back">←</button><div class="detail-scroll"><section class="detail-hero ${hasCinematicBackdrop?'has-backdrop':'poster-fallback'}"><div class="detail-media"><div class="detail-fallback" style="--detail-fallback:${detailItem.demoColor||'linear-gradient(135deg,#151b2a,#050609)'}"></div>${backdrop?`<img class="detail-backdrop" data-swoop-art="${esc(backdrop)}" alt="">`:''}</div><div class="detail-vignette"></div><div class="detail-copy"><div class="eyebrow">${esc(kindLabel(detailItem).toUpperCase())}</div>${meta.titleLogo?`<img class="detail-title-logo" data-swoop-art="${esc(meta.titleLogo)}" alt="${esc(meta.title)}">`:`<h2>${esc(meta.title)}</h2>`}<div class="detail-meta">${[meta.year,meta.rating?`★ ${meta.rating}`:'',meta.age,detailItem.group].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>${esc(meta.plot||`Available from ${providerSummaryName()}.`)}</p><div class="cta-row">${primary}${trailerButton}<button class="btn secondary detail-list ${saved?'saved':''}" data-toggle-list="${esc(detailItem.id)}"><span>${saved?'✓':'＋'}</span> ${saved?'In My List':'My List'}</button>${watchedButton}</div></div>${meta.cover&&!hasCinematicBackdrop?`<img class="detail-poster" data-swoop-art="${esc(meta.cover)}" alt="">`:''}</section>
   ${episodeBlock}${castBlock}<section class="detail-info"><div><span class="eyebrow">ABOUT</span><h3>More about ${esc(meta.title)}</h3></div><div class="detail-facts">${facts.length?facts.map(([k,v])=>`<div><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join(''):'<div><span>Source</span><strong>Your connected provider</strong></div>'}</div></section>${related.length?`<section class="detail-related">${rail('More Like This',related,detailItem.kind!=='live')}</section>`:''}</div></main>`;
 }
 function trailerHtml(){return trailerKey?`<div class="trailer-shell" role="dialog" aria-modal="true"><div class="trailer-card"><button class="trailer-close" data-trailer-close>✕</button><iframe src="https://www.youtube.com/embed/${esc(trailerKey)}?autoplay=1&rel=0" title="${esc(trailerTitle||'Trailer')}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe><div class="trailer-caption"><span class="eyebrow">TRAILER</span><strong>${esc(trailerTitle||'Official Trailer')}</strong></div></div></div>`:''}
@@ -949,6 +968,8 @@ function trailerHtml(){return trailerKey?`<div class="trailer-shell" role="dialo
 async function resolveNativeCatalogItem(item,{includeSources=true}={}){
   if(!item||!nativeCatalogMode||!item._nativeLogicalKey||item.kind==='episode')return item;
   if(includeSources&&Array.isArray(item.sources)&&item.sources.length)return item;
+  // A representative SQLite row already contains a playable provider URL. Avoid a bridge round-trip for single-source titles.
+  if(item.streamUrl&&Number(item.sourceCount||1)<=1)return item;
   try{
     const result=await nativeCatalogSources(item._nativeLogicalKey),sources=cacheNativeItems(result?.items||[]);
     if(!sources.length)return item;
@@ -961,23 +982,60 @@ async function resolveNativeCatalogItem(item,{includeSources=true}={}){
 }
 
 async function openDetail(item){
-  if(!item)return;if(!detailItem){detailReturnScroll=window.scrollY||document.documentElement.scrollTop||0;detailScrollTop=0;}item=await resolveNativeCatalogItem(item,{includeSources:true});detailItem=item;detailSeason='';detailError='';detailPayload=detailCache.get(item.id)||null;detailLoading=false;render();if(['movie','series'].includes(item.kind))setTimeout(()=>enrichItemMetadata(item,{rerender:true}),0);
-  if(detailPayload||item.source!=='xtream'||!['movie','series'].includes(item.kind))return;
-  const cfg=providerConfigFor(item);if(!cfg.server||!cfg.username||!cfg.password){detailError=`Reconnect ${providerDisplayName(item)} or save its Xtream login to load full title details.`;render();return}
+  if(!item)return;
+  if(!detailItem){detailReturnScroll=window.scrollY||document.documentElement.scrollTop||0;detailScrollTop=0;}
+  // Route immediately. Native source hydration must never make a thumbnail click feel dead.
+  detailItem=item;detailSeason='';detailError='';detailPayload=detailCache.get(item.id)||null;detailLoading=false;render();
+  const openingId=item.id;
+  if(['movie','series'].includes(item.kind))setTimeout(()=>enrichItemMetadata(item,{rerender:true}),0);
+  let resolved=item;
+  try{resolved=await resolveNativeCatalogItem(item,{includeSources:true})||item}catch{}
+  if(detailItem?.id!==openingId)return;
+  if(resolved!==detailItem){detailItem=resolved;cacheNativeItems([resolved]);}
+  if(detailPayload||resolved.source!=='xtream'||!['movie','series'].includes(resolved.kind)){if(resolved!==item)render();return;}
+  const cfg=providerConfigFor(resolved);
+  if(!cfg.server||!cfg.username||!cfg.password){detailError=`Reconnect ${providerDisplayName(resolved)} or save its Xtream login to load full title details.`;render();return;}
   detailLoading=true;render();
-  try{const payload=item.kind==='series'?await fetchXtreamSeriesInfo(cfg,item.seriesId):await fetchXtreamVodInfo(cfg,item.streamId);detailCache.set(item.id,payload||{});if(detailItem?.id===item.id){detailPayload=payload||{};detailLoading=false;render()}}
-  catch(err){if(detailItem?.id===item.id){detailLoading=false;detailError=err.message||'Could not load title details.';render()}}
+  try{
+    const payload=resolved.kind==='series'?await fetchXtreamSeriesInfo(cfg,resolved.seriesId):await fetchXtreamVodInfo(cfg,resolved.streamId);
+    detailCache.set(resolved.id,payload||{});
+    if(detailItem?.id===openingId){detailPayload=payload||{};detailLoading=false;render();}
+  }catch(err){if(detailItem?.id===openingId){detailLoading=false;detailError=err.message||'Could not load title details.';render();}}
 }
 function closeDetail(){detailItem=null;detailPayload=null;detailLoading=false;detailError='';detailSeason='';detailEpisodeItems.clear();detailScrollTop=0;render();requestAnimationFrame(()=>window.scrollTo(0,detailReturnScroll||0))}
 function toggleMyList(item){if(!item)return;const ids=new Set(logicalItemIds(item)),saved=state.myList.some(id=>ids.has(id));if(saved){state.myList=state.myList.filter(id=>!ids.has(id));toast('Removed from My List')}else{state.myList.unshift(item.id);toast('Added to My List')}persist();render()}
-function recordWatchHistory(item){
+function watchHistoryEntry(itemOrId){
+  const item=typeof itemOrId==='string'?savedItem(itemOrId):itemOrId,id=typeof itemOrId==='string'?itemOrId:itemOrId?.id;
+  const ids=new Set(item?logicalItemIds(item):[id]);
+  return state.watchHistory.find(x=>ids.has(String(x?.id||'')))||null;
+}
+function isWatched(item){const entry=watchHistoryEntry(item);return Boolean(entry?.completed||entry?.manualWatched)}
+function toggleWatched(item){
+  if(!item||item.kind==='live')return;
+  const ids=new Set(logicalItemIds(item));
+  if(isWatched(item)){
+    state.watchHistory=state.watchHistory.filter(x=>!ids.has(String(x?.id||'')));
+    state.continueWatching=state.continueWatching.filter(x=>!ids.has(String(x?.id||'')));
+    toast('Marked as unwatched');
+  }else{
+    const existing=watchHistoryEntry(item)||{};
+    const entry={...existing,id:item.id,item:compactMediaSnapshot(item),lastPlayed:Date.now(),selectedSourceId:item._selectedSourceId||existing.selectedSourceId||'',completed:true,manualWatched:true,completedAt:Date.now()};
+    state.watchHistory=state.watchHistory.filter(x=>!ids.has(String(x?.id||'')));state.watchHistory.unshift(entry);state.watchHistory=state.watchHistory.slice(0,80);
+    state.continueWatching=state.continueWatching.filter(x=>!ids.has(String(x?.id||'')));
+    toast('Marked as watched');
+  }
+  persist();render();
+}
+function recordWatchHistory(item,{completed=false}={}){
   if(!item)return;
   const ids=new Set(logicalItemIds(item));
   if(item.kind==='live'){
     state.recentLive=[item.id,...state.recentLive.filter(id=>!ids.has(String(id)))].slice(0,20);
     return;
   }
-  const entry={id:item.id,item:compactMediaSnapshot(item),lastPlayed:Date.now(),selectedSourceId:item._selectedSourceId||''};
+  const prior=state.watchHistory.find(x=>ids.has(String(x?.id||'')))||{};
+  const done=Boolean(completed||prior.completed||prior.manualWatched);
+  const entry={...prior,id:item.id,item:compactMediaSnapshot(item),lastPlayed:Date.now(),selectedSourceId:item._selectedSourceId||prior.selectedSourceId||'',completed:done,manualWatched:Boolean(prior.manualWatched),completedAt:done?Number(prior.completedAt||Date.now()):0};
   state.watchHistory=state.watchHistory.filter(x=>!ids.has(String(x?.id||'')));state.watchHistory.unshift(entry);state.watchHistory=state.watchHistory.slice(0,80);
 }
 function rememberWatching(item){
@@ -999,7 +1057,7 @@ function updateContinueProgress(item,pb,force=false){
   const pos=Math.max(0,Number(pb.timePos||0)),duration=Math.max(0,Number(pb.duration||0));
   const pct=duration>0?Math.max(0,Math.min(100,(pos/duration)*100)):Math.max(0,Math.min(100,Number(pb.percentPos||0)));
   const complete=Boolean(pb.eofReached)||(duration>60&&pct>=95);
-  recordWatchHistory(item);
+  recordWatchHistory(item,{completed:complete});
   if(complete){const ids=new Set(logicalItemIds(item));state.continueWatching=state.continueWatching.filter(x=>!ids.has(String(x?.id||'')));persist();return}
   if(pos<8&&pct<1&&!force)return;
   const old=continueEntry(item.id)||{};
@@ -1191,7 +1249,29 @@ function providerFilterOptions(){return enabledProviders().map(p=>({id:p.id,name
 function itemHasProvider(item,id){if(!id||id==='all')return true;if(item.providerId===id)return true;return Array.isArray(item.sources)&&item.sources.some(s=>s.providerId===id)}
 function providerFiltered(list){return providerFilter==='all'?list:list.filter(x=>itemHasProvider(x,providerFilter))}
 
-function bindDynamicCards(root=document){root.querySelectorAll('[data-play]').forEach(el=>{if(el.dataset.boundPlay)return;el.dataset.boundPlay='1';el.onclick=()=>play(savedItem(el.dataset.play))});root.querySelectorAll('[data-detail]').forEach(el=>{if(el.dataset.boundDetail)return;el.dataset.boundDetail='1';el.onclick=()=>openDetail(savedItem(el.dataset.detail))})}
+function bindDynamicCards(root=document){
+  root.querySelectorAll('[data-play]').forEach(el=>{
+    if(el.dataset.boundPlay)return;el.dataset.boundPlay='1';
+    el.onclick=async()=>{
+      if(el.dataset.playBusy==='1')return;
+      el.dataset.playBusy='1';const original=el.innerHTML;el.classList.add('interaction-pending');
+      if(el.classList.contains('detail-play'))el.innerHTML='▶ Opening…';
+      try{
+        const id=el.dataset.play;
+        let item=(detailItem?.id===id?detailItem:null)||detailEpisodeItems.get(id)||savedItem(id);
+        if(!item&&nativeCatalogMode){try{const result=await nativeCatalogGet([id]);item=cacheNativeItems(result?.items||[])[0]||null}catch{}}
+        if(!item){toast('Swoop could not resolve this title.');return;}
+        await play(item);
+      }finally{
+        if(document.contains(el)){el.dataset.playBusy='0';el.classList.remove('interaction-pending');el.innerHTML=original;}
+      }
+    }
+  });
+  root.querySelectorAll('[data-detail]').forEach(el=>{
+    if(el.dataset.boundDetail)return;el.dataset.boundDetail='1';
+    el.onclick=()=>{const item=savedItem(el.dataset.detail);if(item)openDetail(item);else toast('Opening title…')}
+  })
+}
 
 function bind(){
   document.querySelectorAll('[data-profile-picker]').forEach(el=>el.onclick=()=>{syncActiveProfileFromState();persist();profilePickerOpen=true;modal=null;profileEditId='';render()});
@@ -1203,7 +1283,7 @@ function bind(){
   document.querySelectorAll('[data-profile-theme]').forEach(el=>el.onclick=()=>{const value=themeById(el.dataset.profileTheme).id,input=document.querySelector('#profileThemeValue');if(input)input.value=value;document.querySelectorAll('[data-profile-theme]').forEach(x=>x.classList.toggle('active',x===el))});
   document.querySelector('[data-pin-cancel]')?.addEventListener('click',()=>{pendingProfileId='';profilePinError='';modal=null;profilePickerOpen=true;render()});
   document.querySelector('#profilePinForm')?.addEventListener('submit',async e=>{e.preventDefault();const target=state.profiles.find(p=>p.id===pendingProfileId),pin=String(new FormData(e.currentTarget).get('pin')||'');if(!target)return;const digest=await pinDigest(pin,target.pinSalt);if(digest!==target.pinHash){profilePinError='Incorrect PIN. Try again.';render();return}const id=target.id;pendingProfileId='';profilePinError='';await switchProfile(id,{skipPin:true})});
-  document.querySelector('#profileForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),id=String(fd.get('id')||''),existing=state.profiles.find(p=>p.id===id)||null,name=String(fd.get('name')||'Profile').trim(),avatar=String(fd.get('avatar')||'cyan'),kids=Boolean(fd.get('kids')),smartHome=Boolean(fd.get('smartHome')),themeId=themeById(String(fd.get('themeId')||existing?.profileSettings?.themeId||'chill')).id,pin=String(fd.get('pin')||'').trim(),removePin=Boolean(fd.get('removePin'));if(!name){toast('Enter a profile name');return}if(pin&&!/^\d{4,8}$/.test(pin)){toast('Profile PIN must be 4–8 digits');return}if(existing?.id===state.activeProfileId)syncActiveProfileFromState();let next=existing?normalizeProfile(state.profiles.find(p=>p.id===id)||existing):makeProfile({name,avatar,kids,profileSettings:{themeId:'chill',backgroundColor:'#050505',backgroundOverride:false,movieSourcePreferences:{},homeRows:[...DEFAULT_HOME_ROWS],smartHomeOrder:true}});next={...next,name:name.slice(0,24),avatar:avatarById(avatar).id,kids,profileSettings:{...(next.profileSettings||{}),smartHomeOrder:smartHome,themeId}};if(kids){const rawById=x=>state.catalog.find(item=>item.id===x)||next.continueWatching.find(e=>e.id===x)?.item||next.watchHistory.find(e=>e.id===x)?.item||null;next.myList=next.myList.filter(id=>{const item=rawById(id);return !item||profileAllowsMedia(next,item,state.metadataCache?.[item.id]||{})});next.continueWatching=next.continueWatching.filter(e=>!e?.item||profileAllowsMedia(next,e.item,state.metadataCache?.[e.id]||{}));next.watchHistory=next.watchHistory.filter(e=>!e?.item||profileAllowsMedia(next,e.item,state.metadataCache?.[e.id]||{}));}if(removePin){next.pinHash='';next.pinSalt=''}else if(pin){next.pinSalt=randomSalt();next.pinHash=await pinDigest(pin,next.pinSalt)}if(existing){const i=state.profiles.findIndex(p=>p.id===existing.id);state.profiles[i]=next;if(existing.id===state.activeProfileId){applyProfileToState(next)}}else{state.profiles.push(next);state.activeProfileId=next.id;applyProfileToState(next)}profileEditId='';modal=null;profilePickerOpen=false;await persist();render();toast(existing?'Profile updated':`Welcome, ${next.name}`)});
+  document.querySelector('#profileForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),id=String(fd.get('id')||''),existing=state.profiles.find(p=>p.id===id)||null,name=String(fd.get('name')||'Profile').trim(),avatar=String(fd.get('avatar')||'lion'),kids=Boolean(fd.get('kids')),smartHome=Boolean(fd.get('smartHome')),themeId=themeById(String(fd.get('themeId')||existing?.profileSettings?.themeId||'chill')).id,pin=String(fd.get('pin')||'').trim(),removePin=Boolean(fd.get('removePin'));if(!name){toast('Enter a profile name');return}if(pin&&!/^\d{4,8}$/.test(pin)){toast('Profile PIN must be 4–8 digits');return}if(existing?.id===state.activeProfileId)syncActiveProfileFromState();let next=existing?normalizeProfile(state.profiles.find(p=>p.id===id)||existing):makeProfile({name,avatar,kids,profileSettings:{themeId:'chill',backgroundColor:'#050505',backgroundOverride:false,movieSourcePreferences:{},homeRows:[...DEFAULT_HOME_ROWS],smartHomeOrder:true}});next={...next,name:name.slice(0,24),avatar:avatarById(avatar).id,kids,profileSettings:{...(next.profileSettings||{}),smartHomeOrder:smartHome,themeId}};if(kids){const rawById=x=>state.catalog.find(item=>item.id===x)||next.continueWatching.find(e=>e.id===x)?.item||next.watchHistory.find(e=>e.id===x)?.item||null;next.myList=next.myList.filter(id=>{const item=rawById(id);return !item||profileAllowsMedia(next,item,state.metadataCache?.[item.id]||{})});next.continueWatching=next.continueWatching.filter(e=>!e?.item||profileAllowsMedia(next,e.item,state.metadataCache?.[e.id]||{}));next.watchHistory=next.watchHistory.filter(e=>!e?.item||profileAllowsMedia(next,e.item,state.metadataCache?.[e.id]||{}));}if(removePin){next.pinHash='';next.pinSalt=''}else if(pin){next.pinSalt=randomSalt();next.pinHash=await pinDigest(pin,next.pinSalt)}if(existing){const i=state.profiles.findIndex(p=>p.id===existing.id);state.profiles[i]=next;if(existing.id===state.activeProfileId){applyProfileToState(next)}}else{state.profiles.push(next);state.activeProfileId=next.id;applyProfileToState(next)}profileEditId='';modal=null;profilePickerOpen=false;await persist();render();toast(existing?'Profile updated':`Welcome, ${next.name}`)});
   document.querySelectorAll('[data-profile-delete]').forEach(el=>el.onclick=async()=>{const id=el.dataset.profileDelete;if(state.profiles.length<=1){toast('Swoop needs at least one profile');return}const wasActive=id===state.activeProfileId;state.profiles=state.profiles.filter(p=>p.id!==id);if(wasActive){state.activeProfileId=state.profiles[0].id;applyProfileToState(state.profiles[0])}profileEditId='';modal='profiles';await persist();render();toast('Profile deleted')});
   document.querySelectorAll('[data-page]').forEach(el=>el.onclick=()=>{state.page=el.dataset.page;if(state.page==='guide')guideStart=Math.floor(Date.now()/1800000)*1800000;render()});
   document.querySelectorAll('[data-modal]').forEach(el=>el.onclick=()=>{modal=el.dataset.modal;render()});
@@ -1215,6 +1295,7 @@ function bind(){
   document.querySelectorAll('[data-source-best]').forEach(el=>el.onclick=()=>{const logical=sourceChoiceItem,source=logical?.sources?.find(x=>x.id===el.dataset.sourceBest);if(logical&&source){rememberMovieSourcePreference(logical,source.id);play(playableFromSource(logical,source),{sourceSelected:true})}});
   document.querySelectorAll('[data-detail-close]').forEach(el=>el.onclick=closeDetail);
   document.querySelectorAll('[data-toggle-list]').forEach(el=>el.onclick=()=>toggleMyList(savedItem(el.dataset.toggleList)||detailItem));
+  document.querySelectorAll('[data-toggle-watched]').forEach(el=>el.onclick=()=>toggleWatched(savedItem(el.dataset.toggleWatched)||detailItem));
   document.querySelectorAll('[data-season]').forEach(el=>el.onclick=()=>{detailSeason=el.dataset.season;render()});
   document.querySelectorAll('[data-close-player]').forEach(el=>el.onclick=()=>{if(playerItem?.kind==='live'){playerUiHidden=true;state.page='live';render()}else closePlayer()});
   document.querySelectorAll('[data-live-controls]').forEach(el=>el.onclick=()=>{playerUiHidden=false;render()});
@@ -1259,10 +1340,10 @@ function bind(){
   document.querySelector('[data-refresh-discovery]')?.addEventListener('click',()=>refreshDiscoveryRows(true));
   document.querySelector('[data-smart-home-toggle]')?.addEventListener('change',e=>{state.settings.smartHomeOrder=Boolean(e.target.checked);persist();render();toast(state.settings.smartHomeOrder?'Smart Home ordering enabled':'Smart Home ordering disabled')});
   document.querySelectorAll('[data-performance-mode]').forEach(el=>el.onclick=()=>{state.settings.performanceMode=el.dataset.performanceMode||'auto';persist();render();toast(state.settings.performanceMode==='cinematic'?'Full cinematic rendering enabled':'Automatic performance mode enabled')});
-  document.querySelectorAll('[data-home-toggle]').forEach(el=>el.onclick=()=>{const id=el.dataset.homeToggle,index=state.settings.homeRows.indexOf(id);if(index>=0)state.settings.homeRows.splice(index,1);else state.settings.homeRows.push(id);persist();render()});
-  document.querySelectorAll('[data-home-up]').forEach(el=>el.onclick=()=>{const id=el.dataset.homeUp,i=state.settings.homeRows.indexOf(id);if(i>0){[state.settings.homeRows[i-1],state.settings.homeRows[i]]=[state.settings.homeRows[i],state.settings.homeRows[i-1]];persist();render()}});
-  document.querySelectorAll('[data-home-down]').forEach(el=>el.onclick=()=>{const id=el.dataset.homeDown,i=state.settings.homeRows.indexOf(id);if(i>=0&&i<state.settings.homeRows.length-1){[state.settings.homeRows[i+1],state.settings.homeRows[i]]=[state.settings.homeRows[i],state.settings.homeRows[i+1]];persist();render()}});
-  document.querySelector('[data-reset-home]')?.addEventListener('click',()=>{state.settings.homeRows=[...DEFAULT_HOME_ROWS,...state.mdblistRows.map(r=>`custom:${r.uid}`)];persist();render();toast('Home rows reset')});
+  document.querySelectorAll('[data-home-toggle]').forEach(el=>el.onclick=()=>{const id=el.dataset.homeToggle;if(PINNED_HOME_ROWS.includes(id))return;const index=state.settings.homeRows.indexOf(id);if(index>=0)state.settings.homeRows.splice(index,1);else state.settings.homeRows.push(id);state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);persist();render()});
+  document.querySelectorAll('[data-home-up]').forEach(el=>el.onclick=()=>{const id=el.dataset.homeUp,i=state.settings.homeRows.indexOf(id);if(i>PINNED_HOME_ROWS.length){[state.settings.homeRows[i-1],state.settings.homeRows[i]]=[state.settings.homeRows[i],state.settings.homeRows[i-1]];state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);persist();render()}});
+  document.querySelectorAll('[data-home-down]').forEach(el=>el.onclick=()=>{const id=el.dataset.homeDown,i=state.settings.homeRows.indexOf(id);if(!PINNED_HOME_ROWS.includes(id)&&i>=PINNED_HOME_ROWS.length&&i<state.settings.homeRows.length-1){[state.settings.homeRows[i+1],state.settings.homeRows[i]]=[state.settings.homeRows[i],state.settings.homeRows[i+1]];state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);persist();render()}});
+  document.querySelector('[data-reset-home]')?.addEventListener('click',()=>{state.settings.homeRows=normalizeHomeRows([...DEFAULT_HOME_ROWS,...state.mdblistRows.map(r=>`custom:${r.uid}`)]);persist();render();toast('Home rows reset')});
   document.querySelector('#m3uForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),file=fd.get('file'),url=String(fd.get('url')||'').trim(),name=String(fd.get('name')||'M3U Provider').trim()||'M3U Provider',epgUrl=String(fd.get('epgUrl')||'').trim(),remember=Boolean(fd.get('remember'));providerProgressStart('m3u',name);try{providerProgressUpdate({step:'read',progress:12,title:`Reading ${name}…`,detail:file&&file.size?'Swoop is reading the M3U file from this device.':'Swoop is downloading this provider playlist.'});let text;if(file&&file.size)text=await file.text();else if(url){if(NATIVE_WINDOWS)text=await nativeFetchText(url);else{const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(`Playlist returned HTTP ${r.status}`);text=await r.text()}}else throw new Error('Choose an M3U file or enter a playlist URL.');providerProgressMark('read','Complete');providerProgressUpdate({step:'parse',progress:55,title:'Parsing channels…',detail:'Swoop is reading channel names, groups, logos and stream addresses.'});await new Promise(r=>setTimeout(r,40));const providerId=`m3u-${Math.abs(hash(`${url||name}`))}`,cat=parseM3U(text,providerId);if(!cat.length)throw new Error('No playable entries were found in that M3U playlist.');providerProgressMark('parse',`${cat.length.toLocaleString()} items`);providerProgressUpdate({step:'save',progress:86,title:'Adding provider to your unified library…',detail:`Merging ${cat.length.toLocaleString()} items without replacing your other providers.`});const counts={live:cat.filter(x=>x.kind==='live').length,movie:cat.filter(x=>x.kind==='movie').length,series:cat.filter(x=>x.kind==='series').length};replaceProviderCatalog(providerId,cat);if(NATIVE_WINDOWS){providerProgressUpdate({step:'save',progress:91,title:'Indexing local catalogue…',detail:'Swoop is writing this provider into SQLite so future browsing only loads the rows you need.'});await nativeCatalogReplaceProvider(providerId,cat,{onProgress:info=>providerProgressUpdate({step:'save',progress:91+Math.round((info.loaded/Math.max(1,info.total))*6),stepDetail:`${info.loaded.toLocaleString()} / ${info.total.toLocaleString()} indexed`})});await activateNativeCatalogIfAvailable();}upsertProviderRecord({id:providerId,type:'m3u',name,url,epgUrl,enabled:true,status:'connected',lastRefreshed:Date.now(),counts});if(remember&&url)saveProviderCredentials({id:providerId,type:'m3u',name,url,epgUrl,enabled:true,priority:providerById(providerId)?.priority??state.providers.length-1,lastRefreshed:Date.now(),counts});else if(url)sessionProviderConfigs.set(providerId,{id:providerId,type:'m3u',name,url,epgUrl});state.mdblistRows.forEach(r=>{r.items=[];r.updatedAt=0;r.error=''});state.webDiscovery={};m3uGuideLoaded=false;await persist(NATIVE_WINDOWS?'cache':true);providerProgressMark('save','Ready');providerProgressSuccess(`${name} added · ${counts.live.toLocaleString()} live · ${counts.movie.toLocaleString()} movies · ${counts.series.toLocaleString()} shows`);setTimeout(()=>{modal=null;state.page='home';render()},1000)}catch(err){providerProgressError(err.message||String(err))}});
   document.querySelector('#xtreamForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),relayUrl=String(fd.get('relayUrl')||'').trim(),relayToken=String(fd.get('relayToken')||''),name=String(fd.get('name')||'Xtream Provider').trim()||'Xtream Provider',cfg={server:String(fd.get('server')).trim(),username:String(fd.get('username')),password:String(fd.get('password')),relayUrl,relayToken};providerProgressStart('xtream',name);try{providerProgressUpdate({step:'contact',progress:7,title:`Contacting ${name}…`,detail:NATIVE_WINDOWS?'Using the Windows Native Bridge to reach this Xtream server.':relayUrl?'Using the Swoop Connection Helper for this provider.':'Connecting directly to this Xtream server.'});const profile=await testXtream(cfg);providerProgressMark('contact','Reached');providerProgressUpdate({step:'auth',progress:18,title:'Verifying your Xtream login…',detail:'Checking that the account is active and authorised.'});if(String(profile?.user_info?.auth)==='0')throw new Error('Xtream account was not authorised.');providerProgressMark('auth','Authorised');providerProgressUpdate({step:'live',progress:26,title:'Loading this provider library…',detail:'Live TV, Movies and TV Shows are loading. Your existing providers remain available.'});const providerId=`xtream-${Math.abs(hash(`${cfg.server}|${cfg.username}`))}`,completedSections=new Set();const result=await importXtream(cfg,providerId,info=>{if(info?.section){completedSections.add(info.section);providerProgressMark(info.section,`${Number(info.count||0).toLocaleString()} items`);const next=['live','movie','series'].find(x=>!completedSections.has(x))||'save',progress=next==='live'?30:next==='movie'?47:next==='series'?64:80,nextLabel=next==='live'?'Live TV':next==='movie'?'Movies':next==='series'?'TV Shows':'your unified Swoop library';providerProgressUpdate({step:next,progress,title:next==='save'?'Provider catalog loaded — merging into Swoop…':`Loading ${nextLabel}…`,detail:next==='save'?'Swoop is adding this provider without removing your existing library.':'The remaining sections are still loading.'})}});if(!result.items.length)throw new Error('Connected, but the provider returned an empty catalog.');providerProgressUpdate({step:'save',progress:88,title:'Adding provider to your unified library…',detail:'Swoop is saving this source, rebuilding duplicate stacks and refreshing discovery.'});const remember=Boolean(fd.get('remember')),counts=result.counts||{live:result.items.filter(x=>x.kind==='live').length,movie:result.items.filter(x=>x.kind==='movie').length,series:result.items.filter(x=>x.kind==='series').length};replaceProviderCatalog(providerId,result.items);if(NATIVE_WINDOWS){providerProgressUpdate({step:'save',progress:90,title:'Indexing local catalogue…',detail:'Swoop is writing this provider into SQLite so the UI never needs the whole library in memory again.'});await nativeCatalogReplaceProvider(providerId,result.items,{onProgress:info=>providerProgressUpdate({step:'save',progress:90+Math.round((info.loaded/Math.max(1,info.total))*7),stepDetail:`${info.loaded.toLocaleString()} / ${info.total.toLocaleString()} indexed`})});await activateNativeCatalogIfAvailable();}upsertProviderRecord({id:providerId,type:'xtream',name,server:cfg.server,connection:NATIVE_WINDOWS?'windows-native':relayUrl?'helper':'direct',relayUrl,enabled:true,status:'connected',lastRefreshed:Date.now(),counts});sessionProviderConfigs.set(providerId,{...cfg,id:providerId,type:'xtream',name});if(remember)saveProviderCredentials({id:providerId,type:'xtream',name,...cfg,enabled:true,priority:providerById(providerId)?.priority??state.providers.length-1,lastRefreshed:Date.now(),counts});state.settings.xtreamRelayUrl=relayUrl||state.settings.xtreamRelayUrl;state.settings.xtreamRelayToken=remember&&relayToken?relayToken:state.settings.xtreamRelayToken;state.mdblistRows.forEach(r=>{r.items=[];r.updatedAt=0;r.error=''});state.webDiscovery={};await persist(NATIVE_WINDOWS?'cache':true);providerProgressMark('save','Ready');providerProgressSuccess(`${name} added · ${counts.live.toLocaleString()} live · ${counts.movie.toLocaleString()} movies · ${counts.series.toLocaleString()} shows`);setTimeout(()=>{modal=null;state.page='home';render()},1100)}catch(err){providerProgressError(err.message||String(err))}});
   document.querySelector('#mdblistForm')?.addEventListener('submit',async e=>{e.preventDefault();if(!state.catalog.length){setStatus('#mdbStatus','Import an IPTV catalog first so Swoop TV has something to match against.','err');return}const fd=new FormData(e.currentTarget),apiKey=String(fd.get('apiKey')||'').trim();try{setStatus('#mdbStatus','Fetching MDBList and matching it against your provider catalog…');const payload=await getMDBListItems({apiKey,listId:String(fd.get('listId')||'').trim(),username:String(fd.get('username')||'').trim(),listName:String(fd.get('listName')||'').trim()});const matched=nativeCatalogMode?[...cacheNativeItems((await nativeCatalogMatchPayload(payload,'movie',{sourceLimit:300,limit:150,providerIds:nativeEnabledProviderIds()})).items||[]),...cacheNativeItems((await nativeCatalogMatchPayload(payload,'show',{sourceLimit:300,limit:150,providerIds:nativeEnabledProviderIds()})).items||[])]:matchMDBListToCatalog(payload,activeCatalog());state.settings.mdblistApiKey=apiKey;const uid=`mdb-${Date.now()}-${Math.abs(hash(String(fd.get('rowName')||'MDBList')))%10000}`;const source={listId:String(fd.get('listId')||'').trim(),username:String(fd.get('username')||'').trim(),listName:String(fd.get('listName')||'').trim()};state.mdblistRows.push({uid,name:String(fd.get('rowName')||'MDBList'),items:matched,source,updatedAt:Date.now(),error:''});state.settings.homeRows.push(`custom:${uid}`);persist('cache');setStatus('#mdbStatus',`Matched ${matched.length} titles from this MDBList to your provider catalog. It is now enabled on Home and will refresh automatically.`,'ok');setTimeout(()=>{modal=null;state.page='home';render()},650)}catch(err){setStatus('#mdbStatus',err.message||String(err),'err')}});

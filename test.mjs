@@ -286,7 +286,7 @@ assert(appSource.includes('if(pos<10)return 0')&&!appSource.includes('pct>0&&pct
 assert(appSource.includes('SMART SOURCE SELECTION')&&appSource.includes('Play Recommended')&&appSource.includes('sourceChoiceItem')&&appSource.includes('playableFromSource'),'Smart multi-source chooser UI/flow missing');
 assert(appSource.includes('QUICK GUIDE')&&appSource.includes('switchLiveChannel')&&appSource.includes('Favourite Channels')&&appSource.includes('backgroundLiveBar'),'Premium Live TV hub/player UI missing');
 assert(appSource.includes('Who’s watching?')&&appSource.includes('profilePickerPage')&&appSource.includes('switchProfile')&&appSource.includes('Kids profile'),'Household profile UI/flow missing');
-assert(appSource.includes('Because You Watched')&&appSource.includes('smartHomeOrder'),'Per-profile smart Home personalization missing');
+assert(!appSource.includes('Because You Watched')&&appSource.includes('Recommended For You')&&appSource.includes('PINNED_HOME_ROWS'),'Home recommendation cleanup/pinned hierarchy missing');
 assert(appSource.includes('xtream-${Math.abs(hash(`${cfg.server}|${cfg.username}`))}')&&appSource.includes('m3u-${Math.abs(hash(`${url||name}`))}'),'Stable provider identity for profile continuity missing');
 assert(appSource.includes('Profile Theme Engine')||appSource.includes('Choose a Swoop theme')||appSource.includes('themePickerHtml'),'Profile-linked theme UI missing');
 assert(appSource.includes("PROFILE_SETTING_KEYS=['themeId','backgroundColor','backgroundOverride'"),'Theme persistence keys missing');
@@ -325,7 +325,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v075-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.5 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v079-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.9 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -334,5 +334,17 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.5'")&&swHotfix.includes('swoop-tv-v075-shell'),'v0.7.5 version/cache wiring missing');
-console.log('Swoop TV v0.7.5 tests passed');
+assert(sqlitePsHotfix.includes("version='0.7.9'")&&swHotfix.includes('swoop-tv-v079-shell'),'v0.7.9 version/cache wiring missing');
+assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
+assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
+assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
+const profilesSource=fs.readFileSync(new URL('./src/profiles.js',import.meta.url),'utf8');
+for(const animal of ['Lion','Elephant','Monkey','Tiger','Zebra','Giraffe','Rhino','Meerkat'])assert(profilesSource.includes(`label:'${animal}'`),`Animal avatar missing: ${animal}`);
+assert(appSource.includes('posterOwnsTitle')&&appSource.includes('poster-art-title'),'Poster cards must allow artwork to own the visible title');
+assert(appSource.includes("source.name||item.name"),'Smart Source Selection must retain full raw source titles');
+assert(appSource.includes('function tenPointRating')&&appSource.includes('function displayRating')&&appSource.includes('rating:tenPointRating(enriched.rating)'),'Trusted 0–10 TMDb rating display guard missing');
+assert(appSource.includes('if(!history.length)return[]')&&appSource.includes('if(affinity<=0)return {item,score:0,tie:0}'),'Recommended For You cold-start/genre-affinity guard missing');
+assert(appSource.includes('function isDemoItem(item)')&&appSource.includes("if(isDemoItem(item))return {...item,logo:'',backdrop:'',titleLogo:'',plot:'',rating:'',tmdbId:'',imdbId:''}"),'Disconnected demo artwork cache guard missing');
+assert(appSource.includes("if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind)||metadataPending.has(item.id))return;"),'Demo metadata lookup exclusion missing');
+assert(appSource.includes('const enriched=isDemoItem(item)?{}:'),'Demo detail metadata guard missing');
+console.log('Swoop TV v0.7.9 tests passed');

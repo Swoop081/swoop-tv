@@ -1,4 +1,46 @@
-# Swoop TV v0.7.5 — Detail Navigation + Render Performance
+# Swoop TV Release Notes
+
+## v0.7.9 — Disconnected Demo Artwork Guard
+
+- Fixes misleading artwork appearing on the built-in mock/demo catalogue when no TV provider is connected.
+- Demo movie/show names are synthetic UI placeholders and are now excluded from TMDb metadata lookups, preventing title-name collisions from attaching unrelated real posters/backdrops.
+- Cached metadata from earlier builds is ignored for demo items, so existing users do not need to clear storage.
+- Disconnected demo cards return to intentional Swoop gradient artwork with the demo title/year visible; real provider titles continue to use normal TMDb artwork enrichment.
+- No provider, SQLite catalogue, discovery, watched/resume or Windows/mpv playback changes. No provider refresh is required.
+
+## v0.7.8 — Poster Cleanup + Recommendation Trust
+
+- Removes the duplicated movie/TV title-name overlay from poster cards when artwork is available, leaving the poster itself to carry the title treatment.
+- Keeps the original full provider/source title untouched inside Smart Source Selection so labels such as `NF - ...`, `EN - ...` and quality/source variants remain available when choosing a stream.
+- Stops presenting raw Xtream/provider `rating` values as trustworthy 0–10 star ratings on movie/TV browse cards, Home hero and detail pages. Visible star ratings now come from TMDb metadata and must validate to the 0–10 range.
+- Fixes the cold-start **Recommended For You** bug: with no viewing history, the row no longer fills with arbitrary catalogue titles just because they have provider rating values.
+- Tightens personalised fallback scoring after viewing starts: non-TMDb fallback recommendations now require actual genre affinity; same media type alone can no longer qualify an unrelated title.
+- Existing SQLite catalogue, provider credentials, source stacking, watched/resume data, discovery rows and the proven Windows/mpv playback profile are unchanged. No provider refresh is required.
+
+## v0.7.7 — Home Polish + Watched Controls
+
+- Removes **Because You Watched** completely; **Recommended For You** is the one personalised recommendations row.
+- Pins Home ordering to **Continue Watching → Top 20 Movies → Top 20 TV Shows**. Smart ordering only affects rows below those three.
+- The three pinned rows are shown as locked priorities in Customize Home and cannot be disabled or moved.
+- Adds profile-scoped **Mark as Watched / Mark as Unwatched** on movie/TV detail pages.
+- Mark Watched removes the title from Continue Watching; Mark Unwatched resets watched/resume state. Natural playback completion also marks the title watched.
+- Adds a subtle **WATCHED** badge to completed movie/show cards.
+- Replaces the old abstract profile avatar set with eight playful animals: Lion, Elephant, Monkey, Tiger, Zebra, Giraffe, Rhino and Meerkat; legacy profile avatar IDs migrate automatically.
+- Refines Home row spacing, priority-row hierarchy, horizontal scrolling, artwork loading placeholders and avatar presentation while preserving the four profile themes.
+- Existing SQLite catalogue, provider credentials, blended discovery, multi-provider logic and the proven Windows/mpv playback profile are unchanged. No provider refresh is required.
+
+## v0.7.6 — Interaction Responsiveness + Detail Playback Hotfix
+
+- Fixes **Play / Resume appearing to do nothing from a full-screen title detail page**. The v0.7.5 detail route was hiding the Smart Source chooser and native-player overlay behind the detail route; both now render above title details.
+- Detail thumbnails now navigate **immediately**. SQLite source hydration and Xtream detail loading continue after the dedicated title screen is already visible instead of blocking the click.
+- Single-source SQLite titles with an existing playable URL skip an unnecessary source lookup round-trip.
+- Play/Resume gives immediate **Opening…** feedback while Swoop resolves a source.
+- Detail Play uses the already-resolved detail item directly; if a native item alias is missing from memory, Swoop performs a targeted SQLite get instead of silently doing nothing.
+- Background discovery and Home-row priming no longer force a Home rerender while a title detail/player interaction is active.
+- The native startup cache is reduced further; Movies/Shows/Live continue to page from SQLite on demand.
+- Existing SQLite catalogue, provider credentials, profiles, resume data and the proven mpv compatibility profile are preserved. No provider refresh is required.
+
+# Swoop TV v0.7.6 — Detail Navigation + Render Performance
 
 - Movie and TV thumbnails now open a dedicated full-screen detail screen instead of appending detail content to the bottom of Home/Movies/Shows. Back returns to the prior browse position.
 - Detail metadata/episode refreshes preserve the title-screen scroll position.
@@ -11,7 +53,7 @@
 
 # Swoop TV Release Notes
 
-## v0.7.5 — Native Catalogue Playback Continuity Hotfix
+## v0.7.6 — Native Catalogue Playback Continuity Hotfix
 
 - Fixes SQLite-native catalogue thumbnails/details that could fail to launch playback after migration.
 - Native logical catalogue rows now expose all underlying source IDs and cache aliases for those IDs.

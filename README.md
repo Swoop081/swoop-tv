@@ -1,30 +1,54 @@
-# Swoop TV v0.7.5 — Native Catalogue Playback Continuity Hotfix
+# Swoop TV
 
-**v0.7.5 — Detail Navigation + Render Performance**
+**Current build: v0.7.9 — Disconnected Demo Artwork Guard**
 
-This hotfix fixes two regressions introduced by the SQLite catalogue migration: native catalogue cards could resolve to logical database rows without reliably hydrating the concrete provider playback source, and pre-SQLite Continue Watching/My List IDs were not always aliased to their new logical SQLite title IDs.
+This build fixes disconnected/demo presentation on top of v0.7.8. It does not change the proven Windows mpv compatibility profile or require a provider refresh.
 
-## v0.7.5 fixes
+## Disconnected demo artwork
 
-- Every SQLite logical title now carries the full set of underlying provider/source IDs.
-- Native catalogue items are cached under both their logical ID and every underlying source ID.
-- Movie/Live playback resolves the concrete provider source from SQLite before launching mpv.
-- Stacked titles still open the source chooser; single-source titles play directly.
-- Legacy Continue Watching entries created before the SQLite migration map to the new logical title automatically.
-- Resume position follows the logical title even when the provider copy or stack ID changes.
-- My List, Recently Watched, Recent Channels and source preferences can resolve old source IDs through the native alias map.
-- Playback/history updates collapse equivalent old/new IDs into one entry instead of creating duplicates.
-- The proven mpv compatibility/buffering profile remains unchanged.
+- Swoop's built-in demo movie/show names are fictional UI placeholders and are now **blocked from TMDb metadata/artwork matching**.
+- This prevents synthetic names such as `Northbound`, `The Long Way Home` or `The Last Horizon` from accidentally picking up posters/backdrops belonging to unrelated real titles with the same name.
+- Any stale demo metadata already cached by an older build is ignored immediately, so upgrading does not require clearing storage.
+- While no provider is connected, demo movie/show cards use Swoop's intentional gradient placeholders with their demo title/year rather than misleading third-party artwork or ratings.
 
-## Windows test
+## Poster cards, ratings and recommendations
 
-1. Close Swoop and the black Windows Bridge window.
-2. Run `START-SWOOP-TV-WINDOWS.cmd` from v0.7.5.
-3. Open a movie that is **not** already in Continue Watching and press Play.
-4. Stop it after about 30–60 seconds, reopen it, and confirm Swoop resumes near the saved position.
-5. Also test an older Continue Watching title created before the SQLite migration.
+- Movie and TV **poster cards no longer repeat the title name over the artwork** when poster art is available. Provider/source names remain untouched in Smart Source Selection.
+- Browse-card and hero star ratings now display only **TMDb metadata ratings on a validated 0–10 scale**. Raw Xtream/provider rating values such as `55.0` are no longer shown as 10-point ratings.
+- **Recommended For You stays empty until the active profile has viewing history** instead of filling itself from provider ratings. Once history exists, recommendations require TMDb direct recommendations or real genre affinity rather than a same-media-type fallback.
+- No provider refresh or SQLite rebuild is required.
 
-The existing SQLite database is reused; no re-import should be necessary.
+
+## Home priorities
+
+- **Continue Watching** is pinned as the first Home row when it has items.
+- **Top 20 Movies** is pinned immediately after Continue Watching.
+- **Top 20 TV Shows** is pinned immediately after Top 20 Movies.
+- Smart Home ordering only reorders rows below those three.
+- **Because You Watched** has been removed completely; **Recommended For You** is now the single personalised recommendation row.
+
+## Watched controls
+
+- Movie and TV detail pages now include **Mark as Watched / Mark as Unwatched**.
+- Marking a title watched removes it from Continue Watching and records it as completed for that profile.
+- Marking it unwatched clears the watched state and resets any resume entry for the title.
+- Watched titles receive a subtle **WATCHED** badge on cards.
+- Titles that naturally reach completion in mpv are also marked watched.
+
+## Profile avatars
+
+Profiles now use eight playful animal choices: **Lion, Elephant, Monkey, Tiger, Zebra, Giraffe, Rhino and Meerkat**. Existing abstract avatar IDs migrate automatically to an animal equivalent.
+
+## Home presentation polish
+
+- Stronger hierarchy and spacing for the three priority rows.
+- More consistent poster/landscape sizing and smoother horizontal rails.
+- Visible card shimmer/fallback treatment while artwork loads, without reserving giant empty gaps.
+- Theme-specific Home presentation remains intact, with animal profiles and watched badges styled consistently across themes.
+
+## Upgrade
+
+Close Swoop and the black Windows Bridge window, extract this build and run `START-SWOOP-TV-WINDOWS.cmd`. Your existing SQLite catalogue, provider credentials, profiles and resume data are reused.
 
 ---
 

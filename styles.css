@@ -88,6 +88,8 @@ button{color:inherit}
 .card.live-card .card-art{object-fit:contain;background:#111;padding:10%}
 .card-art.loaded{opacity:1}
 .card-shade{position:absolute;inset:0;background:linear-gradient(0deg,rgba(3,3,4,.94) 0%,rgba(3,3,4,.54) 25%,transparent 58%);pointer-events:none}
+.card.poster.poster-art-title .card-shade{background:linear-gradient(0deg,rgba(3,3,4,.72) 0%,rgba(3,3,4,.2) 18%,transparent 42%)}
+.card.poster.poster-art-title .card-copy{bottom:10px}
 .card-copy{position:absolute;left:13px;right:13px;bottom:12px;z-index:3}
 .card-title{font-weight:900;font-size:15px;line-height:1.15;text-shadow:0 2px 8px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card-sub{font-size:11px;color:#bfc0c5;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -491,3 +493,38 @@ html,body,.app-shell,.home-main,.page,.settings-page,.guide-page{transition:back
 .detail-route .detail-hero{min-height:min(760px,100vh)}
 .detail-route .detail-copy{padding-bottom:max(70px,7vh)}
 @media(max-width:900px){.lazy-row-skeleton{grid-auto-columns:37vw!important}.lazy-row-skeleton.landscape-skeleton{grid-auto-columns:67vw!important}.detail-route .detail-hero{min-height:100svh}}
+
+/* v0.7.6 interaction responsiveness */
+.interaction-pending{opacity:.72!important;cursor:progress!important;pointer-events:none!important}.detail-play.interaction-pending{min-width:150px}.source-choice-overlay,.player-shell{z-index:2200}.trailer-shell{z-index:2300}
+
+/* ========================================================================== */
+/* v0.7.8 — Poster Cleanup + Recommendation / Rating Trust                    */
+/* ========================================================================== */
+html{scroll-behavior:smooth}
+.home-content{padding-bottom:72px}
+.home-priority-row{margin-bottom:42px}
+.home-priority-row+.home-priority-row{margin-top:-4px}
+.home-priority-row .section-head h2{font-size:clamp(25px,2.3vw,34px)}
+.home-priority-row .section-meta{color:color-mix(in srgb,var(--text) 62%,transparent)}
+.rail{scroll-behavior:smooth;scroll-padding-inline:4px;align-items:stretch}
+.card{isolation:isolate}
+.card-bg{background-color:var(--surface-2)}
+.card-bg:before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 25% 18%,rgba(255,255,255,.08),transparent 30%),linear-gradient(135deg,rgba(255,255,255,.035),transparent 48%);opacity:.8}
+.card-art{will-change:opacity}
+.card-watched{position:absolute;right:10px;top:10px;z-index:6;border-radius:999px;padding:5px 8px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.18);font-size:9px;font-weight:950;letter-spacing:.08em;color:#fff;box-shadow:0 5px 16px rgba(0,0,0,.3)}
+.detail-watched-toggle.watched{background:color-mix(in srgb,var(--accent) 20%,var(--surface-2));border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:#fff}
+.home-row-option.pinned{border-color:color-mix(in srgb,var(--accent) 35%,rgba(255,255,255,.08));background:color-mix(in srgb,var(--accent) 7%,var(--surface-2))}
+.home-row-option.pinned .home-row-toggle{cursor:default}
+.home-row-option.pinned .home-row-check{min-width:38px;font-size:8px;letter-spacing:.08em;background:var(--accent);color:var(--accent-text,#fff)}
+.home-row-option.pinned .home-row-order{opacity:.35}
+.profile-avatar.animal-avatar b{font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif!important;text-shadow:none!important;filter:drop-shadow(0 4px 8px rgba(0,0,0,.22));line-height:1}
+.profile-avatar-nav.animal-avatar b{font-size:21px!important}
+.profile-avatar-lg.animal-avatar b{font-size:38px!important}
+.profile-avatar-xl.animal-avatar b{font-size:78px!important}
+.profile-avatar-option>span{font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;font-size:33px!important;line-height:1;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.profile-avatar-option.active>span,.profile-avatar-option:hover>span{transform:scale(1.04)}
+.hero-rotating{transition:background .28s ease}
+.hero-rotation-controls{box-shadow:0 12px 32px rgba(0,0,0,.24)}
+:root[data-performance="lean"] .home-priority-row{contain:none}
+:root[data-performance="lean"] .home-priority-row .card{transition:transform .1s ease,box-shadow .1s ease}
+@media(max-width:700px){.home-priority-row{margin-bottom:31px}.profile-avatar-xl.animal-avatar b{font-size:58px!important}.profile-avatar-lg.animal-avatar b{font-size:32px!important}}
