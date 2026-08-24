@@ -454,7 +454,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0731-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.31 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0732-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.32 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -463,7 +463,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.31'")&&swHotfix.includes('swoop-tv-v0731-shell'),'v0.7.31 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.32'")&&swHotfix.includes('swoop-tv-v0732-shell'),'v0.7.32 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -483,7 +483,7 @@ assert(appSource.includes("String(def.id).startsWith('top20-')?HOME_RANKED_ROW_L
 assert(appSource.includes('limit:HOME_STANDARD_ROW_LIMIT')&&appSource.includes('rowLimit=String(id).startsWith(\'top20-\')?HOME_RANKED_ROW_LIMIT:HOME_STANDARD_ROW_LIMIT'),'Native/web discovery Home row limits must support 100 items');
 assert(appSource.includes('function displayImdbRating')&&appSource.includes('card-imdb-rating')&&!appSource.includes("[item.year,trustedRating?`★ ${trustedRating}`"),'Poster cards must hide year/generic star metadata and expose the IMDb badge');
 const workerSource=fs.readFileSync(new URL('./cloudflare-worker/worker.js',import.meta.url),'utf8');
-assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.16'"),'IMDb viewport rating worker wiring missing');
+assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.17'"),'IMDb viewport rating worker wiring missing');
 assert(appSource.includes('IMDB_RATING_SCHEMA=2')&&appSource.includes('delete meta.imdbRating')&&appSource.includes('delete meta.imdbRatingCheckedAt'),'IMDb rating cache must selectively refresh without clearing artwork metadata');
 assert(appSource.includes('visibleMetadataQueue')&&appSource.includes('hydrateVisibleImdbRatings')&&appSource.includes('data-imdb-item')&&appSource.includes('fetchTitleImdbRating'),'Viewport-driven IMDb rating hydration missing');
 assert(appSource.includes('imdbRatingCheckedAt')&&appSource.includes('30*86400000'),'Long-lived IMDb rating cache missing');
@@ -506,7 +506,7 @@ assert(workerSource.includes('strictSearchMatch')&&workerSource.includes('resolv
 assert(tmdbClientSource.includes('metadataIdentityMatches')&&tmdbClientSource.includes('requestedYear!==resolvedYear'),'Client-side metadata identity guard missing');
 assert(tmdbClientSource.includes("year:item.year || identityYear(item.name || '')"),'Metadata requests must extract a provider year from TV series names when the year field is blank');
 assert(appSource.includes('titleLogoCheckedAt')&&appSource.includes('detailTitleLogoState')&&appSource.includes("classList.toggle('logo-pending'")&&cssSource.includes('.detail-title-slot.logo-pending .detail-title-text'),'Logo-first detail title fallback wiring missing');
-assert(workerSource.includes('US|USA|UK|GB|AU|AUS|CA|CAN|NZ')&&workerSource.includes("version:'0.1.16'"),'Worker TV series suffix cleanup/version missing');
+assert(workerSource.includes('US|USA|UK|GB|AU|AUS|CA|CAN|NZ')&&workerSource.includes("version:'0.1.17'"),'Worker TV series suffix cleanup/version missing');
 
 // v0.7.20 ranked rail stability / strict discovery matching.
 assert(appSource.includes('DISCOVERY_MATCH_SCHEMA=5')&&appSource.includes('if(!invalidateDiscovery&&aux.webDiscovery)'), 'Discovery cache schema must invalidate pre-fix ranked matches, including native aux cache');
@@ -531,7 +531,7 @@ assert(appSource.includes('SNOAK_CURATED_ROWS')&&appSource.includes('fetchSwoopC
 assert(appSource.includes('snoakJustwatch:1.8')&&appSource.includes('snoakTrakt:2.05')&&appSource.includes('snoakLatest:2.0'),'Snoak primary discovery weights missing');
 assert(appSource.includes('DISCOVERY_MATCH_SCHEMA=5'),'Snoak discovery release must invalidate older ranked caches');
 assert(workerSource.includes('SNOAK_LISTS')&&workerSource.includes("'movies-justwatch'")&&workerSource.includes("mode || '') === 'snoak-list'")&&workerSource.includes('SNOAK_STALE_MS'),'Worker Snoak allow-list/freshness route missing');
-assert(workerSource.includes('cacheTtl:21600')&&workerSource.includes("version:'0.1.16'"),'Snoak Worker cache/version wiring missing');
+assert(workerSource.includes('cacheTtl:21600')&&workerSource.includes("version:'0.1.17'"),'Snoak Worker cache/version wiring missing');
 
 // v0.7.23 category-first TV Guide.
 assert(appSource.includes("let guideLimit=48,guideCategory=''"),'TV Guide must start with a bounded 48-channel category window');
@@ -547,7 +547,7 @@ assert(detailCss.includes('.guide-browser{display:grid;grid-template-columns:250
 assert(appSource.includes('ensureGuideProviderCategoryOrder')&&appSource.includes('fetchXtreamLiveCategories')&&appSource.includes('guideProviderCategoryCache'),'Guide category order must come from the provider category API');
 assert(sqlitePsHotfix.includes("json_extract(raw_json,'$.providerCategoryOrder')")&&sqlitePsHotfix.includes('provider_order ASC,first_seen ASC'),'Native category fallback must preserve provider/first-seen order');
 assert(appSource.includes('fetchXtreamSimpleEpg')&&appSource.includes('fetchXtreamXmltvText')&&appSource.includes('xtreamGuideTextCache'),'Guide EPG must use short/simple APIs plus XMLTV fallback');
-assert(workerSource.includes("mode || '') === 'xmltv'")&&workerSource.includes('/xmltv.php?')&&workerSource.includes("'limit', 'epg_limit'")&&workerSource.includes("version:'0.1.16'"),'Worker Xtream EPG/XMLTV repair wiring missing');
+assert(workerSource.includes("mode || '') === 'xmltv'")&&workerSource.includes('/xmltv.php?')&&workerSource.includes("'limit', 'epg_limit'")&&workerSource.includes("version:'0.1.17'"),'Worker Xtream EPG/XMLTV repair wiring missing');
 assert(sqlitePsHotfix.includes("'/native/xtream-xmltv'")&&sqlitePsHotfix.includes('Invoke-XtreamXmltv'),'Windows native XMLTV fallback missing');
 
 // v0.7.30 Live TV landing-page category rails; Guide stays a separate EPG route.
@@ -565,6 +565,15 @@ assert(detailCss.includes('.media-category-browser')&&detailCss.includes('.media
 assert(xtreamSource.includes('vodCategoryOrder')&&xtreamSource.includes('seriesCategoryOrder')&&xtreamSource.includes('providerCategoryOrder:Number(vodCategoryOrder')&&xtreamSource.includes('providerCategoryOrder:Number(seriesCategoryOrder'),'Movie/TV Xtream category-order persistence missing');
 assert(appSource.includes("nativeCatalogCategories('movie',{providerIds:nativeEnabledProviderIds(),limit:200})")&&appSource.includes("nativeCatalogCategories('series',{providerIds:nativeEnabledProviderIds(),limit:200})"),'Native Movie/TV category discovery must support deep provider category lists');
 
+// v0.7.32 global People search for actors / actresses / directors.
+assert(tmdbClientSource.includes('searchPeople')&&tmdbClientSource.includes("mode:'person-search'"),'Client People-search service missing');
+assert(workerSource.includes('handlePersonSearch')&&workerSource.includes("mode || '') === 'person-search'")&&workerSource.includes("['Acting','Directing']"),'Worker People-search route/filter missing');
+assert(workerSource.includes("department==='Directing'?crewCredits")&&workerSource.includes("x?.job==='Director'||x?.department==='Directing'"),'Director filmography credits must use directing crew credits');
+assert(appSource.includes('Actors, Actresses & Directors')&&appSource.includes('searchPeopleMarkup')&&appSource.includes('runPeopleSearch'),'People search result rail missing');
+assert(appSource.includes('actors, actresses, directors…')||appSource.includes('actors, actresses, directors'), 'Search placeholder must advertise people search');
+assert(appSource.includes("else if(!suspendBaseViewForDetail())return")&&appSource.includes('if(restoreSuspendedBaseView())return'),'People opened from Search must preserve/restore the underlying Search page');
+assert(detailCss.includes('.search-people-rail')&&detailCss.includes('.search-person-card'),'People search styling missing');
+
 // v0.7.27 TV Guide first-row clipping hotfix.
 assert(detailCss.includes('.guide-grid-scroll .guide-header{position:sticky;top:0;z-index:30}'),'Guide header must sit flush to the grid top so it cannot cover the first channel row');
 
@@ -576,4 +585,4 @@ assert(appSource.includes('guide-load-progress')&&appSource.includes('data-guide
 assert(appSource.includes('activity-progress indeterminate')&&detailCss.includes('.activity-progress.indeterminate')&&detailCss.includes('@keyframes swoopProgressShine'),'Indeterminate/moving activity feedback missing for unknown-duration work');
 assert(!appSource.includes('SWOOP TV <b>TV</b>')&&!appSource.includes('<span>SWOOP TV</span><b>TV</b>'),'Brand lockup must not render SWOOP TV TV');
 assert(appSource.includes('<span>SWOOP <b>TV</b></span>')&&appSource.includes('<span>SWOOP</span><b>TV</b>'),'Brand lockup should render a single SWOOP TV label');
-console.log('Swoop TV v0.7.31 tests passed');
+console.log('Swoop TV v0.7.32 tests passed');

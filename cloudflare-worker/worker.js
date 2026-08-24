@@ -222,6 +222,26 @@ async function handleMetadata(request, env, body) {
 }
 
 
+function personKnownForTitles(person={}){
+  return (Array.isArray(person?.known_for)?person.known_for:[]).map(x=>x?.media_type==='tv'?(x.name||x.original_name||''):(x.title||x.original_title||'')).filter(Boolean).slice(0,4);
+}
+function compactPersonSearchResult(person={}){
+  const id=person?.id?String(person.id):'',name=String(person?.name||'').trim(),department=String(person?.known_for_department||'').trim();
+  if(!id||!name||!['Acting','Directing'].includes(department))return null;
+  return {id,name,profile:tmdbImage(person.profile_path,'w342'),knownForDepartment:department,knownFor:personKnownForTitles(person),popularity:Number(person.popularity||0)};
+}
+async function handlePersonSearch(request,env,body){
+  if(!String(env.TMDB_API_TOKEN||'').trim())return json(request,{error:'Swoop TV people search is not configured. Add the TMDB_API_TOKEN secret to the Swoop TV Worker.'},503);
+  const query=String(body?.query||'').trim(),limit=Math.max(1,Math.min(20,Number(body?.limit)||12));
+  if(query.length<2)return json(request,{people:[]},200);
+  try{
+    const found=await tmdbFetch('/search/person',env,{query,language:'en-AU',include_adult:'false',page:'1'});
+    const people=(Array.isArray(found?.results)?found.results:[]).map(compactPersonSearchResult).filter(Boolean).slice(0,limit);
+    return new Response(JSON.stringify({people}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=1800'}});
+  }catch(error){return json(request,{error:error.message||'Could not search people.'},502)}
+}
+
+
 function compactPersonCredit(x={}){
   const type=x.media_type==='tv'?'tv':x.media_type==='movie'?'movie':'';
   if(!type||!x.id)return null;
@@ -254,10 +274,15 @@ async function handlePersonCredits(request,env,body){
     }
     if(!/^\d+$/.test(personId))return json(request,{person:null},200);
     const person=await tmdbFetch(`/person/${encodeURIComponent(personId)}`,env,{language:'en-AU',append_to_response:'combined_credits,external_ids'});
-    const credits=dedupePersonCredits(Array.isArray(person?.combined_credits?.cast)?person.combined_credits.cast:[]).slice(0,800);
+    const castCredits=Array.isArray(person?.combined_credits?.cast)?person.combined_credits.cast:[];
+    const crewCredits=(Array.isArray(person?.combined_credits?.crew)?person.combined_credits.crew:[]).filter(x=>x?.job==='Director'||x?.department==='Directing');
+    const department=String(person?.known_for_department||'');
+    let relevantCredits=department==='Directing'?crewCredits:department==='Acting'?castCredits:[...castCredits,...crewCredits];
+    if(!relevantCredits.length)relevantCredits=[...castCredits,...crewCredits];
+    const credits=dedupePersonCredits(relevantCredits).slice(0,800);
     return new Response(JSON.stringify({person:{
       id:String(person.id||personId),name:person.name||requestedName||'',profile:tmdbImage(person.profile_path,'w500'),
-      knownForDepartment:person.known_for_department||'',biography:person.biography||'',birthday:person.birthday||'',placeOfBirth:person.place_of_birth||'',
+      knownForDepartment:department||'',biography:person.biography||'',birthday:person.birthday||'',placeOfBirth:person.place_of_birth||'',
       credits
     }}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=86400'}});
   }catch(error){return json(request,{error:error.message||'Could not load cast credits.'},502)}
@@ -550,6 +575,7 @@ async function handlePost(request, env) {
 
   if (String(body?.mode || '') === 'metadata') return handleMetadata(request, env, body);
   if (String(body?.mode || '') === 'imdb-rating') return handleImdbRating(request, env, body);
+  if (String(body?.mode || '') === 'person-search') return handlePersonSearch(request, env, body);
   if (String(body?.mode || '') === 'person-credits') return handlePersonCredits(request, env, body);
   if (String(body?.mode || '') === 'discovery') return handleDiscovery(request, env, body);
   if (String(body?.mode || '') === 'snoak-list') return handleSnoakList(request, env, body);
@@ -575,7 +601,7 @@ async function handlePost(request, env) {
     const qs = new URLSearchParams({username, password});
     const target = `${server}/xmltv.php?${qs.toString()}`;
     try {
-      const upstream = await fetch(target,{method:'GET',headers:{'Accept':'application/xml,text/xml,text/plain,*/*','User-Agent':'SwoopTV-Connection-Helper/0.1.16'},redirect:'follow'});
+      const upstream = await fetch(target,{method:'GET',headers:{'Accept':'application/xml,text/xml,text/plain,*/*','User-Agent':'SwoopTV-Connection-Helper/0.1.17'},redirect:'follow'});
       const headers=corsHeaders(request);headers['Content-Type']=upstream.headers.get('Content-Type')||'application/xml; charset=utf-8';headers['X-Swoop-Upstream-Status']=String(upstream.status);
       return new Response(upstream.body,{status:upstream.status,headers});
     } catch (error) { return json(request,{error:`Could not reach the Xtream XMLTV guide from Cloudflare: ${error.message || error}`},502); }
@@ -614,7 +640,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.16',
+        version:'0.1.17',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
         discoveryConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),

@@ -1,3 +1,13 @@
+## v0.7.32 — People Search
+
+- Expands global Search beyond titles/channels/categories to include **actors, actresses and directors**.
+- Adds a dedicated horizontal **People** result rail above normal catalogue results, with TMDb profile image, department and known-for titles.
+- Clicking a person opens the existing Swoop TV person/filmography route directly from Search; Back restores the exact Search screen and query state.
+- People results are discovered through the owner-managed TMDb Worker, while the resulting filmography is still strictly intersected against the user's enabled provider library before anything is shown as available.
+- Person filmography handling now understands both acting and directing identities: people known for Acting use cast credits; people known for Directing use directing/crew credits.
+- Search remains local/SQLite-first for Movies, TV Shows and Live TV; remote people search is a separate lightweight request and does not broaden or replace provider catalogue matching.
+- Cloudflare Worker **v0.1.17** adds the `person-search` route. Redeploy is required for People results to appear in Search. No provider refresh, SQLite rebuild, profile reset, watched/resume reset or playback change is required.
+
 ## v0.7.31 — Movies + TV Category Rails
 
 - Reworks the **Movies** and **TV Shows** landing pages to use the same category-first browse model as Live TV: provider category heading followed by a horizontal swipe rail of titles.

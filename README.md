@@ -1,7 +1,12 @@
 # Swoop TV
 
-**Current build: v0.7.31 — Movies + TV Category Rails**
+**Current build: v0.7.32 — People Search**
 
+
+
+### v0.7.32 — People Search
+
+Search now covers **actors, actresses and directors** as well as Movies, TV Shows and Live TV. Person matches appear in a dedicated People rail above normal catalogue results. Selecting a person opens the existing Swoop TV filmography view and strictly intersects that person's relevant TMDb credits with the titles actually available in the enabled provider library. Acting searches use cast credits; directing searches use directing credits. This requires the bundled Cloudflare Worker **v0.1.17** to be redeployed for the new `person-search` endpoint.
 
 
 ### v0.7.31 — Movies + TV Category Rails
@@ -66,7 +71,7 @@ The TV Guide now uses the provider's **channel categories as the primary navigat
 
 Swoop TV uses a curated set of **Snoak's actively maintained MDBList lists as the primary external discovery layer** for Top 100, Trending, New & Hot and selected genre rails. The app still displays only titles that confidently exist in the user's enabled TV-provider library; Snoak/MDBList determines ranking and candidate order, never playability.
 
-The bundled Cloudflare Worker is **v0.1.16**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable.
+The bundled Cloudflare Worker is **v0.1.17**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable.
 
 ### Snoak-backed discovery
 

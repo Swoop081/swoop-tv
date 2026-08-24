@@ -123,9 +123,28 @@ export async function fetchPersonCredits({settings={}, personId='', name=''}) {
   if (!res.ok) {
     let detail='';
     try { detail=(await res.json())?.error || ''; } catch {}
-    if(res.status===401||/connection helper token/i.test(detail))throw new Error('Cast browsing needs the bundled Swoop TV Worker v0.1.16 to be deployed.');
-    throw new Error(detail || `Swoop TV cast service returned HTTP ${res.status}.`);
+    if(res.status===401||/connection helper token/i.test(detail))throw new Error('People browsing needs the bundled Swoop TV Worker v0.1.17 to be deployed.');
+    throw new Error(detail || `Swoop TV people service returned HTTP ${res.status}.`);
   }
   const data=await res.json();
   return data?.person || null;
+}
+
+export async function searchPeople({settings={}, query='', limit=12}) {
+  const service=metadataServiceUrl(settings),term=String(query||'').trim();
+  if(!service||term.length<2)return[];
+  const res=await fetch(service,{
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({mode:'person-search',query:term,limit:Math.max(1,Math.min(20,Number(limit)||12))}),
+    cache:'no-store'
+  });
+  if(!res.ok){
+    let detail='';
+    try{detail=(await res.json())?.error||''}catch{}
+    if(res.status===401||res.status===400||/xtream username|invalid swoop tv connection helper token/i.test(detail))throw new Error('People search needs the bundled Swoop TV Worker v0.1.17 to be redeployed.');
+    throw new Error(detail||`Swoop TV people search returned HTTP ${res.status}.`);
+  }
+  const data=await res.json();
+  return Array.isArray(data?.people)?data.people:[];
 }

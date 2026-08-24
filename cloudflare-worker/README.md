@@ -1,4 +1,4 @@
-# Swoop TV Cloudflare Connection + Metadata Service v0.1.16
+# Swoop TV Cloudflare Connection + Metadata Service v0.1.17
 
 This Worker provides:
 
@@ -9,7 +9,7 @@ This Worker provides:
 5. A lightweight `imdb-rating` endpoint for viewport-driven poster badge hydration, so visible cards can fetch ratings without loading full cast/trailer/recommendation metadata.
 6. Strict provider-title identity matching: explicit provider years are hard constraints, and title searches never fall back to a different release year.
 7. Deeper ranked discovery candidate pools for Top 100 rails, including multi-page TMDb popularity scanning before local-library matching.
-8. Cast-member filmography lookup via `person-credits`, returning TMDb movie/TV credits that the Swoop TV client strictly matches against the user's own provider library.
+8. People search via `person-search` for actors/actresses/directors, plus filmography lookup via `person-credits`. Acting identities return cast credits; directing identities return directing credits, and the Swoop TV client strictly matches those credits against the user's own provider library.
 9. Allow-listed Snoak list lookup via `snoak-list`, with optional freshness rejection when MDBList exposes an update timestamp older than eight days.
 
 ## Secrets

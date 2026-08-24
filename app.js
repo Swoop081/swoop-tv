@@ -4,7 +4,7 @@ import {testXtream, importXtream, fetchXtreamAssetBlob, fetchXtreamSeriesInfo, f
 import {isNativeWindows, nativePlay, nativeStop, nativeFetchText, nativeDiagnostics, nativeControl, nativeSwitchLive} from './src/native.js';
 import {nativeCatalogStatus,nativeCatalogReplaceProvider,nativeCatalogRemoveProvider,nativeCatalogQuery,nativeCatalogSearch,nativeCatalogCategories,nativeCatalogGet,nativeCatalogSources,nativeCatalogMatchPayload} from './src/nativeCatalog.js';
 import {getMDBListItems, getMDBListOfficialItems, getMDBListStreamingChart, matchMDBListToCatalog, normalizeMediaTitle} from './src/mdblist.js';
-import {fetchTitleMetadata, fetchTitleImdbRating, fetchPersonCredits, metadataServiceUrl} from './src/tmdb.js';
+import {fetchTitleMetadata, fetchTitleImdbRating, fetchPersonCredits, searchPeople, metadataServiceUrl} from './src/tmdb.js';
 import {fetchSwoopDiscovery, fetchSwoopCuratedList} from './src/discovery.js';
 import {buildMovieStackIndex, collapseMovieSources, cleanDisplayTitle, rankSources, sourceTraits, qualityLabel} from './src/sourceStack.js';
 import {buildLiveStackIndex, selectLiveSource} from './src/liveStack.js';
@@ -158,7 +158,7 @@ const HOME_EAGER_ROWS=5;
 const HOME_EAGER_CARDS=12;
 const HOME_RANKED_ROW_LIMIT=100;
 const HOME_STANDARD_ROW_LIMIT=100;
-let lazyHomeObserver=null,searchDebounceTimer=null;
+let lazyHomeObserver=null,searchDebounceTimer=null,peopleSearchSeq=0;
 function largeLibraryMode(){return state.settings.performanceMode!=='cinematic'&&catalogLogicalTotal()>=LARGE_LIBRARY_THRESHOLD}
 function performanceLabel(){return largeLibraryMode()?'Optimized for large library':'Full cinematic rendering'}
 let discoveryRefreshing=false,discoveryMessage='';
@@ -222,7 +222,7 @@ function hash(s=''){let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h)+s.charCodeAt
 function suspendBaseViewForDetail(){
   if(suspendedBaseView||detailItem||!$app?.firstElementChild)return;
   const shell=$app.firstElementChild,active=document.activeElement;
-  suspendedBaseView={shell,page:state.page,scrollY:window.scrollY||document.documentElement.scrollTop||0,focusDetail:active?.dataset?.detail||'',focusPlay:active?.dataset?.play||''};
+  suspendedBaseView={shell,page:state.page,scrollY:window.scrollY||document.documentElement.scrollTop||0,focusDetail:active?.dataset?.detail||'',focusPlay:active?.dataset?.play||'',focusPerson:active?.dataset?.personName||''};
   lazyHomeObserver?.disconnect?.();lazyHomeObserver=null;
   artworkObserver?.disconnect?.();artworkObserver=null;
   visibleMetadataObserver?.disconnect?.();visibleMetadataObserver=null;
@@ -233,7 +233,7 @@ function restoreSuspendedBaseView(){
   if(!snap||snap.page!==state.page||!snap.shell)return false;
   artworkObserver?.disconnect?.();artworkObserver=null;visibleMetadataObserver?.disconnect?.();visibleMetadataObserver=null;lazyHomeObserver?.disconnect?.();lazyHomeObserver=null;
   $app.replaceChildren(snap.shell);applyTheme();bind();bindHeroControls(document);hydrateArtwork(document);
-  const restore=()=>{window.scrollTo(0,snap.scrollY||0);if(state.page==='home'){mountLazyHomeRows(document);scheduleHeroRotation();if(nativeCatalogMode)setTimeout(primeNativeHomeRows,180);setTimeout(()=>refreshDiscoveryRows(false),1500);}if(!profilePickerOpen&&state.catalog.length)setTimeout(scheduleMetadataEnrichment,600);const target=[...document.querySelectorAll('[data-detail],[data-play]')].find(el=>(snap.focusDetail&&el.dataset.detail===snap.focusDetail)||(snap.focusPlay&&el.dataset.play===snap.focusPlay));target?.focus?.({preventScroll:true});};
+  const restore=()=>{window.scrollTo(0,snap.scrollY||0);if(state.page==='home'){mountLazyHomeRows(document);scheduleHeroRotation();if(nativeCatalogMode)setTimeout(primeNativeHomeRows,180);setTimeout(()=>refreshDiscoveryRows(false),1500);}if(!profilePickerOpen&&state.catalog.length)setTimeout(scheduleMetadataEnrichment,600);const target=[...document.querySelectorAll('[data-detail],[data-play],[data-person-name]')].find(el=>(snap.focusDetail&&el.dataset.detail===snap.focusDetail)||(snap.focusPlay&&el.dataset.play===snap.focusPlay)||(snap.focusPerson&&el.dataset.personName===snap.focusPerson));target?.focus?.({preventScroll:true});};
   requestAnimationFrame(()=>{restore();requestAnimationFrame(()=>window.scrollTo(0,snap.scrollY||0))});
   return true;
 }
@@ -1106,7 +1106,7 @@ function myListPage(){
   return `<main class="page mylist-page"><section class="collection-hero"><div class="eyebrow">YOUR COLLECTION</div><h1>My List</h1><p>Everything you saved for later, in one place.</p><div class="collection-count">${arr.length.toLocaleString()} ${arr.length===1?'title':'titles'}</div></section><div class="page-content">${arr.length?`<div class="content-grid poster-content-grid">${arr.map(x=>card(x,x.kind!=='live')).join('')}</div>`:empty('Your list is empty','Open a movie or TV show and choose Add to My List.')}</div></main>`;
 }
 function empty(title,copy){return `<div class="empty"><div class="empty-mark">S</div><h3>${esc(title)}</h3><p>${esc(copy)}</p><button class="btn accent" data-modal="provider">Add TV Provider</button></div>`}
-function searchPage(){return `<main class="page search-page"><div class="search-hero"><div class="eyebrow">FIND SOMETHING GREAT</div><h1>Search Swoop TV</h1><div class="searchbox searchbox-large"><span>⌕</span><input id="searchInput" autofocus placeholder="Movies, TV shows, live channels…" /></div></div><div class="page-content"><div id="searchResults" class="content-grid search-results"></div></div></main>`}
+function searchPage(){return `<main class="page search-page"><div class="search-hero"><div class="eyebrow">FIND SOMETHING GREAT</div><h1>Search Swoop TV</h1><div class="searchbox searchbox-large"><span>⌕</span><input id="searchInput" autofocus placeholder="Movies, TV shows, live channels, actors, actresses, directors…" /></div></div><div class="page-content"><div id="searchPeople" class="search-people"></div><div id="searchResults" class="content-grid search-results"></div></div></main>`}
 function settingsPage(){
   const counts={live:nativeCatalogMode?nativeTotal('live'):items('live').length,movie:nativeCatalogMode?nativeTotal('movie'):items('movie').length,series:nativeCatalogMode?nativeTotal('series'):items('series').length};
   return `<main class="page settings-page"><div class="settings-hero"><div class="eyebrow">${esc(activeProfile()?.name||'SWOOP TV')} · PROFILE SETTINGS</div><h1>Settings</h1><p>Manage this profile, your unified providers, discovery rows and playback environment.</p></div><div class="page-content settings-list">
@@ -1398,17 +1398,17 @@ function personResultsHtml(){
   if(personLoading)return `<div class="person-loading"><span class="provider-spinner"></span><div><strong>${esc(personStatus||`Finding ${personView?.name||'cast'} titles in your Swoop TV library…`)}</strong><div class="person-progress-track"><i style="width:${Math.max(4,Math.min(100,Number(personProgress||0)))}%"></i></div><small>${Math.round(Math.max(0,Math.min(100,Number(personProgress||0))))}% · Only confident title/year matches from your connected library will be shown.</small></div></div>`;
   if(personError)return `<div class="person-error"><strong>Could not load this filmography</strong><p>${esc(personError)}</p><button class="btn secondary" data-person-retry>Try Again</button></div>`;
   const total=personMovies.length+personShows.length;
-  if(!total)return `<div class="person-empty"><div class="empty-mark">S</div><h3>No confident library matches</h3><p>Swoop TV found this cast member, but none of their TMDb credits could be confidently matched to titles in your enabled provider library.</p></div>`;
+  if(!total)return `<div class="person-empty"><div class="empty-mark">S</div><h3>No confident library matches</h3><p>Swoop TV found this person, but none of their relevant TMDb credits could be confidently matched to titles in your enabled provider library.</p></div>`;
   return `${personMovies.length?`<section class="person-library-section"><div class="detail-section-head"><div><span class="eyebrow">MOVIES</span><h2>${personMovies.length.toLocaleString()} available ${personMovies.length===1?'movie':'movies'}</h2></div></div><div class="content-grid poster-content-grid person-content-grid">${personMovies.map(x=>card(x,true)).join('')}</div></section>`:''}${personShows.length?`<section class="person-library-section"><div class="detail-section-head"><div><span class="eyebrow">TV SHOWS</span><h2>${personShows.length.toLocaleString()} available ${personShows.length===1?'show':'shows'}</h2></div></div><div class="content-grid poster-content-grid person-content-grid">${personShows.map(x=>card(x,true)).join('')}</div></section>`:''}`;
 }
 function personHtml(){
-  if(!personView)return'';const total=personMovies.length+personShows.length,profile=personView.profile||'',department=personView.knownForDepartment||'Cast member';
+  if(!personView)return'';const total=personMovies.length+personShows.length,profile=personView.profile||'',department=personView.knownForDepartment||'Person';
   return `<main class="person-route" aria-label="${esc(personView.name||'Cast member')}"><button class="detail-close person-close" data-person-close aria-label="Back to title">←</button><div class="person-scroll"><section class="person-hero"><div class="person-portrait-wrap">${profile?`<img class="person-portrait" data-person-profile data-swoop-art="${esc(profile)}" alt="">`:`<div class="person-portrait person-portrait-fallback">${esc((personView.name||'?').slice(0,1))}</div>`}</div><div class="person-hero-copy"><span class="eyebrow">${esc(String(department).toUpperCase())}</span><h1 data-person-name-heading>${esc(personView.name||'Cast member')}</h1><p data-person-summary>${personLoading?'Searching your connected provider library…':personError?'Filmography lookup needs attention.':`${total.toLocaleString()} ${total===1?'title':'titles'} available in your Swoop TV library.`}</p><div class="person-count-pills"><span><b data-person-movie-count>${personMovies.length}</b> Movies</span><span><b data-person-show-count>${personShows.length}</b> TV Shows</span></div></div></section><div class="person-results" data-person-results>${personResultsHtml()}</div></div></main>`;
 }
 function patchPersonPage(){
   if(!personView)return false;const route=document.querySelector('.person-route');if(!route)return false;
   const scroll=route.querySelector('.person-scroll'),scrollTop=scroll?.scrollTop||personScrollTop||0,total=personMovies.length+personShows.length;
-  const heading=route.querySelector('[data-person-name-heading]');if(heading)heading.textContent=personView.name||'Cast member';
+  const heading=route.querySelector('[data-person-name-heading]');if(heading)heading.textContent=personView.name||'Person';
   const summary=route.querySelector('[data-person-summary]');if(summary)summary.textContent=personLoading?'Searching your connected provider library…':personError?'Filmography lookup needs attention.':`${total.toLocaleString()} ${total===1?'title':'titles'} available in your Swoop TV library.`;
   const mc=route.querySelector('[data-person-movie-count]'),sc=route.querySelector('[data-person-show-count]');if(mc)mc.textContent=String(personMovies.length);if(sc)sc.textContent=String(personShows.length);
   const currentProfile=route.querySelector('[data-person-profile]');if(personView.profile&&currentProfile?.dataset.swoopArt!==personView.profile){currentProfile.dataset.swoopArt=personView.profile;currentProfile.dataset.swoopLoaded='';loadArtwork(currentProfile)}
@@ -1424,23 +1424,24 @@ async function matchPersonCreditsToLibrary(credits=[]){
   return {movies:sortPersonLibraryItems(movies),shows:sortPersonLibraryItems(shows)};
 }
 async function loadPersonView(){
-  if(!personView)return;const key=`${personView.id||''}|${personView.name||''}`;personLoading=true;personError='';personProgress=10;personStatus=`Looking up ${personView.name||'this cast member'}…`;patchPersonPage();
+  if(!personView)return;const key=`${personView.id||''}|${personView.name||''}`;personLoading=true;personError='';personProgress=10;personStatus=`Looking up ${personView.name||'this person'}…`;patchPersonPage();
   try{
     const remote=await fetchPersonCredits({settings:state.settings,personId:personView.id||'',name:personView.name||''});if(!personView||key!==`${personView.id||''}|${personView.name||''}`)return;
-    if(!remote)throw new Error('Swoop TV could not identify this cast member on TMDb.');
+    if(!remote)throw new Error('Swoop TV could not identify this person on TMDb.');
     personView={...personView,...remote,profile:remote.profile||personView.profile||''};personProgress=34;personStatus=`Found ${Number(remote.credits?.length||0).toLocaleString()} filmography credits. Checking your provider library…`;patchPersonPage();
     const matched=await matchPersonCreditsToLibrary(remote.credits||[]);if(!personView||String(personView.id||'')!==String(remote.id||personView.id||''))return;
     personMovies=matched.movies;personShows=matched.shows;personProgress=100;personStatus='Library match complete';personLoading=false;patchPersonPage();
   }catch(err){if(!personView)return;personLoading=false;personError=err.message||String(err);personProgress=100;patchPersonPage()}
 }
 function openPerson(person={}){
-  const name=String(person.name||'').trim();if(!name||!detailItem)return;
-  if(!suspendDetailViewForPerson())return;
-  personView={id:String(person.id||''),name,profile:String(person.profile||''),character:String(person.character||''),knownForDepartment:'Cast member'};personLoading=true;personError='';personMovies=[];personShows=[];personProgress=5;personStatus=`Opening ${name}…`;personScrollTop=0;render();setTimeout(loadPersonView,0);
+  const name=String(person.name||'').trim();if(!name)return;
+  if(detailItem){if(!suspendDetailViewForPerson())return}
+  else if(!suspendBaseViewForDetail())return;
+  personView={id:String(person.id||''),name,profile:String(person.profile||''),character:String(person.character||''),knownForDepartment:String(person.knownForDepartment||person.department||'Person')};personLoading=true;personError='';personMovies=[];personShows=[];personProgress=5;personStatus=`Opening ${name}…`;personScrollTop=0;render();setTimeout(loadPersonView,0);
 }
-function closePerson(){resetPersonState();if(restoreSuspendedDetailView())return;render()}
+function closePerson(){resetPersonState();if(restoreSuspendedDetailView())return;if(restoreSuspendedBaseView())return;render()}
 function bindPersonLinks(root=document){
-  root.querySelectorAll('[data-person-name]').forEach(el=>{if(el.dataset.boundPerson)return;el.dataset.boundPerson='1';el.onclick=()=>openPerson({id:el.dataset.personId||'',name:el.dataset.personName||'',profile:el.dataset.personProfile||'',character:el.dataset.personCharacter||''})});
+  root.querySelectorAll('[data-person-name]').forEach(el=>{if(el.dataset.boundPerson)return;el.dataset.boundPerson='1';el.onclick=()=>openPerson({id:el.dataset.personId||'',name:el.dataset.personName||'',profile:el.dataset.personProfile||'',character:el.dataset.personCharacter||'',knownForDepartment:el.dataset.personDepartment||''})});
   root.querySelectorAll('[data-person-close]').forEach(el=>{if(el.dataset.boundPersonClose)return;el.dataset.boundPersonClose='1';el.onclick=closePerson});
   root.querySelectorAll('[data-person-retry]').forEach(el=>{if(el.dataset.boundPersonRetry)return;el.dataset.boundPersonRetry='1';el.onclick=()=>{personError='';personLoading=true;personMovies=[];personShows=[];loadPersonView()}});
 }
@@ -1805,15 +1806,35 @@ function hydrateArtwork(root=document){const imgs=[...root.querySelectorAll('img
 
 let searchIndexKey='',searchIndexCache=[];
 function searchIndex(){const key=`${activeCatalogContext}|${movieStackPriorityKey}|live-separate|${metadataRevision}`;if(searchIndexKey===key&&searchIndexCache.length)return searchIndexCache;const logical=[...items('movie'),...items('series'),...items('live')];searchIndexCache=logical.map(item=>({item,text:`${item.name||''} ${item.group||''} ${item.year||''}`.toLowerCase()}));searchIndexKey=key;return searchIndexCache}
+function searchPeopleMarkup(people=[]){
+  if(!people.length)return'';
+  return `<section class="search-people-section"><div class="search-section-head"><div><span class="eyebrow">PEOPLE</span><h2>Actors, Actresses & Directors</h2></div><span>${people.length} ${people.length===1?'match':'matches'}</span></div><div class="search-people-rail">${people.map(person=>{const dept=person.knownForDepartment||'Person',known=(person.knownFor||[]).slice(0,3).join(' · ');return `<button class="search-person-card" data-person-id="${esc(person.id||'')}" data-person-name="${esc(person.name||'')}" data-person-profile="${esc(person.profile||'')}" data-person-department="${esc(dept)}" aria-label="Browse ${esc(person.name||'person')} titles in your Swoop TV library">${person.profile?`<img data-swoop-art="${esc(person.profile)}" alt="">`:`<div class="search-person-fallback">${esc((person.name||'?').slice(0,1))}</div>`}<strong>${esc(person.name||'')}</strong><span>${esc(dept)}</span>${known?`<small>${esc(known)}</small>`:''}</button>`}).join('')}</div></section>`;
+}
+async function runPeopleSearch(term,seq){
+  const host=document.querySelector('#searchPeople');if(!host)return;
+  if(term.length<2){host.innerHTML='';return}
+  host.innerHTML='<div class="search-people-loading"><span class="provider-spinner"></span><span>Searching actors, actresses and directors…</span></div>';
+  try{
+    const people=await searchPeople({settings:state.settings,query:term,limit:12});
+    if(seq!==peopleSearchSeq||document.querySelector('#searchInput')?.value.trim()!==term)return;
+    const current=document.querySelector('#searchPeople');if(!current)return;
+    current.innerHTML=searchPeopleMarkup(people||[]);hydrateArtwork(current);bindPersonLinks(current);
+  }catch(err){
+    if(seq!==peopleSearchSeq)return;
+    const current=document.querySelector('#searchPeople');if(!current)return;
+    current.innerHTML=`<div class="search-people-unavailable"><strong>People search unavailable</strong><span>${esc(err.message||'Could not search people right now.')}</span></div>`;
+  }
+}
 async function runSearch(q){
-  const out=document.querySelector('#searchResults');if(!out)return;const term=q.trim();
+  const out=document.querySelector('#searchResults'),peopleOut=document.querySelector('#searchPeople');if(!out)return;const term=q.trim(),seq=++peopleSearchSeq;
+  if(!term&&peopleOut)peopleOut.innerHTML='';else runPeopleSearch(term,seq);
   if(nativeCatalogMode){
     out.innerHTML='<div class="native-query-loading"><div><span class="provider-spinner"></span><strong>Searching your local catalogue…</strong><div class="activity-progress indeterminate"><b></b></div><small>Still working — search results will appear when ready.</small></div></div>';
-    try{const result=await nativeCatalogSearch(term,{providerId:providerFilter,providerIds:providerFilter==='all'?nativeEnabledProviderIds():[],limit:80,kinds:['movie','series','live']}),res=cacheNativeItems(result?.items||[]);if(!document.querySelector('#searchResults'))return;out.innerHTML=res.length?res.map(x=>card(x,x.kind!=='live')).join(''):empty('No matches','Try another title, channel or category.');hydrateArtwork(out);bindDynamicCards(out)}catch(err){out.innerHTML=empty('Search unavailable',err.message||'Could not search the local catalogue.')}return;
+    try{const result=await nativeCatalogSearch(term,{providerId:providerFilter,providerIds:providerFilter==='all'?nativeEnabledProviderIds():[],limit:80,kinds:['movie','series','live']}),res=cacheNativeItems(result?.items||[]);if(!document.querySelector('#searchResults'))return;out.innerHTML=res.length?res.map(x=>card(x,x.kind!=='live')).join(''):empty('No title or channel matches','Try another title, channel, category or person.');hydrateArtwork(out);bindDynamicCards(out)}catch(err){out.innerHTML=empty('Search unavailable',err.message||'Could not search the local catalogue.')}return;
   }
-  const lower=term.toLowerCase();if(!lower){const starter=[...items('movie').slice(0,24),...items('series').slice(0,12)];out.innerHTML=starter.map(x=>card(x,x.kind!=='live')).join('');hydrateArtwork(out);bindDynamicCards(out);return}const res=[];for(const entry of searchIndex()){if(entry.text.includes(lower)){res.push(entry.item);if(res.length>=80)break}}out.innerHTML=res.length?res.map(x=>card(x,x.kind!=='live')).join(''):empty('No matches','Try another title, channel or category.');hydrateArtwork(out);bindDynamicCards(out)
+  const lower=term.toLowerCase();if(!lower){const starter=[...items('movie').slice(0,24),...items('series').slice(0,12)];out.innerHTML=starter.map(x=>card(x,x.kind!=='live')).join('');hydrateArtwork(out);bindDynamicCards(out);return}const res=[];for(const entry of searchIndex()){if(entry.text.includes(lower)){res.push(entry.item);if(res.length>=80)break}}out.innerHTML=res.length?res.map(x=>card(x,x.kind!=='live')).join(''):empty('No title or channel matches','Try another title, channel, category or person.');hydrateArtwork(out);bindDynamicCards(out)
 }
-function scheduleSearch(q){clearTimeout(searchDebounceTimer);searchDebounceTimer=setTimeout(()=>runSearch(q),largeLibraryMode()?180:60)}
+function scheduleSearch(q){clearTimeout(searchDebounceTimer);searchDebounceTimer=setTimeout(()=>runSearch(q),largeLibraryMode()?220:110)}
 function persist(bulk=false){syncActiveProfileFromState();const snapshot={...state,page:'home',favourites:state.myList};const localOk=saveState(snapshot);if(!bulk)return Promise.resolve(localOk);const saveCatalog=bulk===true||bulk==='catalog';return saveBulkState(snapshot,{catalog:saveCatalog}).then(bulkOk=>localOk&&bulkOk)}
 function normalizeProviderPriorities(){state.providers.sort((a,b)=>Number(a.priority)-Number(b.priority));state.providers.forEach((p,i)=>p.priority=i);syncLegacyProvider();sessionXtream=providerConfigById(state.provider?.id)||{server:'',username:'',password:'',relayUrl:'',relayToken:''};resetMovieStackIndex()}
 function upsertProviderRecord(record){const i=state.providers.findIndex(p=>p.id===record.id);const existing=i>=0?state.providers[i]:null;const next={...existing,...record,enabled:record.enabled!==false,priority:existing?.priority??state.providers.length,status:record.status||'connected',lastRefreshed:record.lastRefreshed||Date.now()};if(i>=0)state.providers[i]=next;else state.providers.push(next);normalizeProviderPriorities();return next}
