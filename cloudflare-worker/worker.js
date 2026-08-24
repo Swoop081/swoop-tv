@@ -285,11 +285,79 @@ function compactDiscoveryMdb(payload){
     };
   }).filter(x=>x.title);
 }
+const SNOAK_LISTS = Object.freeze({
+  // Daily / near-daily core discovery signals.
+  'movies-tvstats':{slug:'todays-most-popular-movies-on-television-stats',mediaType:'movie'},
+  'shows-tvstats':{slug:'todays-most-popular-shows-on-television-stats',mediaType:'tv'},
+  'movies-justwatch':{slug:'todays-most-popular-movies',mediaType:'movie'},
+  'shows-justwatch':{slug:'todays-most-popular-shows',mediaType:'tv'},
+  'movies-imdb':{slug:'top-10-movies-of-the-day',mediaType:'movie'},
+  'shows-imdb':{slug:'top-10-shows-of-the-day',mediaType:'tv'},
+  'movies-rotten':{slug:'most-popular-movies-on-rotten-tomatoes',mediaType:'movie'},
+  'shows-rotten':{slug:'most-popular-shows-on-rotten-tomatoes',mediaType:'tv'},
+  'movies-trakt':{slug:'trending-movies',mediaType:'movie'},
+  'shows-trakt':{slug:'trakt-s-trending-shows',mediaType:'tv'},
+  'movies-trakt-digital':{slug:'trakts-trending-movies-digital',mediaType:'movie'},
+  'movies-latest':{slug:'latest-movies-digital-release',mediaType:'movie'},
+  'shows-latest':{slug:'latest-tv-shows',mediaType:'tv'},
+
+  // Curated popular genre rails. Only a known allow-list can be requested by clients.
+  'genre-action-movies':{slug:'action-movies',mediaType:'movie'},
+  'genre-action-shows':{slug:'action-shows',mediaType:'tv'},
+  'genre-animation-movies':{slug:'popular-animated-movies',mediaType:'movie'},
+  'genre-animation-shows':{slug:'popular-animated-shows',mediaType:'tv'},
+  'genre-comedy-movies':{slug:'comedy-movies',mediaType:'movie'},
+  'genre-comedy-shows':{slug:'comedy-shows',mediaType:'tv'},
+  'genre-crime-shows':{slug:'popular-crime-shows',mediaType:'tv'},
+  'genre-documentary':{slug:'popular-documentary-movies',mediaType:'movie'},
+  'genre-documentary-shows':{slug:'popular-documentary-shows',mediaType:'tv'},
+  'genre-drama-movies':{slug:'drama-movies',mediaType:'movie'},
+  'genre-drama-shows':{slug:'drama-shows',mediaType:'tv'},
+  'genre-horror-movies':{slug:'horror-movies',mediaType:'movie'},
+  'genre-horror-shows':{slug:'horror-shows',mediaType:'tv'},
+  'genre-reality-shows':{slug:'top-reality-shows',mediaType:'tv'},
+  'genre-romance-movies':{slug:'popular-romance-movies',mediaType:'movie'},
+  'genre-scifi-movies':{slug:'science-fiction-movies',mediaType:'movie'},
+  'genre-scifi-shows':{slug:'science-fiction-shows',mediaType:'tv'},
+  'genre-thriller-movies':{slug:'thriller-movies',mediaType:'movie'},
+  'genre-thriller-shows':{slug:'thriller-shows',mediaType:'tv'}
+});
+const SNOAK_STALE_MS=8*24*60*60*1000;
+function firstListObject(payload){return Array.isArray(payload)?(payload[0]||{}):(payload&&typeof payload==='object'?payload:{});}
+function parseListUpdatedAt(payload){
+  const x=firstListObject(payload);
+  for(const key of ['updated_at','updatedAt','last_updated','lastUpdated','modified_at','modifiedAt','updated']){
+    const raw=x?.[key];if(raw===undefined||raw===null||raw==='')continue;
+    if(typeof raw==='number'){const ms=raw>1e12?raw:raw*1000;if(Number.isFinite(ms))return ms;}
+    const ms=Date.parse(String(raw));if(Number.isFinite(ms))return ms;
+  }
+  return 0;
+}
+async function fetchSnoakList(env,key){
+  const cfg=SNOAK_LISTS[key];if(!cfg)throw new Error('Unknown Swoop TV curated list.');
+  const [info,payload]=await Promise.all([
+    mdbFetch(`/lists/snoak/${encodeURIComponent(cfg.slug)}`,env).catch(()=>null),
+    mdbFetch(`/lists/snoak/${encodeURIComponent(cfg.slug)}/items`,env,{extended:'ids_only'})
+  ]);
+  const sourceUpdatedAt=parseListUpdatedAt(info),stale=Boolean(sourceUpdatedAt&&Date.now()-sourceUpdatedAt>SNOAK_STALE_MS);
+  return {key,slug:cfg.slug,mediaType:cfg.mediaType,sourceUpdatedAt,stale,items:stale?[]:compactDiscoveryMdb(payload)};
+}
+async function safeSnoakList(env,key){try{return await fetchSnoakList(env,key)}catch{return {key,slug:SNOAK_LISTS[key]?.slug||'',mediaType:SNOAK_LISTS[key]?.mediaType||'',sourceUpdatedAt:0,stale:false,items:[]}}}
+async function handleSnoakList(request,env,body){
+  if(!String(env.MDBLIST_API_KEY||'').trim())return json(request,{error:'Swoop TV curated discovery needs MDBLIST_API_KEY on the Worker.'},503);
+  const key=String(body?.listKey||'');if(!SNOAK_LISTS[key])return json(request,{error:'Unknown Swoop TV curated list.'},400);
+  try{
+    const result=await fetchSnoakList(env,key);
+    if(result.stale)return json(request,{error:'This curated MDBList source is stale, so Swoop TV is using its local fallback.',stale:true,listKey:key,sourceUpdatedAt:result.sourceUpdatedAt},409);
+    return json(request,{listKey:key,mediaType:result.mediaType,source:'snoak/mdblist',sourceUpdatedAt:result.sourceUpdatedAt,updatedAt:Date.now(),items:result.items});
+  }catch(error){return json(request,{error:error.message||'Could not load the curated MDBList source.'},502)}
+}
+
 async function mdbFetch(path,env,params={}){
   const key=String(env.MDBLIST_API_KEY||'').trim();if(!key)throw new Error('MDBList discovery is not configured.');
   const url=new URL(`${MDBLIST_BASE}${path}`);url.searchParams.set('apikey',key);
   Object.entries(params).forEach(([k,v])=>{if(v!==undefined&&v!==null&&v!=='')url.searchParams.set(k,String(v))});
-  const res=await fetch(url.toString(),{headers:{'Accept':'application/json','User-Agent':'SwoopTV-Discovery/0.7.21'},cf:{cacheTtl:3600,cacheEverything:true}});
+  const res=await fetch(url.toString(),{headers:{'Accept':'application/json','User-Agent':'SwoopTV-Discovery/0.7.22'},cf:{cacheTtl:21600,cacheEverything:true}});
   if(!res.ok)throw new Error(`MDBList returned HTTP ${res.status}.`);return res.json();
 }
 async function firstMdbOfficial(env,candidates=[]){
@@ -314,20 +382,39 @@ async function handleDiscovery(request,env,body){
       fresh:compactDiscoveryTmdb(fresh,type)
     };
     let enhanced=false;
+    let snoakMeta={};
     if(String(env.MDBLIST_API_KEY||'').trim()){
       enhanced=true;
       const prefix=type==='tv'?'shows':'movies',chartType=type==='tv'?'show':'movie';
-      const [justwatch,stable,traktTrending,mostWatched,imdbPopular,boxOffice]=await Promise.all([
+      const snoakKeys=type==='tv'
+        ?['shows-justwatch','shows-tvstats','shows-imdb','shows-rotten','shows-trakt','shows-latest']
+        :['movies-justwatch','movies-tvstats','movies-imdb','movies-rotten','movies-trakt','movies-trakt-digital','movies-latest'];
+      const [justwatch,stable,traktTrending,mostWatched,imdbPopular,boxOffice,...snoakResults]=await Promise.all([
         safeMdb(`/justwatch/streaming-charts/${chartType}`,env),
         firstMdbOfficial(env,[`${prefix}/popular`]),
         firstMdbOfficial(env,[`${prefix}/trakt-trending`,`${prefix}/trending`]),
         firstMdbOfficial(env,[`${prefix}/trakt-most-watched`,`${prefix}/most-watched`,`${prefix}/trakt-watched`]),
         firstMdbOfficial(env,[`${prefix}/imdb-most-popular`,`${prefix}/imdb-popular`]),
-        type==='movie'?firstMdbOfficial(env,['movies/trakt-weekend-box-office','movies/trakt-boxoffice','movies/boxoffice']):Promise.resolve([])
+        type==='movie'?firstMdbOfficial(env,['movies/trakt-weekend-box-office','movies/trakt-boxoffice','movies/boxoffice']):Promise.resolve([]),
+        ...snoakKeys.map(key=>safeSnoakList(env,key))
       ]);
       Object.assign(sources,{justwatch,stable,traktTrending,mostWatched,imdbPopular,boxOffice});
+      for(const result of snoakResults){
+        if(!result)continue;snoakMeta[result.key]={slug:result.slug,sourceUpdatedAt:result.sourceUpdatedAt,stale:result.stale,count:result.items.length};
+        if(result.stale||!result.items.length)continue;
+        const sourceName={
+          'movies-justwatch':'snoakJustwatch','shows-justwatch':'snoakJustwatch',
+          'movies-tvstats':'snoakTvStats','shows-tvstats':'snoakTvStats',
+          'movies-imdb':'snoakImdb','shows-imdb':'snoakImdb',
+          'movies-rotten':'snoakRotten','shows-rotten':'snoakRotten',
+          'movies-trakt':'snoakTrakt','shows-trakt':'snoakTrakt',
+          'movies-trakt-digital':'snoakTraktDigital',
+          'movies-latest':'snoakLatest','shows-latest':'snoakLatest'
+        }[result.key];
+        if(sourceName)sources[sourceName]=result.items;
+      }
     }
-    return new Response(JSON.stringify({mediaType:type,updatedAt:Date.now(),enhanced,sources}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=1800'}});
+    return new Response(JSON.stringify({mediaType:type,updatedAt:Date.now(),enhanced,snoak:Boolean(Object.values(snoakMeta).some(x=>x.count>0&&!x.stale)),snoakMeta,sources}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=1800'}});
   }catch(error){return json(request,{error:error.message||'Could not load Swoop TV discovery charts.'},502)}
 }
 
@@ -455,6 +542,7 @@ async function handlePost(request, env) {
   if (String(body?.mode || '') === 'imdb-rating') return handleImdbRating(request, env, body);
   if (String(body?.mode || '') === 'person-credits') return handlePersonCredits(request, env, body);
   if (String(body?.mode || '') === 'discovery') return handleDiscovery(request, env, body);
+  if (String(body?.mode || '') === 'snoak-list') return handleSnoakList(request, env, body);
 
   if (!String(env.SWOOP_PROXY_TOKEN || '')) {
     return json(request, {error:'Worker is not configured. Set the SWOOP_PROXY_TOKEN secret first.'}, 503);
@@ -505,7 +593,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.12',
+        version:'0.1.13',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
         discoveryConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),

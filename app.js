@@ -5,7 +5,7 @@ import {isNativeWindows, nativePlay, nativeStop, nativeFetchText, nativeDiagnost
 import {nativeCatalogStatus,nativeCatalogReplaceProvider,nativeCatalogRemoveProvider,nativeCatalogQuery,nativeCatalogSearch,nativeCatalogCategories,nativeCatalogGet,nativeCatalogSources,nativeCatalogMatchPayload} from './src/nativeCatalog.js';
 import {getMDBListItems, getMDBListOfficialItems, getMDBListStreamingChart, matchMDBListToCatalog, normalizeMediaTitle} from './src/mdblist.js';
 import {fetchTitleMetadata, fetchTitleImdbRating, fetchPersonCredits, metadataServiceUrl} from './src/tmdb.js';
-import {fetchSwoopDiscovery} from './src/discovery.js';
+import {fetchSwoopDiscovery, fetchSwoopCuratedList} from './src/discovery.js';
 import {buildMovieStackIndex, collapseMovieSources, cleanDisplayTitle, rankSources, sourceTraits, qualityLabel} from './src/sourceStack.js';
 import {buildLiveStackIndex, selectLiveSource} from './src/liveStack.js';
 import {PROFILE_AVATARS, avatarById, makeProfile, normalizeProfile, profileAllowsMedia, profileGenreAffinity, smartRankRows} from './src/profiles.js';
@@ -36,7 +36,7 @@ async function loadNativeHomeRow(id){
   else if(NATIVE_HOME_SEARCH[id]){const [kind,term]=NATIVE_HOME_SEARCH[id],a=await nativeCatalogSearch(term,{providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,kinds:[kind]});result=a.items||[]}
   result=cacheNativeItems(result);nativeHomeRowCache.set(id,result);return result;
 }
-async function primeNativeHomeRows(){if(!nativeCatalogMode||nativeHomePrimeBusy||state.page!=='home')return;const skip=new Set(['continue','recently-watched','recommended','recent-live','mylist']);const ids=selectedHomeRows().map(x=>x.id).filter(id=>!WEB_ROW_IDS.has(id)&&!String(id).startsWith('custom:')&&!skip.has(id)&&!nativeHomeRowCache.has(id)).slice(0,10);if(!ids.length)return;nativeHomePrimeBusy=true;try{for(const id of ids){await loadNativeHomeRow(id).catch(()=>[]);if(state.page==='home'&&!modal&&!detailItem&&!playerItem)patchMountedHomeRows([id]);await new Promise(r=>setTimeout(r,0))}}finally{nativeHomePrimeBusy=false}}
+async function primeNativeHomeRows(){if(!nativeCatalogMode||nativeHomePrimeBusy||state.page!=='home')return;const skip=new Set(['continue','recently-watched','recommended','recent-live','mylist']);const ids=selectedHomeRows().map(x=>x.id).filter(id=>(!WEB_ROW_IDS.has(id)||SNOAK_CURATED_ROWS.has(id))&&!String(id).startsWith('custom:')&&!skip.has(id)&&!nativeHomeRowCache.has(id)).slice(0,10);if(!ids.length)return;nativeHomePrimeBusy=true;try{for(const id of ids){await loadNativeHomeRow(id).catch(()=>[]);if(state.page==='home'&&!modal&&!detailItem&&!playerItem)patchMountedHomeRows([id]);await new Promise(r=>setTimeout(r,0))}}finally{nativeHomePrimeBusy=false}}
 function cacheNativeItems(list=[]){
   for(const item of list||[]){
     if(!item?.id)continue;
@@ -98,7 +98,7 @@ syncLegacyProvider();
 if(!Array.isArray(state.settings.homeRows)||!state.settings.homeRows.length)state.settings.homeRows=[...DEFAULT_HOME_ROWS];
 state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);
 if(Number(state.settings.personalizationSchemaVersion||0)<2){for(const id of ['recommended','recently-watched','recent-live'])if(!state.settings.homeRows.includes(id))state.settings.homeRows.push(id);state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);state.settings.personalizationSchemaVersion=2;}
-const DISCOVERY_MATCH_SCHEMA=4;
+const DISCOVERY_MATCH_SCHEMA=5;
 const invalidateDiscovery=Number(state.settings.discoverySchemaVersion||0)!==DISCOVERY_MATCH_SCHEMA;
 if(invalidateDiscovery){state.webDiscovery={};state.settings.discoverySchemaVersion=DISCOVERY_MATCH_SCHEMA;}
 const METADATA_ARTWORK_SCHEMA=4;
@@ -388,14 +388,14 @@ const HOME_ROW_DEFS=[
   {id:'recommended',label:'Recommended For You',group:'For You',poster:true},
   {id:'recent-live',label:'Recent Channels',group:'Your Swoop TV',poster:false,page:'live'},
   {id:'mylist',label:'My List',group:'Your Swoop TV',poster:true,page:'mylist'},
-  {id:'top20-movies',label:'Top 100 Movies',group:'Live from the web',poster:true,web:true,ranked:true,description:'Stable current popularity blended across web signals — top 100 available in your library'},
-  {id:'top20-shows',label:'Top 100 TV Shows',group:'Live from the web',poster:true,web:true,ranked:true,description:'Stable current popularity blended across web signals — top 100 available in your library'},
-  {id:'trending-movies',label:'Trending Now — Movies',group:'Live from the web',poster:true,web:true,description:'Blended short-term signals from TMDb, Trakt, JustWatch and popularity charts'},
-  {id:'trending-shows',label:'Trending Now — TV Shows',group:'Live from the web',poster:true,web:true,description:'Blended short-term signals from TMDb, Trakt, JustWatch and popularity charts'},
-  {id:'new-hot-movies',label:'New & Hot Movies',group:'Live from the web',poster:true,web:true,description:'Fresh releases with strong current activity'},
-  {id:'new-hot-shows',label:'New & Hot TV Shows',group:'Live from the web',poster:true,web:true,description:'Current and newly airing shows with strong activity'},
-  {id:'streaming-movies',label:'Popular on Streaming — Movies',group:'Live from the web',poster:true,web:true,description:'Current streaming-chart popularity matched to your library'},
-  {id:'streaming-shows',label:'Popular on Streaming — TV',group:'Live from the web',poster:true,web:true,description:'Current streaming-chart popularity matched to your library'},
+  {id:'top20-movies',label:'Top 100 Movies',group:'Live from the web',poster:true,web:true,ranked:true,description:'Daily Snoak/MDBList popularity blended with JustWatch, IMDb, Rotten Tomatoes, Trakt, Television Stats and fallback web signals — top 100 available in your library'},
+  {id:'top20-shows',label:'Top 100 TV Shows',group:'Live from the web',poster:true,web:true,ranked:true,description:'Daily Snoak/MDBList popularity blended with JustWatch, IMDb, Rotten Tomatoes, Trakt, Television Stats and fallback web signals — top 100 available in your library'},
+  {id:'trending-movies',label:'Trending Now — Movies',group:'Live from the web',poster:true,web:true,description:'Daily Snoak/MDBList Trakt, JustWatch and Television Stats signals blended with fallback web activity'},
+  {id:'trending-shows',label:'Trending Now — TV Shows',group:'Live from the web',poster:true,web:true,description:'Daily Snoak/MDBList Trakt, JustWatch and Television Stats signals blended with fallback web activity'},
+  {id:'new-hot-movies',label:'New & Hot Movies',group:'Live from the web',poster:true,web:true,description:'Snoak/MDBList latest streaming releases blended with current activity'},
+  {id:'new-hot-shows',label:'New & Hot TV Shows',group:'Live from the web',poster:true,web:true,description:'Snoak/MDBList latest shows blended with current activity'},
+  {id:'streaming-movies',label:'Popular on Streaming — Movies',group:'Live from the web',poster:true,web:true,description:'Snoak/MDBList JustWatch popularity matched to your library'},
+  {id:'streaming-shows',label:'Popular on Streaming — TV',group:'Live from the web',poster:true,web:true,description:'Snoak/MDBList JustWatch popularity matched to your library'},
   {id:'most-watched-movies',label:'Most Watched This Week — Movies',group:'Live from the web',poster:true,web:true,description:'Weekly viewing activity blended with current popularity'},
   {id:'most-watched-shows',label:'Most Watched This Week — TV',group:'Live from the web',poster:true,web:true,description:'Weekly viewing activity blended with current popularity'},
   {id:'box-office-movies',label:'Box Office Now',group:'Live from the web',poster:true,web:true,description:'Current theatrical and box-office titles available in your library'},
@@ -433,8 +433,20 @@ const HOME_ROW_DEFS=[
   {id:'movies',label:'All Movies',group:'Your provider',poster:true,page:'movies'},
   {id:'shows',label:'All TV Shows',group:'Your provider',poster:true,page:'series'}
 ];
+const SNOAK_CURATED_ROWS=new Map([
+  ['action-movies','genre-action-movies'],['action-shows','genre-action-shows'],
+  ['animation-movies','genre-animation-movies'],['animation-shows','genre-animation-shows'],
+  ['comedy-movies','genre-comedy-movies'],['comedy-shows','genre-comedy-shows'],
+  ['crime-shows','genre-crime-shows'],
+  ['drama-movies','genre-drama-movies'],['drama-shows','genre-drama-shows'],
+  ['horror-movies','genre-horror-movies'],
+  ['reality-shows','genre-reality-shows'],
+  ['romance-movies','genre-romance-movies'],
+  ['scifi-movies','genre-scifi-movies'],['scifi-shows','genre-scifi-shows'],
+  ['thriller-movies','genre-thriller-movies'],['thriller-shows','genre-thriller-shows']
+]);
 const HOME_ROW_MAP=new Map(HOME_ROW_DEFS.map(x=>[x.id,x]));
-const WEB_ROW_IDS=new Set(HOME_ROW_DEFS.filter(x=>x.web).map(x=>x.id));
+const WEB_ROW_IDS=new Set([...HOME_ROW_DEFS.filter(x=>x.web).map(x=>x.id),...SNOAK_CURATED_ROWS.keys()]);
 function providerCategoryDefs(){
   if(nativeCatalogMode){const make=(kind,label)=>(nativeCategoryCache[kind]||[]).filter(x=>Number(x.count)>=4).slice(0,28).map(x=>({id:`cat:${kind}:${encodeURIComponent(x.name)}`,label:x.name,group:label,poster:true,category:true,description:`${Number(x.count).toLocaleString()} titles from your local catalogue`}));return [...make('movie','Provider Movie Categories'),...make('series','Provider TV Categories')];}
   const make=(kind,label)=>{const counts=new Map();for(const item of items(kind)){const g=String(item.group||'').trim();if(g)counts.set(g,(counts.get(g)||0)+1)}return [...counts.entries()].filter(([,n])=>n>=4).sort((a,b)=>b[1]-a[1]).slice(0,28).map(([name,count])=>({id:`cat:${kind}:${encodeURIComponent(name)}`,label:name,group:label,poster:true,category:true,description:`${count.toLocaleString()} titles from your provider`}))};
@@ -559,10 +571,11 @@ function localHomeRowItems(id){
 }
 function cachedWebRowItems(id){const cache=state.webDiscovery?.[id];if(nativeCatalogMode&&Array.isArray(cache?.items))return cacheNativeItems(cache.items);return collapseMovieSources((cache?.itemIds||[]).map(savedItem).filter(Boolean),activeCatalog())}
 function customHomeRowItems(id){const uid=String(id).slice(7),row=state.mdblistRows.find(x=>String(x.uid)===uid);return collapseMovieSources(row?.items||[],activeCatalog())}
-function homeRowItems(id){let result;if(WEB_ROW_IDS.has(id))result=cachedWebRowItems(id);else if(String(id).startsWith('custom:'))result=customHomeRowItems(id);else if(nativeCatalogMode&&nativeHomeRowCache.has(id))result=nativeHomeRowCache.get(id);else if(String(id).startsWith('cat:')){const parts=String(id).split(':'),kind=parts[1],name=decodeURIComponent(parts.slice(2).join(':'));result=stableDailyOrder(items(kind).filter(x=>x.group===name),id)}else result=localHomeRowItems(id);const profile=activeProfile();return (result||[]).filter(item=>profileAllowsMedia(profile,item,state.metadataCache?.[item.id]||{}))}
+function homeRowItems(id){let result;if(WEB_ROW_IDS.has(id)){result=cachedWebRowItems(id);if(!result.length&&SNOAK_CURATED_ROWS.has(id))result=nativeCatalogMode?(nativeHomeRowCache.get(id)||[]):localHomeRowItems(id);}else if(String(id).startsWith('custom:'))result=customHomeRowItems(id);else if(nativeCatalogMode&&nativeHomeRowCache.has(id))result=nativeHomeRowCache.get(id);else if(String(id).startsWith('cat:')){const parts=String(id).split(':'),kind=parts[1],name=decodeURIComponent(parts.slice(2).join(':'));result=stableDailyOrder(items(kind).filter(x=>x.group===name),id)}else result=localHomeRowItems(id);const profile=activeProfile();return (result||[]).filter(item=>profileAllowsMedia(profile,item,state.metadataCache?.[item.id]||{}))}
 function relativeRefreshTime(ts){if(!ts)return'Not refreshed yet';const mins=Math.max(0,Math.floor((Date.now()-ts)/60000));if(mins<1)return'Updated just now';if(mins<60)return`Updated ${mins}m ago`;const hrs=Math.floor(mins/60);if(hrs<24)return`Updated ${hrs}h ago`;return`Updated ${Math.floor(hrs/24)}d ago`}
 function discoveryMeta(id,data){
-  if(WEB_ROW_IDS.has(id)){const c=state.webDiscovery?.[id];return c?`${relativeRefreshTime(c.updatedAt)} · ${data.length} available${c.enhanced?' · blended web ranking':' · TMDb ranking'}`:'Waiting for web discovery refresh';}
+  if(SNOAK_CURATED_ROWS.has(id)){const c=state.webDiscovery?.[id];return c&&data.length?`${relativeRefreshTime(c.updatedAt)} · ${data.length} available · Snoak / MDBList ranking`:`${data.length.toLocaleString()} available · local category fallback`;}
+  if(WEB_ROW_IDS.has(id)){const c=state.webDiscovery?.[id];return c?`${relativeRefreshTime(c.updatedAt)} · ${data.length} available${c.snoak?' · Snoak + blended web ranking':c.enhanced?' · blended web ranking':' · TMDb ranking'}`:'Waiting for web discovery refresh';}
   if(String(id).startsWith('custom:')){const r=state.mdblistRows.find(x=>`custom:${x.uid}`===id);return `${relativeRefreshTime(r?.updatedAt)} · ${data.length} available`;}
   if(id==='live-now')return`${data.length.toLocaleString()} channels`;
   if(id==='continue')return`${data.length} in progress`;
@@ -573,7 +586,7 @@ function discoveryMeta(id,data){
   return`${data.length.toLocaleString()} available`;
 }
 function discoveryRowMediaType(id){return /shows|tv/i.test(String(id))?'show':'movie'}
-function discoveryRowMode(id){if(String(id).startsWith('top20-'))return'top20';if(String(id).startsWith('trending-'))return'trending';if(String(id).startsWith('new-hot-'))return'newhot';if(String(id).startsWith('streaming-'))return'streaming';if(String(id).startsWith('most-watched-'))return'watched';if(id==='box-office-movies')return'boxoffice';return'trending'}
+function discoveryRowMode(id){if(SNOAK_CURATED_ROWS.has(id))return'snoak';if(String(id).startsWith('top20-'))return'top20';if(String(id).startsWith('trending-'))return'trending';if(String(id).startsWith('new-hot-'))return'newhot';if(String(id).startsWith('streaming-'))return'streaming';if(String(id).startsWith('most-watched-'))return'watched';if(id==='box-office-movies')return'boxoffice';return'trending'}
 function discoveryRowTtl(id){return /^(trending|new-hot|streaming|box-office)/.test(String(id))?DISCOVERY_FAST_REFRESH_MS:DISCOVERY_REFRESH_MS}
 async function discoveryBundle(mediaType,force=false){
   const key=mediaType==='show'?'tv':'movie',cached=discoveryBundleMemory.get(key),now=Date.now();
@@ -584,12 +597,12 @@ async function discoveryBundle(mediaType,force=false){
 function blendDiscoverySources(bundle,mediaType,mode='trending',limit=20){
   const kind=mediaType==='show'?'series':'movie',sources=bundle?.sources||{};
   const weights={
-    trending:{tmdbDay:1.65,traktTrending:1.5,justwatch:1.25,tmdbWeek:1.0,imdbPopular:.8,stable:.65,tmdbPopular:.6},
-    top20:{stable:1.5,imdbPopular:1.25,tmdbPopular:1.05,justwatch:.85,tmdbWeek:.7,traktTrending:.55},
-    newhot:{tmdbDay:1.45,fresh:1.35,justwatch:1.05,traktTrending:1.0,tmdbWeek:.75,stable:.45},
-    streaming:{justwatch:1.7,traktTrending:.95,stable:.75,tmdbDay:.65,tmdbWeek:.55},
-    watched:{mostWatched:1.7,traktTrending:1.0,tmdbWeek:.8,justwatch:.65,stable:.45},
-    boxoffice:{boxOffice:1.8,fresh:1.2,tmdbDay:.8,tmdbWeek:.45}
+    trending:{snoakTrakt:2.05,snoakJustwatch:1.55,snoakTvStats:1.25,snoakImdb:.9,tmdbDay:.8,traktTrending:.7,justwatch:.6,tmdbWeek:.5},
+    top20:{snoakJustwatch:1.8,snoakTvStats:1.65,snoakImdb:1.5,snoakRotten:1.3,snoakTrakt:1.15,stable:.55,imdbPopular:.5,tmdbPopular:.45,tmdbWeek:.35},
+    newhot:{snoakLatest:2.0,snoakTraktDigital:1.45,snoakTrakt:1.15,snoakJustwatch:1.0,fresh:.8,tmdbDay:.65,tmdbWeek:.35},
+    streaming:{snoakJustwatch:2.0,snoakLatest:1.05,justwatch:.8,snoakTrakt:.7,stable:.35},
+    watched:{mostWatched:1.7,snoakTvStats:1.45,snoakTrakt:1.0,snoakJustwatch:.65,tmdbWeek:.45},
+    boxoffice:{boxOffice:1.8,fresh:1.2,snoakTvStats:.7,snoakTrakt:.55,tmdbDay:.45}
   }[mode]||{};
   const score=new Map(),sourceHits=new Map(),logicalById=new Map();
   for(const [name,weight] of Object.entries(weights)){
@@ -609,12 +622,12 @@ function blendDiscoverySources(bundle,mediaType,mode='trending',limit=20){
 async function blendDiscoverySourcesNative(bundle,mediaType,mode='trending',limit=20){
   const kind=mediaType==='show'?'series':'movie',sources=bundle?.sources||{};
   const weights={
-    trending:{tmdbDay:1.65,traktTrending:1.5,justwatch:1.25,tmdbWeek:1.0,imdbPopular:.8,stable:.65,tmdbPopular:.6},
-    top20:{stable:1.5,imdbPopular:1.25,tmdbPopular:1.05,justwatch:.85,tmdbWeek:.7,traktTrending:.55},
-    newhot:{tmdbDay:1.45,fresh:1.35,justwatch:1.05,traktTrending:1.0,tmdbWeek:.75,stable:.45},
-    streaming:{justwatch:1.7,traktTrending:.95,stable:.75,tmdbDay:.65,tmdbWeek:.55},
-    watched:{mostWatched:1.7,traktTrending:1.0,tmdbWeek:.8,justwatch:.65,stable:.45},
-    boxoffice:{boxOffice:1.8,fresh:1.2,tmdbDay:.8,tmdbWeek:.45}
+    trending:{snoakTrakt:2.05,snoakJustwatch:1.55,snoakTvStats:1.25,snoakImdb:.9,tmdbDay:.8,traktTrending:.7,justwatch:.6,tmdbWeek:.5},
+    top20:{snoakJustwatch:1.8,snoakTvStats:1.65,snoakImdb:1.5,snoakRotten:1.3,snoakTrakt:1.15,stable:.55,imdbPopular:.5,tmdbPopular:.45,tmdbWeek:.35},
+    newhot:{snoakLatest:2.0,snoakTraktDigital:1.45,snoakTrakt:1.15,snoakJustwatch:1.0,fresh:.8,tmdbDay:.65,tmdbWeek:.35},
+    streaming:{snoakJustwatch:2.0,snoakLatest:1.05,justwatch:.8,snoakTrakt:.7,stable:.35},
+    watched:{mostWatched:1.7,snoakTvStats:1.45,snoakTrakt:1.0,snoakJustwatch:.65,tmdbWeek:.45},
+    boxoffice:{boxOffice:1.8,fresh:1.2,snoakTvStats:.7,snoakTrakt:.55,tmdbDay:.45}
   }[mode]||{};
   const score=new Map(),sourceHits=new Map(),logicalById=new Map();
   for(const [name,weight] of Object.entries(weights)){
@@ -642,13 +655,25 @@ async function legacyDiscoveryFallback(id,apiKey){
 }
 async function fetchBuiltInDiscovery(id,apiKey,force=false){
   const mediaType=discoveryRowMediaType(id),mode=discoveryRowMode(id),rowLimit=String(id).startsWith('top20-')?HOME_RANKED_ROW_LIMIT:HOME_STANDARD_ROW_LIMIT;
+  if(mode==='snoak'){
+    const listKey=SNOAK_CURATED_ROWS.get(id);
+    try{
+      const payload=await fetchSwoopCuratedList({settings:state.settings,listKey});
+      const source=payload?.items||[];
+      const items=nativeCatalogMode?cacheNativeItems((await nativeCatalogMatchPayload(source,mediaType,{sourceLimit:800,limit:HOME_STANDARD_ROW_LIMIT,providerIds:nativeEnabledProviderIds()})).items||[]):matchMDBListToCatalog(source,activeCatalog(),{sourceLimit:800,limit:HOME_STANDARD_ROW_LIMIT,mediaType});
+      return {items:items.slice(0,rowLimit),enhanced:true,snoak:true,source:'snoak',sourceUpdatedAt:Number(payload?.sourceUpdatedAt||0)};
+    }catch(err){
+      const fallback=nativeCatalogMode?(nativeHomeRowCache.get(id)||[]):localHomeRowItems(id);
+      return {items:(fallback||[]).slice(0,rowLimit),enhanced:false,snoak:false,source:'local-fallback',warning:err.message||String(err)};
+    }
+  }
   try{
     const bundle=await discoveryBundle(mediaType,force);let items=nativeCatalogMode?await blendDiscoverySourcesNative(bundle,mediaType,mode,rowLimit):blendDiscoverySources(bundle,mediaType,mode,rowLimit);
     if(String(id).startsWith('top20-')&&items.length<HOME_RANKED_ROW_LIMIT&&apiKey){
       const supplement=await legacyDiscoveryFallback(id,apiKey).catch(()=>[]),seen=new Set(items.map(x=>x.id));
       for(const item of supplement){if(item&&!seen.has(item.id)){seen.add(item.id);items.push(item)}if(items.length>=HOME_RANKED_ROW_LIMIT)break}
     }
-    return {items:items.slice(0,rowLimit),enhanced:Boolean(bundle?.enhanced),source:nativeCatalogMode?'swoop-sqlite':'swoop'};
+    return {items:items.slice(0,rowLimit),enhanced:Boolean(bundle?.enhanced),snoak:Boolean(bundle?.snoak),source:nativeCatalogMode?'swoop-sqlite':'swoop'};
   }
   catch(err){const fallback=await legacyDiscoveryFallback(id,apiKey).catch(()=>[]);if(fallback.length)return {items:fallback,enhanced:false,source:'legacy',warning:err.message||String(err)};throw err}
 }
@@ -664,7 +689,7 @@ async function refreshDiscoveryRows(force=false,userInitiated=false){
   discoveryRefreshing=true;discoveryMessage='Refreshing Swoop TV discovery…';const totalJobs=Math.max(1,staleIds.length+staleCustom.length),manualTask=Boolean(userInitiated);if(manualTask)taskProgressStart({title:'Refreshing Swoop TV discovery…',detail:`Updating 0 of ${totalJobs} discovery rows…`,progress:3});let completedJobs=0;
   try{
     if(force)discoveryBundleMemory.clear();
-    for(const id of staleIds){if(manualTask)taskProgressUpdate({detail:`Updating ${homeRowDef(id)?.label||'discovery row'}…`,progress:5+(completedJobs/totalJobs)*88});try{const result=await fetchBuiltInDiscovery(id,apiKey,false);state.webDiscovery[id]={itemIds:result.items.map(x=>x.id),items:nativeCatalogMode?result.items:undefined,updatedAt:Date.now(),error:'',enhanced:result.enhanced,source:result.source};}catch(err){state.webDiscovery[id]={...(state.webDiscovery[id]||{}),updatedAt:Date.now(),error:err.message||String(err)};}completedJobs++;if(manualTask)taskProgressUpdate({detail:`Updated ${completedJobs} of ${totalJobs} discovery rows…`,progress:5+(completedJobs/totalJobs)*88});}
+    for(const id of staleIds){if(manualTask)taskProgressUpdate({detail:`Updating ${homeRowDef(id)?.label||'discovery row'}…`,progress:5+(completedJobs/totalJobs)*88});try{const result=await fetchBuiltInDiscovery(id,apiKey,false);state.webDiscovery[id]={itemIds:result.items.map(x=>x.id),items:nativeCatalogMode?result.items:undefined,updatedAt:Date.now(),sourceUpdatedAt:Number(result.sourceUpdatedAt||0),error:'',enhanced:result.enhanced,snoak:Boolean(result.snoak),source:result.source};}catch(err){state.webDiscovery[id]={...(state.webDiscovery[id]||{}),updatedAt:Date.now(),error:err.message||String(err)};}completedJobs++;if(manualTask)taskProgressUpdate({detail:`Updated ${completedJobs} of ${totalJobs} discovery rows…`,progress:5+(completedJobs/totalJobs)*88});}
     for(const row of staleCustom){if(manualTask)taskProgressUpdate({detail:`Updating ${row.name||'custom discovery row'}…`,progress:5+(completedJobs/totalJobs)*88});try{const payload=await getMDBListItems({apiKey,listId:row.source.listId,username:row.source.username,listName:row.source.listName});row.items=nativeCatalogMode?cacheNativeItems((await nativeCatalogMatchPayload(payload,'movie',{sourceLimit:200,limit:120,providerIds:nativeEnabledProviderIds()})).items||[]):matchMDBListToCatalog(payload,activeCatalog());row.updatedAt=Date.now();row.error='';}catch(err){row.updatedAt=Date.now();row.error=err.message||String(err);}completedJobs++;if(manualTask)taskProgressUpdate({detail:`Updated ${completedJobs} of ${totalJobs} discovery rows…`,progress:5+(completedJobs/totalJobs)*88});}
     if(manualTask)taskProgressUpdate({detail:'Saving refreshed discovery rows…',progress:96});await persist('cache');discoveryMessage='Discovery updated';if(manualTask)taskProgressEnd({success:true,title:'Discovery updated',detail:`${completedJobs} discovery row${completedJobs===1?'':'s'} refreshed.`,hold:1100});
   }catch(err){if(manualTask)taskProgressEnd({success:false,title:'Discovery refresh stopped',detail:err.message||String(err),hold:2200});throw err}finally{
@@ -1072,7 +1097,7 @@ function homeRowsModal(){
   return `<div class="modal-backdrop" data-close-modal><div class="modal home-rows-modal" data-modal-card><div class="modal-head home-rows-head"><div><div class="eyebrow">HOME SCREEN</div><h2>Customize ${esc(activeProfile()?.name||'Swoop TV')}</h2><p>Pick a complete Swoop TV theme, then choose this profile’s Home rows and optional colour override.</p></div><button class="icon-btn" data-close>✕</button></div><div class="modal-body home-rows-body">
   <section class="theme-studio-card"><div class="theme-studio-copy"><span class="eyebrow">PROFILE THEME</span><h3>${esc(theme.name)}</h3><p>${esc(theme.description)}</p></div><div class="theme-picker-grid active-theme-picker">${SWOOP_THEMES.map(t=>`<button type="button" class="theme-choice ${t.id===theme.id?'active':''}" data-active-theme="${esc(t.id)}"><span class="theme-swatch" style="--theme-swatch:${esc(t.swatch)}"><i></i><b>${esc(t.name)}</b></span><span><strong>${esc(t.name)}</strong><small>${esc(t.tagline)}</small></span></button>`).join('')}</div></section>
   <section class="home-look-card theme-preview-${esc(theme.id)}" style="--preview-bg:${esc(bg)}"><div class="home-look-preview">${featureArt?`<img data-swoop-art="${esc(featureArt)}" alt="">`:''}<div class="home-look-shade"></div><div class="home-look-copy"><span class="eyebrow">${esc(theme.name.toUpperCase())} PREVIEW</span><strong>${esc(feature?.name||'Your featured title')}</strong><small>${esc(theme.tagline)} · ${state.settings.backgroundOverride?'Custom background':'Theme background'}</small></div></div><div class="home-look-controls"><span class="eyebrow">ADVANCED APPEARANCE</span><h3>Background colour override</h3><p>Each theme has its own base palette. Turn this on only when you want a custom background behind that theme.</p><label class="remember-row theme-bg-toggle"><input type="checkbox" data-bg-override ${state.settings.backgroundOverride?'checked':''}><span><strong>Use a custom background colour</strong><small>Saved only to ${esc(activeProfile()?.name||'this profile')}.</small></span></label><div class="colour-row ${state.settings.backgroundOverride?'':'disabled'}"><input id="homeBgColor" type="color" value="${esc(bg)}" aria-label="Background colour" ${state.settings.backgroundOverride?'':'disabled'}><input id="homeBgHex" type="text" value="${esc(bg)}" maxlength="7" aria-label="Background hex colour" ${state.settings.backgroundOverride?'':'disabled'}><button type="button" class="btn secondary compact-btn" data-bg-reset>Use ${esc(theme.name)} default</button></div><small class="metadata-note">Artwork source: provider images first, enhanced with TMDb backdrops when configured on ${esc(metadataServiceUrl(state.settings))}.</small><label class="remember-row smart-home-toggle"><input type="checkbox" data-smart-home-toggle ${state.settings.smartHomeOrder!==false?'checked':''}><span><strong>Smart Home ordering for ${esc(activeProfile()?.name||'this profile')}</strong><small>Let viewing history move relevant rows higher while Continue Watching and both Top 100 rows stay pinned at the top. Your selected rows remain under your control.</small></span></label></div></section>
-  <section class="discovery-key-card"><div><span class="eyebrow">SWOOP TV DISCOVERY</span><h3>Built-in charts update automatically</h3><p>Top 100 and Trending now blend short-term TMDb activity with streaming/popularity signals supplied by the Swoop TV metadata service. End users do not need a Trakt or MDBList account. The key below is optional and is only used for custom MDBList rows you create yourself.</p></div><form id="homeDiscoveryForm"><div class="field"><label>Custom MDBList API key <span class="optional">Optional</span></label><input name="apiKey" type="password" value="${esc(state.settings.mdblistApiKey||'')}" placeholder="Only needed for your own MDBList rows"></div><div class="discovery-key-actions"><button class="btn accent" type="submit">Save Custom Key</button><button class="btn secondary" type="button" data-refresh-discovery>Refresh discovery now</button></div><small>${lastWeb?esc(relativeRefreshTime(lastWeb)):'No discovery refresh yet'}${discoveryRefreshing?' · Refreshing now…':''}</small></form></section>
+  <section class="discovery-key-card"><div><span class="eyebrow">SWOOP TV DISCOVERY</span><h3>Built-in charts update automatically</h3><p>Top 100 and Trending now use Snoak's daily MDBList feeds as the primary ranking layer, blended with fallback TMDb and official chart signals supplied by the Swoop TV metadata service. End users do not need a Trakt or MDBList account. The key below is optional and is only used for custom MDBList rows you create yourself.</p></div><form id="homeDiscoveryForm"><div class="field"><label>Custom MDBList API key <span class="optional">Optional</span></label><input name="apiKey" type="password" value="${esc(state.settings.mdblistApiKey||'')}" placeholder="Only needed for your own MDBList rows"></div><div class="discovery-key-actions"><button class="btn accent" type="submit">Save Custom Key</button><button class="btn secondary" type="button" data-refresh-discovery>Refresh discovery now</button></div><small>${lastWeb?esc(relativeRefreshTime(lastWeb)):'No discovery refresh yet'}${discoveryRefreshing?' · Refreshing now…':''}</small></form></section>
   <div class="home-row-toolbar"><div><strong>${state.settings.homeRows.length} rows selected</strong><span>Continue Watching, Top 100 Movies and Top 100 TV Shows are pinned first. ${state.settings.smartHomeOrder!==false?'Smart ordering personalises everything below them.':'Use ↑ ↓ to control the remaining rows.'}</span></div><div><button class="btn secondary compact-btn" data-modal="mdblist">＋ Custom MDBList Row</button><button class="btn secondary compact-btn" data-reset-home>Reset defaults</button></div></div>
   <div class="home-row-picker">${groups.map(group=>`<section class="home-row-group"><div class="home-row-group-title"><span>${esc(group)}</span></div>${defs.filter(x=>x.group===group).map(def=>{const pinned=PINNED_HOME_ROWS.includes(def.id),on=pinned||selected.has(def.id),index=state.settings.homeRows.indexOf(def.id),data=homeRowItems(def.id),cache=state.webDiscovery?.[def.id],err=cache?.error||(def.custom?state.mdblistRows.find(r=>`custom:${r.uid}`===def.id)?.error:'');return `<div class="home-row-option ${on?'selected':''} ${pinned?'pinned':''}"><button class="home-row-toggle" ${pinned?'disabled':`data-home-toggle="${esc(def.id)}"`} aria-pressed="${on?'true':'false'}"><span class="home-row-check">${pinned?'PIN':on?'✓':'＋'}</span><span><strong>${esc(def.label)}</strong><small>${pinned?'Pinned at the top of Home · ':''}${esc(def.description||`${data.length.toLocaleString()} items currently available`)}</small>${err?`<em>${esc(err)}</em>`:''}</span></button><div class="home-row-order">${on&&!pinned?`<button data-home-up="${esc(def.id)}" ${index<=PINNED_HOME_ROWS.length?'disabled':''} aria-label="Move ${esc(def.label)} up">↑</button><button data-home-down="${esc(def.id)}" ${index<0||index>=state.settings.homeRows.length-1?'disabled':''} aria-label="Move ${esc(def.label)} down">↓</button>`:''}</div></div>`}).join('')}</section>`).join('')}</div>
   <div class="home-row-footer"><span>Theme, rows and background are stored independently for this profile.</span><button class="btn accent" data-close>Done</button></div>

@@ -1,5 +1,18 @@
 # Swoop TV Release Notes
 
+## v0.7.22 — Snoak Daily Discovery
+
+- Promotes a curated set of **Snoak's actively maintained MDBList lists** to Swoop TV's primary external ranking layer while keeping the provider catalogue as the sole source of playable titles.
+- **Top 100 Movies / TV Shows** now blend Snoak's JustWatch, Television Stats, IMDb, Rotten Tomatoes and Trakt lists ahead of the existing TMDb/official fallback signals.
+- **Trending Now** prioritises Snoak Trakt Trending + JustWatch + Television Stats. **New & Hot** prioritises Latest Streaming Movies / Latest Shows, with the movie rail also using Trakt's digital-release trending list. **Popular on Streaming** prioritises Snoak's JustWatch list.
+- Adds Snoak-backed ranking to selected existing genre rails: Action, Animation, Comedy, Crime TV, Drama, Horror Movies, Reality TV, Romance Movies, Sci-Fi and Thriller. The rows still show only local provider matches and fall back to Swoop TV's existing local genre filter if the web source is unavailable.
+- Adds a Worker-side **allow-list** for public Snoak list slugs. Clients cannot request arbitrary MDBList usernames/lists through the owner service.
+- The Worker asks MDBList for list metadata as well as items. When MDBList exposes an update timestamp and it is more than **8 days old**, Swoop TV rejects that source and uses its fallback instead of presenting stale data as current.
+- MDBList requests are cached for six hours at the Worker edge to keep owner API usage modest; end users still do not need an MDBList key.
+- Strict title/year/ID matching from v0.7.19 remains mandatory when intersecting Snoak candidates with the TV-provider library. Discovery never writes external IDs back onto provider catalogue items merely because a ranked list matched.
+- Cloudflare Worker **v0.1.13** adds the Snoak discovery source and the allow-listed `snoak-list` route. Redeploy the bundled Worker to activate this release's discovery changes.
+- No provider refresh, SQLite rebuild, profile reset, watched/resume reset or playback change is required.
+
 ## v0.7.21 — Cast Library Browsing
 
 - Makes every cast portrait/name on movie and TV detail pages clickable.

@@ -35,3 +35,10 @@ When TMDb supplies an official YouTube trailer key, Swoop TV can display that tr
 Swoop TV can optionally use an owner-managed MDBList API key through the Swoop TV Cloudflare Worker to enrich built-in discovery rankings with streaming/popularity list signals and to retrieve an IMDb rating for a title after TMDb has resolved its canonical IMDb ID. End-user IPTV credentials are not sent to MDBList.
 
 MDBList: `https://mdblist.com/`
+
+
+### Snoak public lists
+
+Swoop TV can use a curated allow-list of public MDBList lists maintained by the MDBList user **snoak** as ranking inputs for discovery rows. Swoop TV does not mirror those lists as a standalone catalogue and only intersects their public movie/TV identities with titles already present in the user's enabled provider library.
+
+Source page: `https://mdblist.com/lists/snoak/`

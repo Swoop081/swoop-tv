@@ -230,7 +230,7 @@ assert(metadataJson.metadata?.trailerKey==='abc123xyz','TMDb trailer mapping fai
 assert(metadataJson.metadata?.recommendations?.[0]?.tmdbId==='88','TMDb recommendations mapping failed');
 assert(metadataJson.metadata?.certification==='M'&&metadataJson.metadata?.runtime==='122 min','TMDb certification/runtime mapping failed');
 
-// v0.7.21 cast-member filmography endpoint + client request.
+// v0.7.22 cast-member filmography endpoint + client request.
 globalThis.fetch=async (url,options={})=>{
   const u=String(url);
   assert(String(options?.headers?.Authorization||'').startsWith('Bearer '),'TMDb person bearer token missing');
@@ -324,6 +324,17 @@ globalThis.fetch=async (url,options={})=>{
   if(u.includes('api.mdblist.com/lists/official/movies/trakt-most-watched/items'))return new Response(JSON.stringify([{title:'Watched Hit',year:2026,tmdb:508}]),{status:200});
   if(u.includes('api.mdblist.com/lists/official/movies/imdb-most-popular/items'))return new Response(JSON.stringify([{title:'IMDb Hit',year:2026,tmdb:509}]),{status:200});
   if(u.includes('api.mdblist.com/lists/official/movies/trakt-weekend-box-office/items'))return new Response(JSON.stringify([{title:'Box Office Hit',year:2026,tmdb:510}]),{status:200});
+  if(u.includes('api.mdblist.com/lists/snoak/')){
+    if(!u.includes('/items'))return new Response(JSON.stringify([{slug:u.split('/').pop(),updated_at:new Date().toISOString(),dynamic:true}]),{status:200});
+    if(u.includes('/todays-most-popular-movies/items'))return new Response(JSON.stringify({movies:[{title:'Snoak JustWatch Hit',release_year:2026,tmdb_id:601,imdb_id:'tt0000601'}]}),{status:200});
+    if(u.includes('/todays-most-popular-movies-on-television-stats/items'))return new Response(JSON.stringify({movies:[{title:'Snoak TV Stats Hit',release_year:2026,tmdb_id:602}]}),{status:200});
+    if(u.includes('/top-10-movies-of-the-day/items'))return new Response(JSON.stringify({movies:[{title:'Snoak IMDb Hit',release_year:2026,tmdb_id:603}]}),{status:200});
+    if(u.includes('/most-popular-movies-on-rotten-tomatoes/items'))return new Response(JSON.stringify({movies:[{title:'Snoak Rotten Hit',release_year:2026,tmdb_id:604}]}),{status:200});
+    if(u.includes('/trending-movies/items'))return new Response(JSON.stringify({movies:[{title:'Snoak Trakt Hit',release_year:2026,tmdb_id:605}]}),{status:200});
+    if(u.includes('/trakts-trending-movies-digital/items'))return new Response(JSON.stringify({movies:[{title:'Snoak Digital Hit',release_year:2026,tmdb_id:606}]}),{status:200});
+    if(u.includes('/latest-movies-digital-release/items'))return new Response(JSON.stringify({movies:[{title:'Snoak Latest Hit',release_year:2026,tmdb_id:607}]}),{status:200});
+    if(u.includes('/action-movies/items'))return new Response(JSON.stringify({movies:[{title:'Snoak Action Hit',release_year:2026,tmdb_id:608}]}),{status:200});
+  }
   return new Response(JSON.stringify({error:'not found'}),{status:404});
 };
 const discoveryReq=new Request('https://relay.example.workers.dev/',{method:'POST',headers:{'content-type':'application/json','origin':'http://127.0.0.1:38673'},body:JSON.stringify({mode:'discovery',mediaType:'movie'})});
@@ -337,7 +348,16 @@ assert(discoveryJson.sources?.justwatch?.[0]?.tmdb==='505','JustWatch discovery 
 assert(discoveryJson.sources?.traktTrending?.[0]?.tmdb==='507','Trakt trending discovery source failed');
 assert(discoveryJson.sources?.mostWatched?.[0]?.tmdb==='508','Most watched discovery source failed');
 assert(discoveryJson.sources?.boxOffice?.[0]?.tmdb==='510','Box office discovery source failed');
-
+assert(discoveryJson.snoak===true&&discoveryJson.sources?.snoakJustwatch?.[0]?.tmdb==='601','Snoak JustWatch primary discovery source failed');
+assert(discoveryJson.sources?.snoakTvStats?.[0]?.tmdb==='602'&&discoveryJson.sources?.snoakTrakt?.[0]?.tmdb==='605','Snoak Television Stats / Trakt discovery sources failed');
+assert(discoveryJson.sources?.snoakLatest?.[0]?.tmdb==='607','Snoak latest-streaming discovery source failed');
+const snoakListReq=new Request('https://relay.example.workers.dev/',{method:'POST',headers:{'content-type':'application/json','origin':'http://127.0.0.1:38673'},body:JSON.stringify({mode:'snoak-list',listKey:'genre-action-movies'})});
+const snoakListRes=await worker.fetch(snoakListReq,{TMDB_API_TOKEN:'tmdb-test-token',MDBLIST_API_KEY:'mdb-test-key',SWOOP_PROXY_TOKEN:token});
+assert(snoakListRes.status===200,'Allow-listed Snoak genre route failed');
+const snoakListJson=await snoakListRes.json();
+assert(snoakListJson.source==='snoak/mdblist'&&snoakListJson.items?.[0]?.tmdb==='608','Snoak curated genre payload mapping failed');
+const badSnoakRes=await worker.fetch(new Request('https://relay.example.workers.dev/',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode:'snoak-list',listKey:'arbitrary-user-list'})}),{MDBLIST_API_KEY:'mdb-test-key'});
+assert(badSnoakRes.status===400,'Snoak route must reject non-allow-listed lists');
 
 
 // v0.7.2 large-library startup/storage stability guards.
@@ -420,7 +440,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0721-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.21 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0722-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.22 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -429,7 +449,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.21'")&&swHotfix.includes('swoop-tv-v0721-shell'),'v0.7.21 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.22'")&&swHotfix.includes('swoop-tv-v0722-shell'),'v0.7.22 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -449,7 +469,7 @@ assert(appSource.includes("String(def.id).startsWith('top20-')?HOME_RANKED_ROW_L
 assert(appSource.includes('limit:HOME_STANDARD_ROW_LIMIT')&&appSource.includes('rowLimit=String(id).startsWith(\'top20-\')?HOME_RANKED_ROW_LIMIT:HOME_STANDARD_ROW_LIMIT'),'Native/web discovery Home row limits must support 100 items');
 assert(appSource.includes('function displayImdbRating')&&appSource.includes('card-imdb-rating')&&!appSource.includes("[item.year,trustedRating?`★ ${trustedRating}`"),'Poster cards must hide year/generic star metadata and expose the IMDb badge');
 const workerSource=fs.readFileSync(new URL('./cloudflare-worker/worker.js',import.meta.url),'utf8');
-assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.12'"),'IMDb viewport rating worker wiring missing');
+assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.13'"),'IMDb viewport rating worker wiring missing');
 assert(appSource.includes('IMDB_RATING_SCHEMA=2')&&appSource.includes('delete meta.imdbRating')&&appSource.includes('delete meta.imdbRatingCheckedAt'),'IMDb rating cache must selectively refresh without clearing artwork metadata');
 assert(appSource.includes('visibleMetadataQueue')&&appSource.includes('hydrateVisibleImdbRatings')&&appSource.includes('data-imdb-item')&&appSource.includes('fetchTitleImdbRating'),'Viewport-driven IMDb rating hydration missing');
 assert(appSource.includes('imdbRatingCheckedAt')&&appSource.includes('30*86400000'),'Long-lived IMDb rating cache missing');
@@ -470,7 +490,7 @@ assert(workerSource.includes('strictSearchMatch')&&workerSource.includes('resolv
 assert(tmdbClientSource.includes('metadataIdentityMatches')&&tmdbClientSource.includes('requestedYear!==resolvedYear'),'Client-side metadata identity guard missing');
 
 // v0.7.20 ranked rail stability / strict discovery matching.
-assert(appSource.includes('DISCOVERY_MATCH_SCHEMA=4')&&appSource.includes('if(!invalidateDiscovery&&aux.webDiscovery)'), 'Discovery cache schema must invalidate pre-fix ranked matches, including native aux cache');
+assert(appSource.includes('DISCOVERY_MATCH_SCHEMA=5')&&appSource.includes('if(!invalidateDiscovery&&aux.webDiscovery)'), 'Discovery cache schema must invalidate pre-fix ranked matches, including native aux cache');
 assert(appSource.includes("sourceLimit=mode==='top20'?600:200")&&appSource.includes('sourceLimit:800'), 'Top 100 discovery must scan a deeper candidate pool');
 assert(appSource.includes('bindRailStability')&&appSource.includes("current.dataset.deferredRefresh='1'")&&appSource.includes('left>6'), 'Scrolled Home rails must defer async DOM replacement');
 assert(detailCss.includes('.ranked-section .rail{grid-auto-columns:minmax(205px,15.6vw);padding-left:10px;scroll-snap-type:none;scroll-behavior:auto}'), 'Ranked rails must use unsnapped native horizontal scrolling');
@@ -478,7 +498,7 @@ assert(sqlitePsHotfix.includes('Select-Object -First 800')&&sqlitePsHotfix.inclu
 assert(workerSource.includes('tmdbFetchPages')&&workerSource.includes("},20)")&&workerSource.includes('slice(0,500)'), 'Worker must provide a deep Top 100 candidate pool');
 
 
-// v0.7.21 clickable cast / local-library filmography browsing.
+// v0.7.22 clickable cast / local-library filmography browsing.
 assert(workerSource.includes('handlePersonCredits')&&workerSource.includes("mode || '') === 'person-credits'")&&workerSource.includes('combined_credits')&&workerSource.includes("id:x.id?String(x.id):''"),'Worker cast-person identity/credits route missing');
 assert(tmdbClientSource.includes('fetchPersonCredits')&&tmdbClientSource.includes("mode:'person-credits'"),'Client cast-person service missing');
 assert(appSource.includes('data-person-name')&&appSource.includes('function openPerson')&&appSource.includes('function personHtml')&&appSource.includes('matchPersonCreditsToLibrary'),'Clickable cast filmography route missing');
@@ -487,10 +507,17 @@ assert(appSource.includes('suspendDetailViewForPerson')&&appSource.includes('sus
 assert(detailCss.includes('.person-route')&&detailCss.includes('.person-progress-track')&&detailCss.includes('.cast-card:hover'),'Cast route/progress/interaction styling missing');
 assert(sqlitePsHotfix.includes('Math]::Min(800,[int]$Data.limit)'),'Native matcher must allow larger actor filmography result sets');
 
+// v0.7.22 Snoak daily discovery integration.
+assert(appSource.includes('SNOAK_CURATED_ROWS')&&appSource.includes('fetchSwoopCuratedList')&&appSource.includes("mode==='snoak'"),'Snoak curated Home-row client wiring missing');
+assert(appSource.includes('snoakJustwatch:1.8')&&appSource.includes('snoakTrakt:2.05')&&appSource.includes('snoakLatest:2.0'),'Snoak primary discovery weights missing');
+assert(appSource.includes('DISCOVERY_MATCH_SCHEMA=5'),'Snoak discovery release must invalidate older ranked caches');
+assert(workerSource.includes('SNOAK_LISTS')&&workerSource.includes("'movies-justwatch'")&&workerSource.includes("mode || '') === 'snoak-list'")&&workerSource.includes('SNOAK_STALE_MS'),'Worker Snoak allow-list/freshness route missing');
+assert(workerSource.includes('cacheTtl:21600')&&workerSource.includes("version:'0.1.13'"),'Snoak Worker cache/version wiring missing');
+
 // v0.7.18 visible progress / long-task reassurance.
 assert(appSource.includes('provider-inline-progress')&&appSource.includes('data-provider-progress-percent')&&appSource.includes('refreshProgress'),'Provider refresh percentage/progress UI missing');
 assert(appSource.includes('task-progress-hud')&&appSource.includes('Still running — Swoop TV has not frozen.')&&appSource.includes('longTaskElapsedLabel'),'Persistent long-task progress HUD/reassurance missing');
 assert(appSource.includes('providerProgressPercent')&&appSource.includes('restoreProgressPercent'),'Provider-connect / restore numeric percentages missing');
 assert(appSource.includes('guide-load-progress')&&appSource.includes('data-guide-load-percent')&&appSource.includes('updateGuideProgress'),'TV Guide progress feedback missing');
 assert(appSource.includes('activity-progress indeterminate')&&detailCss.includes('.activity-progress.indeterminate')&&detailCss.includes('@keyframes swoopProgressShine'),'Indeterminate/moving activity feedback missing for unknown-duration work');
-console.log('Swoop TV v0.7.21 tests passed');
+console.log('Swoop TV v0.7.22 tests passed');

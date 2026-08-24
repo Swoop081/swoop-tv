@@ -1,10 +1,20 @@
 # Swoop TV
 
-**Current build: v0.7.21 — Cast Library Browsing**
+**Current build: v0.7.22 — Snoak Daily Discovery**
 
-Cast portraits on movie and TV detail pages are now interactive. Selecting a cast member opens a dedicated Swoop TV filmography page that checks that person's TMDb movie/TV credits against the titles actually available from the user's enabled TV providers, then shows only confident local matches.
+Swoop TV now uses a curated set of **Snoak's actively maintained MDBList lists as the primary external discovery layer** for Top 100, Trending, New & Hot and selected genre rails. The app still displays only titles that confidently exist in the user's enabled TV-provider library; Snoak/MDBList determines ranking and candidate order, never playability.
 
-The cast route preserves the title-detail screen underneath it, and opening a movie/show from the cast page preserves the cast page as well, so Back works as a proper navigation stack: **title → cast member → another title → cast member → original title**. The bundled Cloudflare Worker advances to **v0.1.12** for person-credit lookup. Redeploy the Worker to enable the new cast browsing service.
+The bundled Cloudflare Worker advances to **v0.1.13**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable. Redeploy the Worker to enable Snoak-backed discovery.
+
+### Snoak-backed discovery
+
+- **Top 100 Movies / TV Shows:** primarily blend Snoak's daily JustWatch, Television Stats, IMDb, Rotten Tomatoes and Trakt popularity feeds, with existing TMDb/official signals retained as fallbacks.
+- **Trending Now:** prioritises Snoak's Trakt Trending, JustWatch and Television Stats lists.
+- **New & Hot:** prioritises Snoak's Latest Streaming Movies / Latest Shows and, for movies, Trakt's digital-release trending feed.
+- **Popular on Streaming:** prioritises Snoak's JustWatch popularity list.
+- **Genre rails:** Action, Animation, Comedy, Crime TV, Drama, Horror movies, Reality TV, Romance movies, Sci-Fi and Thriller rows use Snoak's 500-title popular lists where available, then intersect them with the provider catalogue.
+- Matching still uses Swoop TV's strict title/year/ID identity rules, so a popular-list candidate cannot stand in for a different release merely because the names are similar.
+- No end user needs an MDBList account or key. The existing optional in-app MDBList key remains only for user-created custom rows.
 
 
 ## Visible progress for long-running work
