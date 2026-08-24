@@ -1,3 +1,15 @@
+## v0.7.31 — Movies + TV Category Rails
+
+- Reworks the **Movies** and **TV Shows** landing pages to use the same category-first browse model as Live TV: provider category heading followed by a horizontal swipe rail of titles.
+- Movie and TV category rows follow the exact order returned by each Xtream provider's `get_vod_categories` / `get_series_categories` APIs. Multi-provider ordering respects Swoop TV provider priority and preserves the first occurrence of overlapping category names.
+- M3U/provider categories that do not expose an Xtream category endpoint retain first-seen provider order rather than being alphabetically rearranged.
+- Windows/SQLite mode loads only **18 titles per visible category**, with **10 categories initially mounted**. **Load more categories** adds another 10 rows at a time instead of hydrating the entire movie/show catalogue.
+- Native category queries are limited and concurrent, then patch only the completed rail in place. This keeps horizontal scroll positions stable and avoids the full-page rerender behavior of the old giant grid.
+- Existing movie source stacking remains intact inside category rails; TV shows keep their existing provider identities. Poster artwork, gold IMDb badges and detail navigation continue to use the current metadata system.
+- Future Xtream refreshes persist provider category ID/order on Movies and TV Shows as well as Live TV. Existing catalogues do **not** require a refresh because the tab fetches provider category order live and caches it for ten minutes.
+- The dedicated Category-First **TV Guide/EPG is unchanged**, as is the Live TV landing page from v0.7.30.
+- No Cloudflare Worker redeploy, provider refresh, SQLite rebuild, watched/resume reset or playback-profile change is required.
+
 ## v0.7.30 — Live TV Category Rails
 
 - Reworks the **Live TV landing page only** into provider-category rows inspired by modern mobile TV apps: category name first, then a horizontal swipe rail of channel tiles.

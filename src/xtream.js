@@ -167,7 +167,9 @@ export async function importXtream(config, providerId='xtream', onProgress=()=>{
   const liveCats=liveData.categories, liveStreams=liveData.items;
   const liveCategoryOrder=new Map((liveCats||[]).map((c,i)=>[String(c.category_id),i]));
   const vodCats=vodData.categories, vodStreams=vodData.items;
+  const vodCategoryOrder=new Map((vodCats||[]).map((c,i)=>[String(c.category_id),i]));
   const seriesCats=seriesData.categories, series=seriesData.items;
+  const seriesCategoryOrder=new Map((seriesCats||[]).map((c,i)=>[String(c.category_id),i]));
   const catName = (cats,id)=>cats.find(c=>String(c.category_id)===String(id))?.category_name || 'Uncategorised';
   const items = [];
   for (const s of liveStreams || []) items.push({
@@ -182,13 +184,14 @@ export async function importXtream(config, providerId='xtream', onProgress=()=>{
     plot:s.plot || s.description || '', genre:s.genre || '', duration:s.duration || '',
     tmdbId:s.tmdb || s.tmdb_id || '', imdbId:s.imdb_id || '',
     streamUrl:`${server}/movie/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${s.stream_id}.${s.container_extension || 'mp4'}`,
-    streamId:s.stream_id
+    streamId:s.stream_id, providerCategoryId:String(s.category_id??''), providerCategoryOrder:Number(vodCategoryOrder.get(String(s.category_id))??999999)
   });
   for (const s of series || []) items.push({
     id:`${providerId}:series:${s.series_id}`, providerId, source:'xtream', kind:'series', name:s.name || 'Untitled series',
     group:catName(seriesCats,s.category_id), logo:normalizeAssetUrl(s.cover, server), backdrop:normalizeAssetUrl(Array.isArray(s.backdrop_path)?s.backdrop_path[0]:s.backdrop_path, server), year:s.releaseDate || s.year || '', rating:s.rating || '', providerAddedAt:providerTimestamp(s.added || s.last_modified || s.created_at || s.timestamp),
     plot:s.plot || s.description || '', genre:s.genre || '', duration:s.episode_run_time || '',
-    tmdbId:s.tmdb || s.tmdb_id || '', imdbId:s.imdb_id || '', streamUrl:'', seriesId:s.series_id
+    tmdbId:s.tmdb || s.tmdb_id || '', imdbId:s.imdb_id || '', streamUrl:'', seriesId:s.series_id,
+    providerCategoryId:String(s.category_id??''), providerCategoryOrder:Number(seriesCategoryOrder.get(String(s.category_id))??999999)
   });
   return {items, categories:{live:liveCats, movie:vodCats, series:seriesCats}, counts:{live:liveStreams.length,movie:vodStreams.length,series:series.length}};
 }
@@ -214,6 +217,16 @@ export async function fetchXtreamSimpleEpg(config, streamId) {
 
 export async function fetchXtreamLiveCategories(config) {
   const data=await getJson(config,'get_live_categories');
+  return Array.isArray(data)?data:[];
+}
+
+export async function fetchXtreamVodCategories(config) {
+  const data=await getJson(config,'get_vod_categories');
+  return Array.isArray(data)?data:[];
+}
+
+export async function fetchXtreamSeriesCategories(config) {
+  const data=await getJson(config,'get_series_categories');
   return Array.isArray(data)?data:[];
 }
 

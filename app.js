@@ -1,6 +1,6 @@
 import {parseM3U} from './src/m3u.js';
 import {parseXMLTV} from './src/xmltv.js';
-import {testXtream, importXtream, fetchXtreamAssetBlob, fetchXtreamSeriesInfo, fetchXtreamVodInfo, fetchXtreamShortEpg, fetchXtreamSimpleEpg, fetchXtreamLiveCategories, fetchXtreamXmltvText, buildXtreamSeriesStreamUrl} from './src/xtream.js';
+import {testXtream, importXtream, fetchXtreamAssetBlob, fetchXtreamSeriesInfo, fetchXtreamVodInfo, fetchXtreamShortEpg, fetchXtreamSimpleEpg, fetchXtreamLiveCategories, fetchXtreamVodCategories, fetchXtreamSeriesCategories, fetchXtreamXmltvText, buildXtreamSeriesStreamUrl} from './src/xtream.js';
 import {isNativeWindows, nativePlay, nativeStop, nativeFetchText, nativeDiagnostics, nativeControl, nativeSwitchLive} from './src/native.js';
 import {nativeCatalogStatus,nativeCatalogReplaceProvider,nativeCatalogRemoveProvider,nativeCatalogQuery,nativeCatalogSearch,nativeCatalogCategories,nativeCatalogGet,nativeCatalogSources,nativeCatalogMatchPayload} from './src/nativeCatalog.js';
 import {getMDBListItems, getMDBListOfficialItems, getMDBListStreamingChart, matchMDBListToCatalog, normalizeMediaTitle} from './src/mdblist.js';
@@ -59,7 +59,7 @@ async function activateNativeCatalogIfAvailable(){
   const aux=await loadAuxState().catch(()=>null);if(aux){if(!invalidateDiscovery&&aux.webDiscovery)state.webDiscovery=aux.webDiscovery;if(!invalidateMetadataArtwork&&aux.metadataCache)state.metadataCache=sanitizeImdbMetadataCache(aux.metadataCache);metadataRevision++;if(Array.isArray(aux.mdblistRows)&&aux.mdblistRows.length){const compact=new Map((state.mdblistRows||[]).map(r=>[r.uid,r]));state.mdblistRows=aux.mdblistRows.map(r=>({...compact.get(r.uid),...r}))}}
   const [movies,series,live,catsM,catsS,catsL]=await Promise.all([
     nativeCatalogQuery({kind:'movie',providerIds:nativeEnabledProviderIds(),limit:144,sort:'recent'}),nativeCatalogQuery({kind:'series',providerIds:nativeEnabledProviderIds(),limit:96,sort:'recent'}),nativeCatalogQuery({kind:'live',providerIds:nativeEnabledProviderIds(),limit:144,sort:'name'}),
-    nativeCatalogCategories('movie',{providerIds:nativeEnabledProviderIds(),limit:40}),nativeCatalogCategories('series',{providerIds:nativeEnabledProviderIds(),limit:40}),nativeCatalogCategories('live',{providerIds:nativeEnabledProviderIds(),limit:200})
+    nativeCatalogCategories('movie',{providerIds:nativeEnabledProviderIds(),limit:200}),nativeCatalogCategories('series',{providerIds:nativeEnabledProviderIds(),limit:200}),nativeCatalogCategories('live',{providerIds:nativeEnabledProviderIds(),limit:200})
   ]);
   state.catalog=[...cacheNativeItems(movies?.items||[]),...cacheNativeItems(series?.items||[]),...cacheNativeItems(live?.items||[])];
   nativeCategoryCache.movie=catsM?.items||[];nativeCategoryCache.series=catsS?.items||[];nativeCategoryCache.live=catsL?.items||[];
@@ -178,8 +178,15 @@ const detailEpisodeItems=new Map();
 const viewLimits={live:96,movie:72,series:72};
 let guideLimit=48,guideCategory='',liveCategory='',providerFilter='all',pageCategory={movie:'',series:''};
 const LIVE_RAIL_CHANNEL_LIMIT=18,LIVE_RAIL_CATEGORY_BATCH=10;
+const MEDIA_RAIL_ITEM_LIMIT=18,MEDIA_RAIL_CATEGORY_BATCH=10;
 let liveRailCategoryLimit=LIVE_RAIL_CATEGORY_BATCH;
+const mediaRailCategoryLimit={movie:MEDIA_RAIL_CATEGORY_BATCH,series:MEDIA_RAIL_CATEGORY_BATCH};
 const liveRailCache=new Map(),liveRailRequests=new Map();
+const mediaRailCache=new Map(),mediaRailRequests=new Map();
+const mediaProviderCategoryCache={
+  movie:{key:'',items:[],loadedAt:0,loading:null,loadingKey:''},
+  series:{key:'',items:[],loadedAt:0,loading:null,loadingKey:''}
+};
 let guideStart=Math.floor(Date.now()/1800000)*1800000;
 const epgCache=new Map();
 const guideChannelCache={key:'',items:[],total:0};
@@ -276,7 +283,7 @@ let movieStackCatalogRef=null,movieStackIndex=null,liveStackCatalogRef=null,live
 function getMovieStackIndex(){const catalog=activeCatalog(),priorityKey=state.providers.map(p=>`${p.id}:${p.priority}`).join('|');if(movieStackCatalogRef!==catalog||movieStackPriorityKey!==priorityKey||!movieStackIndex){movieStackCatalogRef=catalog;movieStackPriorityKey=priorityKey;movieStackIndex=buildMovieStackIndex(catalog,providerPriorityMap())}return movieStackIndex}
 function providerPriorityMap(){return Object.fromEntries(state.providers.map((p,i)=>[p.id,Number.isFinite(Number(p.priority))?Number(p.priority):i]))}
 function getLiveStackIndex(){const catalog=activeCatalog(),priorityKey=state.providers.map(p=>`${p.id}:${p.priority}`).join('|');if(liveStackCatalogRef!==catalog||liveStackPriorityKey!==priorityKey||!liveStackIndex){liveStackCatalogRef=catalog;liveStackPriorityKey=priorityKey;liveStackIndex=buildLiveStackIndex(catalog,providerPriorityMap())}return liveStackIndex}
-function resetMovieStackIndex(){activeCatalogSourceRef=null;activeCatalogContext='';activeCatalogCache=[];movieStackCatalogRef=null;movieStackIndex=null;movieStackPriorityKey='';liveStackCatalogRef=null;liveStackIndex=null;liveStackPriorityKey='';searchIndexKey='';searchIndexCache=[];if(typeof nativeHomeRowCache!=='undefined')nativeHomeRowCache.clear();if(typeof liveRailCache!=='undefined')liveRailCache.clear();for(const k of ['movie','series','live'])if(nativePageCache?.[k]){nativePageCache[k].key='';nativePageCache[k].items=[];nativePageCache[k].total=0}}
+function resetMovieStackIndex(){activeCatalogSourceRef=null;activeCatalogContext='';activeCatalogCache=[];movieStackCatalogRef=null;movieStackIndex=null;movieStackPriorityKey='';liveStackCatalogRef=null;liveStackIndex=null;liveStackPriorityKey='';searchIndexKey='';searchIndexCache=[];if(typeof nativeHomeRowCache!=='undefined')nativeHomeRowCache.clear();if(typeof liveRailCache!=='undefined')liveRailCache.clear();if(typeof mediaRailCache!=='undefined')mediaRailCache.clear();for(const kind of ['movie','series'])if(typeof mediaProviderCategoryCache!=='undefined'&&mediaProviderCategoryCache[kind]){mediaProviderCategoryCache[kind].key='';mediaProviderCategoryCache[kind].items=[];mediaProviderCategoryCache[kind].loadedAt=0;mediaProviderCategoryCache[kind].loadingKey=''}for(const k of ['movie','series','live'])if(nativePageCache?.[k]){nativePageCache[k].key='';nativePageCache[k].items=[];nativePageCache[k].total=0}}
 function items(kind){if(kind==='movie')return getMovieStackIndex().stacked;if(kind==='live')return getLiveStackIndex().stacked;return activeCatalog().filter(x=>x.kind===kind)}
 function preferredLiveSource(item){if(item?.kind!=='live')return item;if(providerFilter!=='all'&&Array.isArray(item.sources)){const filtered=item.sources.filter(s=>s.providerId===providerFilter);if(filtered.length)return selectLiveSource({...item,sources:filtered},providerPriorityMap())}return selectLiveSource(item,providerPriorityMap())}
 function logicalItemIds(item){
@@ -909,6 +916,141 @@ function page(kind,title){
   return `<main class="page cinematic-page"><section class="page-hero ${kind==='live'?'live-page-hero':''}">${leadArt}<div class="page-hero-shade"></div><div class="page-hero-copy"><div class="eyebrow">${kind==='live'?'WATCH NOW':kind==='movie'?'ON DEMAND':'BINGE-WORTHY'}</div><h1>${esc(title)}</h1><p>${catalogRawTotal()?`${total.toLocaleString()} ${kind==='live'?'channels':kind==='movie'?'movies':'series'} from ${esc(providerName)}.`:'Demo content — connect a provider to populate your library.'}</p><div class="cta-row">${leadAction}${kind==='live'?'<button class="btn secondary" data-page="guide">▤ Open TV Guide</button>':''}</div></div></section>
     <div class="page-content"><div class="provider-filter-pills"><button class="${providerFilter==='all'?'active':''}" data-provider-filter="all">All Providers</button>${providerPills.map(p=>`<button class="${providerFilter===p.id?'active':''}" data-provider-filter="${esc(p.id)}">${esc(p.name)}</button>`).join('')}</div><div class="page-toolbar"><div class="category-pills"><button data-page-category="${esc(kind)}" data-page-group="">All</button>${groups.map(g=>`<button data-page-category="${esc(kind)}" data-page-group="${esc(g)}">${esc(g)}</button>`).join('')}</div><button class="btn secondary compact-btn" data-modal="provider">＋ Provider</button></div>${loading}${arr.length?`<div class="content-grid ${kind==='live'?'live-content-grid':'poster-content-grid'}">${cards}</div>${shown.length<total?`<div class="load-more-wrap"><button class="btn secondary" data-load-more="${kind}">Load more · showing ${shown.length.toLocaleString()} of ${total.toLocaleString()}</button></div>`:''}`:loading?'':empty('No content yet','Connect a TV provider to populate this section.')}</div></main>`;
 }
+
+function mediaProviderCategoryKey(kind='movie'){
+  const selected=enabledProviders().filter(p=>providerFilter==='all'||p.id===providerFilter);
+  return `${kind}|${providerFilter}|${selected.map(p=>`${p.id}:${Number(p.priority||0)}:${Number(p.lastRefreshed||0)}`).join(',')}`;
+}
+function browserProviderCategories(kind='movie',providerId=''){
+  const rows=activeCatalog().filter(x=>x.kind===kind&&(!providerId||x.providerId===providerId));
+  const counts=new Map(),first=new Map();let order=0;
+  for(const item of rows){const name=String(item.group||'Uncategorised').trim()||'Uncategorised';counts.set(name,(counts.get(name)||0)+1);if(!first.has(name))first.set(name,order++);}
+  return [...counts].map(([name,count])=>({name,count,provider_order:Number(first.get(name)||0),first_seen:Number(first.get(name)||0)}));
+}
+async function ensureMediaProviderCategoryOrder(kind='movie',{force=false}={}){
+  if(!['movie','series'].includes(kind))return false;
+  const cache=mediaProviderCategoryCache[kind],key=mediaProviderCategoryKey(kind),now=Date.now();
+  if(!force&&cache.key===key&&cache.items.length&&now-cache.loadedAt<10*60*1000)return false;
+  if(cache.loading&&cache.loadingKey===key)return cache.loading;
+  const before=cache.items.map(x=>`${x.name}:${x.count}`).join('\u0001');
+  const task=(async()=>{
+    const selected=enabledProviders().filter(p=>providerFilter==='all'||p.id===providerFilter);
+    let base=[];
+    if(nativeCatalogMode){
+      const args={providerId:providerFilter,providerIds:providerFilter==='all'?nativeEnabledProviderIds():[],limit:200};
+      base=(await nativeCatalogCategories(kind,args).catch(()=>null))?.items||[];
+    }else{
+      const all=providerFilter==='all'?providerFiltered(activeCatalog().filter(x=>x.kind===kind)):activeCatalog().filter(x=>x.kind===kind&&x.providerId===providerFilter);
+      const counts=new Map(),first=new Map();let i=0;
+      for(const item of all){const name=String(item.group||'Uncategorised').trim()||'Uncategorised';counts.set(name,(counts.get(name)||0)+1);if(!first.has(name))first.set(name,i++);}
+      base=[...counts].map(([name,count])=>({name,count,provider_order:Number(first.get(name)||0),first_seen:Number(first.get(name)||0)}));
+    }
+    const byName=new Map(base.filter(x=>x?.name).map(x=>[String(x.name),{name:String(x.name),count:Number(x.count||0),providerOrder:Number(x.provider_order??999999),firstSeen:Number(x.first_seen??999999)}]));
+    const ordered=[],used=new Set();
+    for(const provider of selected){
+      let names=[];
+      if(provider.type==='xtream'){
+        const cfg=providerConfigFor(provider.id);
+        if(cfg?.server&&cfg?.username&&cfg?.password){
+          try{
+            const cats=kind==='movie'?await fetchXtreamVodCategories(cfg):await fetchXtreamSeriesCategories(cfg);
+            names=cats.map(cat=>String(cat?.category_name||'').trim()).filter(Boolean);
+          }catch{}
+        }
+      }
+      if(!names.length){
+        if(nativeCatalogMode){
+          const own=(await nativeCatalogCategories(kind,{providerId:provider.id,limit:200}).catch(()=>null))?.items||[];
+          names=own.map(x=>String(x?.name||'').trim()).filter(Boolean);
+        }else names=browserProviderCategories(kind,provider.id).sort((a,b)=>(a.provider_order-b.provider_order)||(a.first_seen-b.first_seen)).map(x=>x.name);
+      }
+      for(const name of names){
+        if(used.has(name))continue;
+        const hit=byName.get(name);
+        if(hit){ordered.push(hit);used.add(name)}
+      }
+    }
+    for(const cat of [...byName.values()].sort((a,b)=>(a.providerOrder-b.providerOrder)||(a.firstSeen-b.firstSeen)||a.name.localeCompare(b.name))){
+      if(!used.has(cat.name)){ordered.push(cat);used.add(cat.name)}
+    }
+    if(mediaProviderCategoryKey(kind)!==key)return false;
+    cache.key=key;cache.items=ordered;cache.loadedAt=Date.now();
+    return before!==ordered.map(x=>`${x.name}:${x.count}`).join('\u0001');
+  })().finally(()=>{if(cache.loadingKey===key){cache.loading=null;cache.loadingKey=''}});
+  cache.loading=task;cache.loadingKey=key;return task;
+}
+function mediaRailCategories(kind='movie'){
+  const cache=mediaProviderCategoryCache[kind],key=mediaProviderCategoryKey(kind);
+  if(cache?.key===key&&cache.items.length)return cache.items;
+  if(nativeCatalogMode)return (nativeCategoryCache[kind]||[]).filter(x=>x?.name&&Number(x.count)>0).map(x=>({name:String(x.name),count:Number(x.count||0),providerOrder:Number(x.provider_order??999999),firstSeen:Number(x.first_seen??999999)})).sort((a,b)=>(a.providerOrder-b.providerOrder)||(a.firstSeen-b.firstSeen)||a.name.localeCompare(b.name));
+  const counts=new Map(),first=new Map();let i=0;
+  for(const item of providerFiltered(activeCatalog().filter(x=>x.kind===kind))){const name=String(item.group||'Uncategorised').trim()||'Uncategorised';counts.set(name,(counts.get(name)||0)+1);if(!first.has(name))first.set(name,i++);}
+  return [...counts].map(([name,count])=>({name,count,providerOrder:Number(first.get(name)||0),firstSeen:Number(first.get(name)||0)})).sort((a,b)=>a.providerOrder-b.providerOrder);
+}
+function mediaRailKey(kind='movie',category=''){
+  const revision=enabledProviders().map(p=>`${p.id}:${Number(p.lastRefreshed||0)}`).join(',');
+  return `${kind}|${providerFilter}|${revision}|${category}`;
+}
+function mediaRailBrowserItems(kind='movie',category=''){
+  let raw=activeCatalog().filter(x=>x.kind===kind&&String(x.group||'Uncategorised')===category);
+  if(providerFilter!=='all')raw=raw.filter(x=>x.providerId===providerFilter);
+  if(kind==='movie')raw=collapseMovieSources(raw,raw);
+  return raw.slice(0,MEDIA_RAIL_ITEM_LIMIT);
+}
+function mediaRailSnapshot(kind='movie',category=''){
+  if(!nativeCatalogMode)return {items:mediaRailBrowserItems(kind,category),ready:true,loading:false};
+  const key=mediaRailKey(kind,category),cached=mediaRailCache.get(key);return {items:cached?.items||[],ready:Boolean(cached),loading:mediaRailRequests.has(key)};
+}
+function mediaRailTrackMarkup(kind='movie',category=''){
+  const snap=mediaRailSnapshot(kind,category);
+  if(snap.ready&&snap.items.length)return `<div class="rail media-category-rail-track">${snap.items.map(x=>card(x,true)).join('')}</div>`;
+  if(snap.ready)return `<div class="live-category-empty-inline">No ${kind==='movie'?'movies':'TV shows'} returned in this category.</div>`;
+  return `<div class="media-rail-skeleton" aria-label="Loading ${esc(category)} ${kind==='movie'?'movies':'TV shows'}">${Array.from({length:6},()=>'<i></i>').join('')}</div>`;
+}
+function mediaCategoryRailMarkup(kind='movie',cat={}){
+  const label=kind==='movie'?'movies':'shows';
+  return `<section class="section poster-section media-category-section" data-media-rail-kind="${esc(kind)}" data-media-rail-category="${esc(cat.name)}"><div class="section-head"><div><h2>${esc(cat.name)}</h2><span class="section-meta">${Number(cat.count||0).toLocaleString()} ${label}</span></div><span class="rail-arrow">›</span></div><div class="media-category-rail-body">${mediaRailTrackMarkup(kind,cat.name)}</div></section>`;
+}
+function patchMediaCategoryRail(kind='movie',category=''){
+  const expectedPage=kind==='movie'?'movies':'series';
+  if(state.page!==expectedPage||detailItem||personView)return;
+  const section=[...document.querySelectorAll('[data-media-rail-category]')].find(x=>x.dataset.mediaRailKind===kind&&x.dataset.mediaRailCategory===category);if(!section)return;
+  const body=section.querySelector('.media-category-rail-body');if(!body)return;
+  body.innerHTML=mediaRailTrackMarkup(kind,category);hydrateArtwork(body);bindDynamicCards(body);hydrateVisibleImdbRatings(body);
+}
+async function ensureMediaCategoryRail(kind='movie',category=''){
+  if(!nativeCatalogMode||!category)return mediaRailSnapshot(kind,category);
+  const key=mediaRailKey(kind,category);if(mediaRailCache.has(key))return mediaRailSnapshot(kind,category);if(mediaRailRequests.has(key))return mediaRailRequests.get(key);
+  const task=(async()=>{
+    const args={kind,group:category,limit:MEDIA_RAIL_ITEM_LIMIT,offset:0,sort:'recent'};
+    if(providerFilter==='all')args.providerIds=nativeEnabledProviderIds();else args.providerId=providerFilter;
+    const result=await nativeCatalogQuery(args),items=cacheNativeItems(result?.items||[]);
+    mediaRailCache.set(key,{items,total:Number(result?.total||items.length),loadedAt:Date.now()});
+    return {items,ready:true,loading:false};
+  })().finally(()=>mediaRailRequests.delete(key));
+  mediaRailRequests.set(key,task);return task;
+}
+async function primeMediaCategoryRails(kind='movie'){
+  const expectedPage=kind==='movie'?'movies':'series';
+  if(!nativeCatalogMode||state.page!==expectedPage||detailItem||personView)return;
+  const limit=mediaRailCategoryLimit[kind]||MEDIA_RAIL_CATEGORY_BATCH;
+  const cats=mediaRailCategories(kind).slice(0,limit).map(x=>x.name).filter(Boolean),pending=cats.filter(name=>!mediaRailCache.has(mediaRailKey(kind,name)));
+  let cursor=0;
+  async function worker(){while(cursor<pending.length){const name=pending[cursor++];try{await ensureMediaCategoryRail(kind,name);patchMediaCategoryRail(kind,name)}catch{mediaRailCache.set(mediaRailKey(kind,name),{items:[],total:0,loadedAt:Date.now()});patchMediaCategoryRail(kind,name)}}}
+  await Promise.all(Array.from({length:Math.min(3,pending.length)},worker));
+}
+function mediaCategoryPage(kind='movie',title='Movies'){
+  const base=nativeCatalogMode?(nativePageCache[kind]?.items||[]):items(kind),all=providerFiltered(base);
+  const total=nativeCatalogMode?(providerFilter==='all'?nativeTotal(kind):Number(providerById(providerFilter)?.counts?.[kind]||0)):providerFiltered(items(kind)).length;
+  const providerName=providerSummaryName(),providerPills=providerFilterOptions(),categories=mediaRailCategories(kind),limit=mediaRailCategoryLimit[kind]||MEDIA_RAIL_CATEGORY_BATCH,shownCategories=categories.slice(0,limit);
+  const leadRaw=all.find(x=>visualItem(x).backdrop||visualItem(x).logo)||all[0],lead=visualItem(leadRaw),leadBackdrop=lead?(lead.backdrop||lead.logo):'';
+  const leadArt=leadBackdrop?`<img data-swoop-art="${esc(leadBackdrop)}" class="page-hero-art page-hero-backdrop" alt="" loading="eager">`:'';
+  const loading=nativeCatalogMode&&!categories.length?`<div class="native-query-loading"><div><span class="provider-spinner"></span><strong>Loading ${esc(title)} categories from the local catalogue…</strong><div class="activity-progress indeterminate"><b></b></div><small>Still working — Swoop TV has not frozen.</small></div></div>`:'';
+  const rows=shownCategories.map(cat=>mediaCategoryRailMarkup(kind,cat)).join('');
+  return `<main class="page cinematic-page media-category-page"><section class="page-hero">${leadArt}<div class="page-hero-shade"></div><div class="page-hero-copy"><div class="eyebrow">${kind==='movie'?'ON DEMAND':'BINGE-WORTHY'}</div><h1>${esc(title)}</h1><p>${catalogRawTotal()?`${total.toLocaleString()} ${kind==='movie'?'movies':'series'} from ${esc(providerName)}. Browse them in your provider’s own category order.`:'Demo content — connect a provider to populate your library.'}</p>${lead?`<div class="cta-row"><button class="btn play-btn page-feature-play" data-detail="${esc(lead.id)}">ⓘ Explore ${esc(cleanDisplayTitle(lead))}</button></div>`:''}</div></section>
+  <div class="page-content media-category-content"><div class="provider-filter-pills"><button class="${providerFilter==='all'?'active':''}" data-provider-filter="all">All Providers</button>${providerPills.map(p=>`<button class="${providerFilter===p.id?'active':''}" data-provider-filter="${esc(p.id)}">${esc(p.name)}</button>`).join('')}</div><section class="media-category-browser"><div class="section-head media-browser-head"><div><h2>Browse ${esc(title)}</h2><span class="section-meta">Swipe across each provider category</span></div><button class="btn secondary compact-btn" data-modal="provider">＋ Provider</button></div>${loading}${rows||(!loading?empty(`No ${title} categories`,'Refresh or reconnect your TV provider to load its categories.'):'')}${shownCategories.length<categories.length?`<div class="load-more-wrap"><button class="btn secondary" data-media-more-categories="${esc(kind)}">Load more categories · showing ${shownCategories.length.toLocaleString()} of ${categories.length.toLocaleString()}</button></div>`:''}</section></div></main>`;
+}
+
 function liveRailCategories(){return guideCategories().filter(x=>x.name)}
 function liveRailKey(category=''){const revision=enabledProviders().map(p=>`${p.id}:${Number(p.lastRefreshed||0)}`).join(',');return `${providerFilter}|${revision}|${category}`}
 function liveRailBrowserItems(category=''){
@@ -1170,8 +1312,8 @@ function render(){
   else if(state.page==='home')body=home();
   else if(state.page==='live')body=livePage();
   else if(state.page==='guide')body=guidePage();
-  else if(state.page==='movies')body=page('movie','Movies');
-  else if(state.page==='series')body=page('series','TV Shows');
+  else if(state.page==='movies')body=mediaCategoryPage('movie','Movies');
+  else if(state.page==='series')body=mediaCategoryPage('series','TV Shows');
   else if(state.page==='mylist')body=myListPage();
   else if(state.page==='search')body=searchPage();
   else body=settingsPage();
@@ -1184,6 +1326,8 @@ function render(){
   hydrateArtwork();
   if(!profilePickerOpen&&!mediaRoute&&state.page==='guide')setTimeout(async()=>{const changed=await ensureGuideProviderCategoryOrder().catch(()=>false);if(changed&&state.page==='guide'&&!mediaRoute){render();return}loadGuideEpg()},0);
   if(!profilePickerOpen&&!mediaRoute&&state.page==='live')setTimeout(async()=>{const changed=await ensureGuideProviderCategoryOrder().catch(()=>false);if(changed&&state.page==='live'&&!detailItem&&!personView){render();return}primeLiveCategoryRails()},0);
+  if(!profilePickerOpen&&!mediaRoute&&state.page==='movies')setTimeout(async()=>{const changed=await ensureMediaProviderCategoryOrder('movie').catch(()=>false);if(changed&&state.page==='movies'&&!detailItem&&!personView){render();return}primeMediaCategoryRails('movie')},0);
+  if(!profilePickerOpen&&!mediaRoute&&state.page==='series')setTimeout(async()=>{const changed=await ensureMediaProviderCategoryOrder('series').catch(()=>false);if(changed&&state.page==='series'&&!detailItem&&!personView){render();return}primeMediaCategoryRails('series')},0);
   if(!profilePickerOpen&&!mediaRoute&&state.page==='home'){
     mountLazyHomeRows(document);
     if(state.catalog.length)setTimeout(()=>refreshDiscoveryRows(false),largeLibraryMode()?1200:0);
@@ -1191,7 +1335,6 @@ function render(){
   }
   if(!profilePickerOpen&&!mediaRoute&&playerItem?.kind==='live')setTimeout(()=>{loadPlayerNowNext(playerItem);loadLiveMiniGuide(playerItem)},0);
   if(!profilePickerOpen&&state.catalog.length)setTimeout(scheduleMetadataEnrichment,largeLibraryMode()?1800:120);
-  if(!profilePickerOpen&&!mediaRoute&&nativeCatalogMode){if(state.page==='movies')scheduleNativePage('movie');if(state.page==='series')scheduleNativePage('series');}
   if(!mediaRoute)scheduleHeroRotation();
 }
 
@@ -1764,6 +1907,7 @@ function bind(){
   document.querySelectorAll('[data-live-favourite]').forEach(el=>el.onclick=()=>{const item=savedItem(el.dataset.liveFavourite)||playerItem;if(item)toggleLiveFavourite(item)});
   document.querySelectorAll('[data-live-category]').forEach(el=>el.onclick=()=>{liveCategory=el.dataset.liveCategory||'';viewLimits.live=96;if(nativeCatalogMode)nativePageCache.live.key='';render()});
   document.querySelectorAll('[data-live-more-categories]').forEach(el=>el.onclick=()=>{liveRailCategoryLimit+=LIVE_RAIL_CATEGORY_BATCH;render()});
+  document.querySelectorAll('[data-media-more-categories]').forEach(el=>el.onclick=()=>{const kind=el.dataset.mediaMoreCategories||'movie';if(mediaRailCategoryLimit[kind]!==undefined){mediaRailCategoryLimit[kind]+=MEDIA_RAIL_CATEGORY_BATCH;render()}});
   document.querySelectorAll('[data-player-guide]').forEach(el=>el.onclick=async()=>{if(playerItem?.kind==='live'){playerUiHidden=true;state.page='guide';render()}else{await closePlayer();state.page='guide';render()}});
   document.querySelectorAll('[data-trailer]').forEach(el=>el.onclick=()=>{trailerKey=el.dataset.trailer||'';trailerTitle=el.dataset.trailerTitle||detailItem?.name||'Trailer';render()});
   document.querySelectorAll('[data-trailer-close]').forEach(el=>el.onclick=()=>{trailerKey='';trailerTitle='';render()});
@@ -1772,7 +1916,7 @@ function bind(){
   document.querySelector('[data-guide-now]')?.addEventListener('click',()=>{guideStart=Math.floor(Date.now()/1800000)*1800000;guideLoadToken++;render()});
   document.querySelectorAll('[data-guide-category]').forEach(el=>el.onclick=()=>{const next=el.dataset.guideCategory||'';if(next===guideCategory)return;guideCategory=next;guideLimit=48;guideError='';guideLoading=false;guideLoadToken++;guideChannelCache.key='';guideChannelCache.items=[];guideChannelCache.total=0;render()});
   document.querySelector('[data-guide-more]')?.addEventListener('click',()=>{guideLimit+=48;guideError='';guideLoadToken++;guideChannelCache.key='';render()});
-  document.querySelectorAll('[data-provider-filter]').forEach(el=>el.onclick=()=>{providerFilter=el.dataset.providerFilter||'all';viewLimits.live=96;viewLimits.movie=72;viewLimits.series=72;liveRailCategoryLimit=LIVE_RAIL_CATEGORY_BATCH;if(nativeCatalogMode)for(const k of ['live','movie','series'])nativePageCache[k].key='';render()});
+  document.querySelectorAll('[data-provider-filter]').forEach(el=>el.onclick=()=>{providerFilter=el.dataset.providerFilter||'all';viewLimits.live=96;viewLimits.movie=72;viewLimits.series=72;liveRailCategoryLimit=LIVE_RAIL_CATEGORY_BATCH;mediaRailCategoryLimit.movie=MEDIA_RAIL_CATEGORY_BATCH;mediaRailCategoryLimit.series=MEDIA_RAIL_CATEGORY_BATCH;if(nativeCatalogMode)for(const k of ['live','movie','series'])nativePageCache[k].key='';render()});
   document.querySelectorAll('[data-provider-toggle]').forEach(el=>el.onclick=()=>toggleProviderEnabled(el.dataset.providerToggle));
   document.querySelectorAll('[data-provider-refresh]').forEach(el=>el.onclick=()=>refreshProvider(el.dataset.providerRefresh));
   document.querySelectorAll('[data-provider-edit]').forEach(el=>el.onclick=()=>{const id=el.dataset.providerEdit,p=providerById(id),cfg=providerConfigById(id)||p;if(!p)return;const tab=document.querySelector(`[data-provider-tab="${p.type}"]`);tab?.click();const form=document.querySelector(p.type==='xtream'?'#xtreamForm':'#m3uForm');if(!form)return;const set=(name,value)=>{const input=form.querySelector(`[name="${name}"]`);if(input)input.value=value||''};set('name',p.name);if(p.type==='xtream'){set('server',cfg.server||p.server);set('username',cfg.username||'');set('password',cfg.password||'');set('relayUrl',cfg.relayUrl||p.relayUrl||'');set('relayToken',cfg.relayToken||'')}else{set('url',cfg.url||p.url||'');set('epgUrl',cfg.epgUrl||p.epgUrl||'')}form.scrollIntoView({behavior:'smooth',block:'start'});toast(`Editing ${p.name}`)});

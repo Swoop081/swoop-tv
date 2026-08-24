@@ -1,7 +1,12 @@
 # Swoop TV
 
-**Current build: v0.7.30 — Live TV Category Rails**
+**Current build: v0.7.31 — Movies + TV Category Rails**
 
+
+
+### v0.7.31 — Movies + TV Category Rails
+
+The **Movies** and **TV Shows** tabs now use the same category-first browsing pattern introduced for Live TV: provider categories are shown vertically in the provider's own order, and each category contains a horizontally swipeable rail. Windows/SQLite mode loads only 18 titles per visible category and mounts 10 category rows initially, so opening Movies or TV Shows no longer requires building one giant catalogue grid. Movie source stacking, strict title/year matching, IMDb hydration and the existing Live TV/TV Guide designs are preserved.
 
 
 ### v0.7.30 — Live TV Category Rails

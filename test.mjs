@@ -187,6 +187,8 @@ assert(progressSections.includes('live')&&progressSections.includes('movie')&&pr
 assert(imported.items.find(x=>x.kind==='movie')?.providerAddedAt===1787530200000,'Xtream VOD provider-added timestamp capture failed');
 assert(imported.items.find(x=>x.kind==='series')?.providerAddedAt===1787531200000,'Xtream series provider-added timestamp capture failed');
 assert(imported.items.find(x=>x.kind==='live')?.providerCategoryOrder===0&&imported.items.find(x=>x.kind==='live')?.providerCategoryId==='1','Xtream live provider-category ordering metadata failed');
+assert(imported.items.find(x=>x.kind==='movie')?.providerCategoryOrder===0&&imported.items.find(x=>x.kind==='movie')?.providerCategoryId==='2','Xtream movie provider-category ordering metadata failed');
+assert(imported.items.find(x=>x.kind==='series')?.providerCategoryOrder===0&&imported.items.find(x=>x.kind==='series')?.providerCategoryId==='3','Xtream series provider-category ordering metadata failed');
 
 
 // Detail metadata + EPG helper calls
@@ -374,6 +376,7 @@ assert(badSnoakRes.status===400,'Snoak route must reject non-allow-listed lists'
 const storageSource=fs.readFileSync(new URL('./src/storage.js',import.meta.url),'utf8');
 const appSource=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
 const cssSource=fs.readFileSync(new URL('./styles.css',import.meta.url),'utf8');
+const xtreamSource=fs.readFileSync(new URL('./src/xtream.js',import.meta.url),'utf8');
 assert(storageSource.includes("bulk-manifest-v2")&&storageSource.includes('CATALOG_CHUNK_SIZE=2000'),'Chunked durable catalog storage missing');
 assert(storageSource.includes("storage-worker.js"),'Legacy bulk background-worker migration missing');
 assert(appSource.includes('activeCatalogSourceRef')&&appSource.includes('activeCatalogCache'),'Stable active-catalog cache missing');
@@ -451,7 +454,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0730-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.30 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0731-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.31 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -460,7 +463,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.30'")&&swHotfix.includes('swoop-tv-v0730-shell'),'v0.7.30 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.31'")&&swHotfix.includes('swoop-tv-v0731-shell'),'v0.7.31 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -553,6 +556,15 @@ assert(appSource.includes('Swipe across each provider category')&&appSource.incl
 assert(detailCss.includes('.live-category-rail-track')&&detailCss.includes('.live-rail-card'),'Live TV swipe-rail/channel-tile styling missing');
 assert(appSource.includes("if(!profilePickerOpen&&!mediaRoute&&state.page==='guide')")&&appSource.includes('loadGuideEpg()'),'Dedicated TV Guide EPG route must remain intact');
 
+// v0.7.31 Movies + TV Shows use the same provider-category swipe-rail model.
+assert(appSource.includes('MEDIA_RAIL_ITEM_LIMIT=18')&&appSource.includes('MEDIA_RAIL_CATEGORY_BATCH=10')&&appSource.includes('function primeMediaCategoryRails'),'Movie/TV category-rail bounded hydration missing');
+assert(appSource.includes("mediaCategoryPage('movie','Movies')")&&appSource.includes("mediaCategoryPage('series','TV Shows')"),'Movie/TV routes must render category-first rail pages');
+assert(appSource.includes('fetchXtreamVodCategories')&&appSource.includes('fetchXtreamSeriesCategories')&&appSource.includes('ensureMediaProviderCategoryOrder'),'Movie/TV provider category-order retrieval missing');
+assert(appSource.includes('data-media-more-categories')&&appSource.includes('Swipe across each provider category'),'Movie/TV category-row paging UI missing');
+assert(detailCss.includes('.media-category-browser')&&detailCss.includes('.media-category-rail-track')&&detailCss.includes('.media-rail-skeleton'),'Movie/TV swipe-rail styling missing');
+assert(xtreamSource.includes('vodCategoryOrder')&&xtreamSource.includes('seriesCategoryOrder')&&xtreamSource.includes('providerCategoryOrder:Number(vodCategoryOrder')&&xtreamSource.includes('providerCategoryOrder:Number(seriesCategoryOrder'),'Movie/TV Xtream category-order persistence missing');
+assert(appSource.includes("nativeCatalogCategories('movie',{providerIds:nativeEnabledProviderIds(),limit:200})")&&appSource.includes("nativeCatalogCategories('series',{providerIds:nativeEnabledProviderIds(),limit:200})"),'Native Movie/TV category discovery must support deep provider category lists');
+
 // v0.7.27 TV Guide first-row clipping hotfix.
 assert(detailCss.includes('.guide-grid-scroll .guide-header{position:sticky;top:0;z-index:30}'),'Guide header must sit flush to the grid top so it cannot cover the first channel row');
 
@@ -564,4 +576,4 @@ assert(appSource.includes('guide-load-progress')&&appSource.includes('data-guide
 assert(appSource.includes('activity-progress indeterminate')&&detailCss.includes('.activity-progress.indeterminate')&&detailCss.includes('@keyframes swoopProgressShine'),'Indeterminate/moving activity feedback missing for unknown-duration work');
 assert(!appSource.includes('SWOOP TV <b>TV</b>')&&!appSource.includes('<span>SWOOP TV</span><b>TV</b>'),'Brand lockup must not render SWOOP TV TV');
 assert(appSource.includes('<span>SWOOP <b>TV</b></span>')&&appSource.includes('<span>SWOOP</span><b>TV</b>'),'Brand lockup should render a single SWOOP TV label');
-console.log('Swoop TV v0.7.30 tests passed');
+console.log('Swoop TV v0.7.31 tests passed');
