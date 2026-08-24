@@ -177,6 +177,9 @@ const detailCache=new Map();
 const detailEpisodeItems=new Map();
 const viewLimits={live:96,movie:72,series:72};
 let guideLimit=48,guideCategory='',liveCategory='',providerFilter='all',pageCategory={movie:'',series:''};
+const LIVE_RAIL_CHANNEL_LIMIT=18,LIVE_RAIL_CATEGORY_BATCH=10;
+let liveRailCategoryLimit=LIVE_RAIL_CATEGORY_BATCH;
+const liveRailCache=new Map(),liveRailRequests=new Map();
 let guideStart=Math.floor(Date.now()/1800000)*1800000;
 const epgCache=new Map();
 const guideChannelCache={key:'',items:[],total:0};
@@ -273,7 +276,7 @@ let movieStackCatalogRef=null,movieStackIndex=null,liveStackCatalogRef=null,live
 function getMovieStackIndex(){const catalog=activeCatalog(),priorityKey=state.providers.map(p=>`${p.id}:${p.priority}`).join('|');if(movieStackCatalogRef!==catalog||movieStackPriorityKey!==priorityKey||!movieStackIndex){movieStackCatalogRef=catalog;movieStackPriorityKey=priorityKey;movieStackIndex=buildMovieStackIndex(catalog,providerPriorityMap())}return movieStackIndex}
 function providerPriorityMap(){return Object.fromEntries(state.providers.map((p,i)=>[p.id,Number.isFinite(Number(p.priority))?Number(p.priority):i]))}
 function getLiveStackIndex(){const catalog=activeCatalog(),priorityKey=state.providers.map(p=>`${p.id}:${p.priority}`).join('|');if(liveStackCatalogRef!==catalog||liveStackPriorityKey!==priorityKey||!liveStackIndex){liveStackCatalogRef=catalog;liveStackPriorityKey=priorityKey;liveStackIndex=buildLiveStackIndex(catalog,providerPriorityMap())}return liveStackIndex}
-function resetMovieStackIndex(){activeCatalogSourceRef=null;activeCatalogContext='';activeCatalogCache=[];movieStackCatalogRef=null;movieStackIndex=null;movieStackPriorityKey='';liveStackCatalogRef=null;liveStackIndex=null;liveStackPriorityKey='';searchIndexKey='';searchIndexCache=[];if(typeof nativeHomeRowCache!=='undefined')nativeHomeRowCache.clear();for(const k of ['movie','series','live'])if(nativePageCache?.[k]){nativePageCache[k].key='';nativePageCache[k].items=[];nativePageCache[k].total=0}}
+function resetMovieStackIndex(){activeCatalogSourceRef=null;activeCatalogContext='';activeCatalogCache=[];movieStackCatalogRef=null;movieStackIndex=null;movieStackPriorityKey='';liveStackCatalogRef=null;liveStackIndex=null;liveStackPriorityKey='';searchIndexKey='';searchIndexCache=[];if(typeof nativeHomeRowCache!=='undefined')nativeHomeRowCache.clear();if(typeof liveRailCache!=='undefined')liveRailCache.clear();for(const k of ['movie','series','live'])if(nativePageCache?.[k]){nativePageCache[k].key='';nativePageCache[k].items=[];nativePageCache[k].total=0}}
 function items(kind){if(kind==='movie')return getMovieStackIndex().stacked;if(kind==='live')return getLiveStackIndex().stacked;return activeCatalog().filter(x=>x.kind===kind)}
 function preferredLiveSource(item){if(item?.kind!=='live')return item;if(providerFilter!=='all'&&Array.isArray(item.sources)){const filtered=item.sources.filter(s=>s.providerId===providerFilter);if(filtered.length)return selectLiveSource({...item,sources:filtered},providerPriorityMap())}return selectLiveSource(item,providerPriorityMap())}
 function logicalItemIds(item){
@@ -906,21 +909,54 @@ function page(kind,title){
   return `<main class="page cinematic-page"><section class="page-hero ${kind==='live'?'live-page-hero':''}">${leadArt}<div class="page-hero-shade"></div><div class="page-hero-copy"><div class="eyebrow">${kind==='live'?'WATCH NOW':kind==='movie'?'ON DEMAND':'BINGE-WORTHY'}</div><h1>${esc(title)}</h1><p>${catalogRawTotal()?`${total.toLocaleString()} ${kind==='live'?'channels':kind==='movie'?'movies':'series'} from ${esc(providerName)}.`:'Demo content — connect a provider to populate your library.'}</p><div class="cta-row">${leadAction}${kind==='live'?'<button class="btn secondary" data-page="guide">▤ Open TV Guide</button>':''}</div></div></section>
     <div class="page-content"><div class="provider-filter-pills"><button class="${providerFilter==='all'?'active':''}" data-provider-filter="all">All Providers</button>${providerPills.map(p=>`<button class="${providerFilter===p.id?'active':''}" data-provider-filter="${esc(p.id)}">${esc(p.name)}</button>`).join('')}</div><div class="page-toolbar"><div class="category-pills"><button data-page-category="${esc(kind)}" data-page-group="">All</button>${groups.map(g=>`<button data-page-category="${esc(kind)}" data-page-group="${esc(g)}">${esc(g)}</button>`).join('')}</div><button class="btn secondary compact-btn" data-modal="provider">＋ Provider</button></div>${loading}${arr.length?`<div class="content-grid ${kind==='live'?'live-content-grid':'poster-content-grid'}">${cards}</div>${shown.length<total?`<div class="load-more-wrap"><button class="btn secondary" data-load-more="${kind}">Load more · showing ${shown.length.toLocaleString()} of ${total.toLocaleString()}</button></div>`:''}`:loading?'':empty('No content yet','Connect a TV provider to populate this section.')}</div></main>`;
 }
+function liveRailCategories(){return guideCategories().filter(x=>x.name)}
+function liveRailKey(category=''){const revision=enabledProviders().map(p=>`${p.id}:${Number(p.lastRefreshed||0)}`).join(',');return `${providerFilter}|${revision}|${category}`}
+function liveRailBrowserItems(category=''){
+  return providerFiltered(items('live')).filter(x=>String(x.group||'Uncategorised')===category).slice(0,LIVE_RAIL_CHANNEL_LIMIT);
+}
+function liveRailSnapshot(category=''){
+  if(!nativeCatalogMode)return {items:liveRailBrowserItems(category),ready:true,loading:false};
+  const key=liveRailKey(category),cached=liveRailCache.get(key);return {items:cached?.items||[],ready:Boolean(cached),loading:liveRailRequests.has(key)};
+}
+function liveRailCard(item){const logo=String(item?.logo||'').trim(),q=qualityLabel(item);return `<button class="live-rail-card" data-play="${esc(item.id)}" aria-label="Watch ${esc(item.name)}"><span class="live-rail-logo">${logo?`<img data-swoop-art="${esc(logo)}" alt="">`:'<i>TV</i>'}</span><strong>${esc(item.name)}</strong>${q?`<small>${esc(q)}</small>`:''}</button>`;}
+function liveRailTrackMarkup(category=''){
+  const snap=liveRailSnapshot(category);
+  if(snap.ready&&snap.items.length)return `<div class="live-category-rail-track">${snap.items.map(liveRailCard).join('')}</div>`;
+  if(snap.ready)return `<div class="live-category-empty-inline">No channels returned in this category.</div>`;
+  return `<div class="live-rail-skeleton" aria-label="Loading ${esc(category)} channels">${Array.from({length:5},()=>'<i></i>').join('')}</div>`;
+}
+function liveCategoryRailMarkup(cat){
+  return `<section class="section live-category-section" data-live-rail-category="${esc(cat.name)}"><div class="section-head"><div><h2>${esc(cat.name)}</h2><span class="section-meta">${Number(cat.count||0).toLocaleString()} streams</span></div><span class="rail-arrow">›</span></div><div class="live-category-rail-body">${liveRailTrackMarkup(cat.name)}</div></section>`;
+}
+function patchLiveCategoryRail(category=''){
+  if(state.page!=='live'||detailItem||personView)return;
+  const section=[...document.querySelectorAll('[data-live-rail-category]')].find(x=>x.dataset.liveRailCategory===category);if(!section)return;
+  const body=section.querySelector('.live-category-rail-body');if(!body)return;body.innerHTML=liveRailTrackMarkup(category);hydrateArtwork(body);bindDynamicCards(body);bindRailStability(body);
+}
+async function ensureLiveCategoryRail(category=''){
+  if(!nativeCatalogMode||!category)return liveRailSnapshot(category);const key=liveRailKey(category);if(liveRailCache.has(key))return liveRailSnapshot(category);if(liveRailRequests.has(key))return liveRailRequests.get(key);
+  const task=(async()=>{const args={kind:'live',group:category,limit:LIVE_RAIL_CHANNEL_LIMIT,offset:0,sort:'name'};if(providerFilter==='all')args.providerIds=nativeEnabledProviderIds();else args.providerId=providerFilter;const result=await nativeCatalogQuery(args);const items=cacheNativeItems(result?.items||[]);liveRailCache.set(key,{items,total:Number(result?.total||items.length),loadedAt:Date.now()});return {items,ready:true,loading:false}})().finally(()=>liveRailRequests.delete(key));
+  liveRailRequests.set(key,task);return task;
+}
+async function primeLiveCategoryRails(){
+  if(!nativeCatalogMode||state.page!=='live'||detailItem||personView)return;const cats=liveRailCategories().slice(0,liveRailCategoryLimit).map(x=>x.name).filter(Boolean),pending=cats.filter(name=>!liveRailCache.has(liveRailKey(name)));
+  let cursor=0;async function worker(){while(cursor<pending.length){const name=pending[cursor++];try{await ensureLiveCategoryRail(name);patchLiveCategoryRail(name)}catch{liveRailCache.set(liveRailKey(name),{items:[],total:0,loadedAt:Date.now()});patchLiveCategoryRail(name)}}}await Promise.all(Array.from({length:Math.min(3,pending.length)},worker));
+}
 function livePage(){
-  const nativeCache=nativePageCache.live,all=nativeCatalogMode?(nativeCache.items||[]):providerFiltered(items('live')),total=nativeCatalogMode?Number(nativeCache.total||nativeTotal('live')):all.length,providerName=providerSummaryName(),providerPills=providerFilterOptions();
+  const nativeCache=nativePageCache.live,all=nativeCatalogMode?(nativeCache.items?.length?nativeCache.items:providerFiltered(items('live'))):providerFiltered(items('live')),total=nativeCatalogMode?Number(nativeTotal('live')):all.length,providerName=providerSummaryName(),providerPills=providerFilterOptions();
   const byId=new Map(all.map(x=>[x.id,x]));
   const favourites=state.liveFavourites.map(id=>savedItem(id)||byId.get(id)).filter(Boolean);
   const recent=state.recentLive.map(id=>savedItem(id)||byId.get(id)).filter(Boolean).slice(0,16);
-  const groups=nativeCatalogMode?(nativeCategoryCache.live||[]).map(x=>x.name).filter(Boolean):[...new Set(all.map(x=>x.group).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  const shown=nativeCatalogMode?all:(liveCategory?all.filter(x=>x.group===liveCategory):all).slice(0,viewLimits.live||180);
+  const categories=liveRailCategories(),shownCategories=categories.slice(0,liveRailCategoryLimit);
   const lead=favourites[0]||recent[0]||all[0];
   const leadVisual=visualItem(lead);
   const art=leadVisual?.logo?`<img class="live-hub-art" data-swoop-art="${esc(leadVisual.logo)}" alt="">`:'';
   const leadFav=lead?isLiveFavourite(lead):false;
-  const loading=nativeCatalogMode&&nativeCache.loading&&!all.length?`<div class="native-query-loading"><div><span class="provider-spinner"></span><strong>Loading channels from the local catalogue…</strong><div class="activity-progress indeterminate"><b></b></div><small>Still working — Swoop TV has not frozen.</small></div></div>`:'';
-  return `<main class="page live-hub-page"><section class="live-hub-hero"><div class="live-hub-backdrop">${art}</div><div class="live-hub-shade"></div><div class="live-hub-copy"><div class="eyebrow">LIVE TV · ${esc(providerName)}</div><h1>${lead?esc(lead.name):'Live TV'}</h1><p>${lead?`Jump straight back into ${esc(lead.name)}, browse favourites, or surf every live channel from one TV-first screen.`:'Connect a TV provider to populate Live TV.'}</p><div class="cta-row">${lead?`<button class="btn play-btn" data-play="${esc(lead.id)}">▶ Watch Live</button><button class="btn secondary" data-live-favourite="${esc(lead.id)}">${leadFav?'★ Favourite':'☆ Add Favourite'}</button>`:''}<button class="btn secondary" data-page="guide">▤ TV Guide</button></div></div><div class="live-hub-stat"><strong>${total.toLocaleString()}</strong><span>LIVE CHANNELS</span><small>${state.liveFavourites.length} favourites · ${state.recentLive.length} recent</small></div></section>
+  const loading=nativeCatalogMode&&nativeCache.loading&&!all.length?`<div class="native-query-loading"><div><span class="provider-spinner"></span><strong>Loading Live TV from the local catalogue…</strong><div class="activity-progress indeterminate"><b></b></div><small>Still working — Swoop TV has not frozen.</small></div></div>`:'';
+  const categoryRows=shownCategories.map(liveCategoryRailMarkup).join('');
+  return `<main class="page live-hub-page"><section class="live-hub-hero"><div class="live-hub-backdrop">${art}</div><div class="live-hub-shade"></div><div class="live-hub-copy"><div class="eyebrow">LIVE TV · ${esc(providerName)}</div><h1>${lead?esc(lead.name):'Live TV'}</h1><p>${lead?`Jump straight back into ${esc(lead.name)}, browse favourites, or swipe through your provider’s channel categories.`:'Connect a TV provider to populate Live TV.'}</p><div class="cta-row">${lead?`<button class="btn play-btn" data-play="${esc(lead.id)}">▶ Watch Live</button><button class="btn secondary" data-live-favourite="${esc(lead.id)}">${leadFav?'★ Favourite':'☆ Add Favourite'}</button>`:''}<button class="btn secondary" data-page="guide">▤ TV Guide</button></div></div><div class="live-hub-stat"><strong>${total.toLocaleString()}</strong><span>LIVE STREAMS</span><small>${state.liveFavourites.length} favourites · ${state.recentLive.length} recent</small></div></section>
   <div class="page-content live-hub-content"><div class="provider-filter-pills live-provider-filter"><button class="${providerFilter==='all'?'active':''}" data-provider-filter="all">All Providers</button>${providerPills.map(p=>`<button class="${providerFilter===p.id?'active':''}" data-provider-filter="${esc(p.id)}">${esc(p.name)}</button>`).join('')}</div>${favourites.length?rail('Favourite Channels',favourites.slice(0,18),false,`${favourites.length} saved`,{}):''}${recent.length?rail('Recent Channels',recent,false,'Your most recently watched channels',{}):''}
-  <section class="live-browser"><div class="section-head live-browser-head"><div><h2>${liveCategory?esc(liveCategory):'All Channels'}</h2><span class="section-meta">${total.toLocaleString()} channels</span></div><button class="btn secondary compact-btn" data-page="guide">Open Guide</button></div><div class="live-category-pills"><button class="${!liveCategory?'active':''}" data-live-category="">All</button>${groups.map(g=>`<button class="${liveCategory===g?'active':''}" data-live-category="${esc(g)}">${esc(g)}</button>`).join('')}</div>${loading}${shown.length?`<div class="content-grid live-content-grid premium-live-grid">${shown.map(x=>card(x,false)).join('')}</div>${shown.length<total?`<div class="load-more-wrap"><button class="btn secondary" data-load-more="live">Load more · showing ${shown.length.toLocaleString()} of ${total.toLocaleString()}</button></div>`:''}`:loading?'':empty('No channels in this category','Choose another Live TV category.')}</section></div></main>`;
+  <section class="live-category-browser"><div class="section-head live-browser-head"><div><h2>Browse Live TV</h2><span class="section-meta">Swipe across each provider category</span></div><button class="btn secondary compact-btn" data-page="guide">Open TV Guide</button></div>${loading}${categoryRows||(!loading?empty('No Live TV categories','Refresh or reconnect your TV provider to load its channel groups.'):'')}${shownCategories.length<categories.length?`<div class="load-more-wrap"><button class="btn secondary" data-live-more-categories>Load more categories · showing ${shownCategories.length.toLocaleString()} of ${categories.length.toLocaleString()}</button></div>`:''}</section></div></main>`;
 }
 
 function myListPage(){
@@ -1147,6 +1183,7 @@ function render(){
   if(!profilePickerOpen&&!mediaRoute&&state.page==='search')runSearch('');
   hydrateArtwork();
   if(!profilePickerOpen&&!mediaRoute&&state.page==='guide')setTimeout(async()=>{const changed=await ensureGuideProviderCategoryOrder().catch(()=>false);if(changed&&state.page==='guide'&&!mediaRoute){render();return}loadGuideEpg()},0);
+  if(!profilePickerOpen&&!mediaRoute&&state.page==='live')setTimeout(async()=>{const changed=await ensureGuideProviderCategoryOrder().catch(()=>false);if(changed&&state.page==='live'&&!detailItem&&!personView){render();return}primeLiveCategoryRails()},0);
   if(!profilePickerOpen&&!mediaRoute&&state.page==='home'){
     mountLazyHomeRows(document);
     if(state.catalog.length)setTimeout(()=>refreshDiscoveryRows(false),largeLibraryMode()?1200:0);
@@ -1154,7 +1191,7 @@ function render(){
   }
   if(!profilePickerOpen&&!mediaRoute&&playerItem?.kind==='live')setTimeout(()=>{loadPlayerNowNext(playerItem);loadLiveMiniGuide(playerItem)},0);
   if(!profilePickerOpen&&state.catalog.length)setTimeout(scheduleMetadataEnrichment,largeLibraryMode()?1800:120);
-  if(!profilePickerOpen&&!mediaRoute&&nativeCatalogMode){if(state.page==='movies')scheduleNativePage('movie');if(state.page==='series')scheduleNativePage('series');if(state.page==='live')scheduleNativePage('live');}
+  if(!profilePickerOpen&&!mediaRoute&&nativeCatalogMode){if(state.page==='movies')scheduleNativePage('movie');if(state.page==='series')scheduleNativePage('series');}
   if(!mediaRoute)scheduleHeroRotation();
 }
 
@@ -1726,6 +1763,7 @@ function bind(){
   document.querySelectorAll('[data-mini-channel]').forEach(el=>el.onclick=()=>{const next=savedItem(el.dataset.miniChannel);if(next)switchLiveChannel(next)});
   document.querySelectorAll('[data-live-favourite]').forEach(el=>el.onclick=()=>{const item=savedItem(el.dataset.liveFavourite)||playerItem;if(item)toggleLiveFavourite(item)});
   document.querySelectorAll('[data-live-category]').forEach(el=>el.onclick=()=>{liveCategory=el.dataset.liveCategory||'';viewLimits.live=96;if(nativeCatalogMode)nativePageCache.live.key='';render()});
+  document.querySelectorAll('[data-live-more-categories]').forEach(el=>el.onclick=()=>{liveRailCategoryLimit+=LIVE_RAIL_CATEGORY_BATCH;render()});
   document.querySelectorAll('[data-player-guide]').forEach(el=>el.onclick=async()=>{if(playerItem?.kind==='live'){playerUiHidden=true;state.page='guide';render()}else{await closePlayer();state.page='guide';render()}});
   document.querySelectorAll('[data-trailer]').forEach(el=>el.onclick=()=>{trailerKey=el.dataset.trailer||'';trailerTitle=el.dataset.trailerTitle||detailItem?.name||'Trailer';render()});
   document.querySelectorAll('[data-trailer-close]').forEach(el=>el.onclick=()=>{trailerKey='';trailerTitle='';render()});
@@ -1734,7 +1772,7 @@ function bind(){
   document.querySelector('[data-guide-now]')?.addEventListener('click',()=>{guideStart=Math.floor(Date.now()/1800000)*1800000;guideLoadToken++;render()});
   document.querySelectorAll('[data-guide-category]').forEach(el=>el.onclick=()=>{const next=el.dataset.guideCategory||'';if(next===guideCategory)return;guideCategory=next;guideLimit=48;guideError='';guideLoading=false;guideLoadToken++;guideChannelCache.key='';guideChannelCache.items=[];guideChannelCache.total=0;render()});
   document.querySelector('[data-guide-more]')?.addEventListener('click',()=>{guideLimit+=48;guideError='';guideLoadToken++;guideChannelCache.key='';render()});
-  document.querySelectorAll('[data-provider-filter]').forEach(el=>el.onclick=()=>{providerFilter=el.dataset.providerFilter||'all';viewLimits.live=96;viewLimits.movie=72;viewLimits.series=72;if(nativeCatalogMode)for(const k of ['live','movie','series'])nativePageCache[k].key='';render()});
+  document.querySelectorAll('[data-provider-filter]').forEach(el=>el.onclick=()=>{providerFilter=el.dataset.providerFilter||'all';viewLimits.live=96;viewLimits.movie=72;viewLimits.series=72;liveRailCategoryLimit=LIVE_RAIL_CATEGORY_BATCH;if(nativeCatalogMode)for(const k of ['live','movie','series'])nativePageCache[k].key='';render()});
   document.querySelectorAll('[data-provider-toggle]').forEach(el=>el.onclick=()=>toggleProviderEnabled(el.dataset.providerToggle));
   document.querySelectorAll('[data-provider-refresh]').forEach(el=>el.onclick=()=>refreshProvider(el.dataset.providerRefresh));
   document.querySelectorAll('[data-provider-edit]').forEach(el=>el.onclick=()=>{const id=el.dataset.providerEdit,p=providerById(id),cfg=providerConfigById(id)||p;if(!p)return;const tab=document.querySelector(`[data-provider-tab="${p.type}"]`);tab?.click();const form=document.querySelector(p.type==='xtream'?'#xtreamForm':'#m3uForm');if(!form)return;const set=(name,value)=>{const input=form.querySelector(`[name="${name}"]`);if(input)input.value=value||''};set('name',p.name);if(p.type==='xtream'){set('server',cfg.server||p.server);set('username',cfg.username||'');set('password',cfg.password||'');set('relayUrl',cfg.relayUrl||p.relayUrl||'');set('relayToken',cfg.relayToken||'')}else{set('url',cfg.url||p.url||'');set('epgUrl',cfg.epgUrl||p.epgUrl||'')}form.scrollIntoView({behavior:'smooth',block:'start'});toast(`Editing ${p.name}`)});

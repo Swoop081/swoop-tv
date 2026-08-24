@@ -1,3 +1,15 @@
+## v0.7.30 — Live TV Category Rails
+
+- Reworks the **Live TV landing page only** into provider-category rows inspired by modern mobile TV apps: category name first, then a horizontal swipe rail of channel tiles.
+- The existing **TV Guide remains exactly the dedicated EPG view** designed in v0.7.23–v0.7.27; no Guide layout or programme-grid behavior is changed.
+- Provider category order is reused from the existing provider-order logic rather than alphabetically rearranging the Live TV landing page.
+- Favourite Channels and Recent Channels remain above the provider-category rows.
+- Live channel tiles use a compact logo-first presentation with the channel name beneath, while every v0.7.29 stream remains independently selectable/playable.
+- Windows/SQLite mode loads only **18 channels per visible category rail**, with at most 10 categories mounted initially. **Load more categories** adds another 10 rows at a time. This avoids hydrating thousands of Live TV streams just to open the Live tab.
+- Native category-rail requests run with a small concurrency limit and patch only the completed rail in place, avoiding full-page rerenders and preserving horizontal scroll position.
+- Provider filtering is retained and resets the visible category batch cleanly.
+- No provider refresh, SQLite rebuild, Cloudflare Worker redeploy, EPG change, metadata change, watched/resume reset or playback-profile change is required.
+
 ## v0.7.29 — Separate Live Streams
 
 - **Live TV no longer collapses duplicate-looking channels.** Every provider stream remains a separate Live TV entry even when another stream has the same channel name, category/group or EPG/tvg-id.

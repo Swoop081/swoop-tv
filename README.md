@@ -1,7 +1,12 @@
 # Swoop TV
 
-**Current build: v0.7.29 — Separate Live Streams**
+**Current build: v0.7.30 — Live TV Category Rails**
 
+
+
+### v0.7.30 — Live TV Category Rails
+
+The **Live TV tab only** now browses provider channel groups as vertically stacked category rows with horizontally swipeable channel tiles. Each row initially loads only a small batch of streams for that provider category, rather than building one giant all-channel grid. Provider category ordering is preserved, Favourite Channels and Recent Channels remain at the top, and the existing **TV Guide / EPG design is unchanged**. In Windows/SQLite mode category rows are hydrated on demand with small per-category queries.
 
 
 ### v0.7.29 — Separate Live Streams
