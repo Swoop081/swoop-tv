@@ -1,3 +1,33 @@
+# Swoop TV v0.7.5 — Native Catalogue Playback Continuity Hotfix
+
+**v0.7.5 — Detail Navigation + Render Performance**
+
+This hotfix fixes two regressions introduced by the SQLite catalogue migration: native catalogue cards could resolve to logical database rows without reliably hydrating the concrete provider playback source, and pre-SQLite Continue Watching/My List IDs were not always aliased to their new logical SQLite title IDs.
+
+## v0.7.5 fixes
+
+- Every SQLite logical title now carries the full set of underlying provider/source IDs.
+- Native catalogue items are cached under both their logical ID and every underlying source ID.
+- Movie/Live playback resolves the concrete provider source from SQLite before launching mpv.
+- Stacked titles still open the source chooser; single-source titles play directly.
+- Legacy Continue Watching entries created before the SQLite migration map to the new logical title automatically.
+- Resume position follows the logical title even when the provider copy or stack ID changes.
+- My List, Recently Watched, Recent Channels and source preferences can resolve old source IDs through the native alias map.
+- Playback/history updates collapse equivalent old/new IDs into one entry instead of creating duplicates.
+- The proven mpv compatibility/buffering profile remains unchanged.
+
+## Windows test
+
+1. Close Swoop and the black Windows Bridge window.
+2. Run `START-SWOOP-TV-WINDOWS.cmd` from v0.7.5.
+3. Open a movie that is **not** already in Continue Watching and press Play.
+4. Stop it after about 30–60 seconds, reopen it, and confirm Swoop resumes near the saved position.
+5. Also test an older Continue Watching title created before the SQLite migration.
+
+The existing SQLite database is reused; no re-import should be necessary.
+
+---
+
 # Swoop TV v0.7.4.1 — Native Catalogue Navigation Hotfix
 
 Swoop TV is a content-neutral IPTV player for user-provided, authorised Xtream Codes and M3U sources. v0.7.4.1 is the Windows large-library architecture upgrade: the full IPTV catalogue moves out of the browser UI and into a local SQLite database.

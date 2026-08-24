@@ -325,8 +325,14 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0741-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.4.1 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v075-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.5 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
-console.log('Swoop TV v0.7.4.1 tests passed');
+assert(appSource.includes('_nativeSourceIds')&&appSource.includes('resolveNativeCatalogItem'),'Native source alias/playback hydration hotfix missing');
+assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.includes('logicalItemIds(item)'),'Native source-ID alias cache missing');
+const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
+const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
+assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
+assert(sqlitePsHotfix.includes("version='0.7.5'")&&swHotfix.includes('swoop-tv-v075-shell'),'v0.7.5 version/cache wiring missing');
+console.log('Swoop TV v0.7.5 tests passed');

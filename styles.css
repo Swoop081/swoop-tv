@@ -471,3 +471,23 @@ html,body,.app-shell,.home-main,.page,.settings-page,.guide-page{transition:back
 .settings-action.active{background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
 .profile-picker-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 @media(max-width:760px){.bottom-nav button{font-size:8px}.bottom-nav button span{font-size:17px}}
+
+/* v0.7.5 — dedicated title routes + large-library render stability */
+.swoop-render-section{contain-intrinsic-size:340px!important}
+:root[data-performance="lean"] .section:nth-of-type(n+7){contain-intrinsic-size:340px!important}
+.lazy-home-row{min-height:0!important;margin-bottom:26px}
+.lazy-row-skeleton{grid-auto-columns:minmax(150px,12vw)!important;gap:10px!important;padding:2px 0 8px!important}
+.lazy-row-skeleton.poster-skeleton i{aspect-ratio:2/3}
+.lazy-row-skeleton.landscape-skeleton{grid-auto-columns:minmax(230px,18vw)!important}
+.lazy-row-skeleton.landscape-skeleton i{aspect-ratio:16/9}
+.card-bg:after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.055) 45%,transparent 65%);background-size:220% 100%;animation:swoopCardLoad 1.8s ease-in-out infinite;opacity:.7;transition:opacity .12s linear}
+.card:has(.card-art.loaded) .card-bg:after{opacity:0;animation:none}
+@keyframes swoopCardLoad{0%{background-position:120% 0}100%{background-position:-120% 0}}
+:root[data-performance="lean"] .card{box-shadow:0 4px 14px rgba(0,0,0,.22);transition:transform .12s ease,box-shadow .12s ease}
+:root[data-performance="lean"] .card:hover,:root[data-performance="lean"] .card:focus-visible{transform:scale(1.025);box-shadow:0 10px 24px rgba(0,0,0,.42)}
+:root[data-performance="lean"] .card-art{transition:opacity .12s linear}
+.detail-route{background:var(--swoop-bg,#050505)}
+.detail-route .detail-scroll{scroll-behavior:auto}
+.detail-route .detail-hero{min-height:min(760px,100vh)}
+.detail-route .detail-copy{padding-bottom:max(70px,7vh)}
+@media(max-width:900px){.lazy-row-skeleton{grid-auto-columns:37vw!important}.lazy-row-skeleton.landscape-skeleton{grid-auto-columns:67vw!important}.detail-route .detail-hero{min-height:100svh}}

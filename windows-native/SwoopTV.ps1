@@ -192,7 +192,13 @@ function Convert-CatalogRows($Rows,[string]$Kind='') {
   foreach($r in @($Rows)) {
     try { $item = [string]$r.raw_json | ConvertFrom-Json } catch { continue }
     $logical=[string]$r.logical_key;$count=[int]($r.source_count)
+    $originalId=[string]$item.id
+    $sourceIds=@()
+    if ($r.source_ids) { $sourceIds=@(([string]$r.source_ids).Split('|') | Where-Object { $_ }) }
+    if (-not $sourceIds.Count -and $originalId) { $sourceIds=@($originalId) }
     $item | Add-Member -NotePropertyName '_nativeLogicalKey' -NotePropertyValue $logical -Force
+    $item | Add-Member -NotePropertyName '_nativeSourceId' -NotePropertyValue $originalId -Force
+    $item | Add-Member -NotePropertyName '_nativeSourceIds' -NotePropertyValue @($sourceIds) -Force
     $item | Add-Member -NotePropertyName 'sourceCount' -NotePropertyValue $count -Force
     if ($count -gt 1) {
       $k=if($Kind){$Kind}else{[string]$item.kind}
@@ -219,10 +225,11 @@ function Catalog-Query($Data) {
 WITH filtered AS (SELECT * FROM catalog WHERE $whereSql),
 ranked AS (
  SELECT *, ROW_NUMBER() OVER(PARTITION BY logical_key ORDER BY source_score DESC,name COLLATE NOCASE) AS rn,
- COUNT(*) OVER(PARTITION BY logical_key) AS source_count
+ COUNT(*) OVER(PARTITION BY logical_key) AS source_count,
+ GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key) AS source_ids
  FROM filtered
 )
-SELECT raw_json,logical_key,source_count,display_name FROM ranked WHERE rn=1 ORDER BY $order LIMIT $limit OFFSET $offset;
+SELECT raw_json,logical_key,source_count,source_ids,display_name FROM ranked WHERE rn=1 ORDER BY $order LIMIT $limit OFFSET $offset;
 "@
   $rows=Invoke-SqliteJson $sql
   $countRows=Invoke-SqliteJson "SELECT COUNT(DISTINCT logical_key) AS total FROM catalog WHERE $whereSql;"
@@ -254,10 +261,11 @@ WITH hits AS (
  SELECT c.*,bm25(catalog_fts) AS text_rank FROM catalog_fts JOIN catalog c ON c.item_key=catalog_fts.item_key
  WHERE catalog_fts MATCH $ftsSql AND c.kind IN ($kindSql)$providerClause
 ), ranked AS (
- SELECT *,ROW_NUMBER() OVER(PARTITION BY logical_key ORDER BY text_rank ASC,source_score DESC) rn,COUNT(*) OVER(PARTITION BY logical_key) source_count
+ SELECT *,ROW_NUMBER() OVER(PARTITION BY logical_key ORDER BY text_rank ASC,source_score DESC) rn,COUNT(*) OVER(PARTITION BY logical_key) source_count,
+ GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key) source_ids
  FROM hits
 )
-SELECT raw_json,logical_key,source_count,display_name FROM ranked WHERE rn=1 ORDER BY text_rank ASC LIMIT $limit;
+SELECT raw_json,logical_key,source_count,source_ids,display_name FROM ranked WHERE rn=1 ORDER BY text_rank ASC LIMIT $limit;
 "@
   $rows=Invoke-SqliteJson $sql
   return @{ok=$true;items=(Convert-CatalogRows $rows);total=@($rows).Count}
@@ -266,7 +274,16 @@ SELECT raw_json,logical_key,source_count,display_name FROM ranked WHERE rn=1 ORD
 function Catalog-Sources([string]$LogicalKey) {
   $key=Sql-Literal $LogicalKey
   $rows=Invoke-SqliteJson "SELECT raw_json FROM catalog WHERE logical_key=$key ORDER BY source_score DESC,name COLLATE NOCASE;"
-  $out=@();foreach($r in @($rows)){try{$out+=([string]$r.raw_json|ConvertFrom-Json)}catch{}}
+  $out=@();$count=@($rows).Count
+  foreach($r in @($rows)){
+    try{
+      $item=[string]$r.raw_json|ConvertFrom-Json
+      $item | Add-Member -NotePropertyName '_nativeLogicalKey' -NotePropertyValue $LogicalKey -Force
+      $item | Add-Member -NotePropertyName '_nativeSourceId' -NotePropertyValue ([string]$item.id) -Force
+      $item | Add-Member -NotePropertyName 'sourceCount' -NotePropertyValue $count -Force
+      $out+=$item
+    }catch{}
+  }
   return @{ok=$true;items=$out}
 }
 
@@ -290,10 +307,11 @@ WITH targets AS (
  SELECT DISTINCT kind,logical_key FROM catalog WHERE $where
 ), ranked AS (
  SELECT c.*,ROW_NUMBER() OVER(PARTITION BY c.kind,c.logical_key ORDER BY c.source_score DESC,c.name COLLATE NOCASE) rn,
- COUNT(*) OVER(PARTITION BY c.kind,c.logical_key) source_count
+ COUNT(*) OVER(PARTITION BY c.kind,c.logical_key) source_count,
+ GROUP_CONCAT(c.item_id,'|') OVER(PARTITION BY c.kind,c.logical_key) source_ids
  FROM catalog c JOIN targets t ON t.kind=c.kind AND t.logical_key=c.logical_key
 )
-SELECT raw_json,logical_key,source_count,display_name FROM ranked WHERE rn=1;
+SELECT raw_json,logical_key,source_count,source_ids,display_name FROM ranked WHERE rn=1;
 "@
   $rows=Invoke-SqliteJson $sql
   return @{ok=$true;items=(Convert-CatalogRows $rows)}
@@ -325,10 +343,11 @@ WITH cand AS (
    (cand.clean_name<>'' AND c.clean_name=cand.clean_name AND (cand.year=0 OR c.year=0 OR abs(c.year-cand.year)<=1))
  )
 ), ranked AS (
- SELECT *,ROW_NUMBER() OVER(PARTITION BY ord ORDER BY match_rank,source_score DESC) rn,COUNT(*) OVER(PARTITION BY logical_key) source_count
+ SELECT *,ROW_NUMBER() OVER(PARTITION BY ord ORDER BY match_rank,source_score DESC) rn,COUNT(*) OVER(PARTITION BY logical_key) source_count,
+ GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key) source_ids
  FROM exact_hits
 )
-SELECT raw_json,logical_key,source_count,display_name FROM ranked WHERE rn=1 ORDER BY ord LIMIT $limit;
+SELECT raw_json,logical_key,source_count,source_ids,display_name FROM ranked WHERE rn=1 ORDER BY ord LIMIT $limit;
 "@
     $rows=Invoke-SqliteJson $sql
     return @{ok=$true;items=(Convert-CatalogRows $rows $kind)}
@@ -818,7 +837,7 @@ function Handle-Request($Request, [string]$MpvPath) {
     if ($path -eq '/native/status') {
       $playing = $false
       if ($script:MpvProcess) { try { $playing = -not $script:MpvProcess.HasExited } catch {} }
-      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.4.1'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
+      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.5'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
       return
     }
 
@@ -934,7 +953,7 @@ function Handle-Request($Request, [string]$MpvPath) {
 
     if ([IO.Path]::GetFileName($full).ToLowerInvariant() -eq 'index.html') {
       $html = Get-Content -Path $full -Raw -Encoding UTF8
-      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.4.1',platform:'windows'};</script>"
+      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.5',platform:'windows'};</script>"
       $html = $html -replace '</head>', ($bootstrap + '</head>')
       Send-Text $stream $html 'text/html; charset=utf-8'
       return
@@ -947,7 +966,7 @@ function Handle-Request($Request, [string]$MpvPath) {
   }
 }
 
-Write-Header 'Swoop TV v0.7.4.1 — Native Catalogue Database Foundation'
+Write-Header 'Swoop TV v0.7.5 — Native Catalogue Playback Continuity Hotfix'
 Write-Host 'This local bridge keeps IPTV video provider-to-device and launches mpv for playback.'
 Write-Host 'No administrator rights are required.'
 

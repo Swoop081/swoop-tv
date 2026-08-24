@@ -1,4 +1,24 @@
+# Swoop TV v0.7.5 — Detail Navigation + Render Performance
+
+- Movie and TV thumbnails now open a dedicated full-screen detail screen instead of appending detail content to the bottom of Home/Movies/Shows. Back returns to the prior browse position.
+- Detail metadata/episode refreshes preserve the title-screen scroll position.
+- Fixes the oversized intrinsic row height that could reserve roughly 1200px for off-screen Home sections and appear as huge blank gaps.
+- Reuses one artwork IntersectionObserver per render instead of accumulating observers across repeated Home rerenders.
+- In large-library mode, artwork starts closer to the viewport and web artwork relay concurrency is reduced. TMDb cards request smaller poster images while cinematic hero/detail backdrops retain large images.
+- Native catalogue pages initially mount 72 movies/shows and 96 live channels, then page with Load More, reducing first-paint DOM/image pressure.
+- Lean mode reduces expensive hover scaling/shadows and uses visible shimmer/fallback cards while images decode asynchronously, reducing layout/paint jerk.
+- SQLite catalogue, provider profiles, themes, resume data, multi-provider logic, discovery and the proven mpv playback profile are unchanged. Existing native catalogue is reused; no provider refresh is required.
+
 # Swoop TV Release Notes
+
+## v0.7.5 — Native Catalogue Playback Continuity Hotfix
+
+- Fixes SQLite-native catalogue thumbnails/details that could fail to launch playback after migration.
+- Native logical catalogue rows now expose all underlying source IDs and cache aliases for those IDs.
+- Playback always resolves a concrete provider source from SQLite before launching mpv.
+- Legacy Continue Watching/My List IDs created before migration map to the new logical SQLite title identity.
+- Resume/history updates deduplicate old source IDs and logical stack IDs, preserving saved position across migration and source stacking.
+- Existing SQLite database, provider credentials, themes, discovery and mpv compatibility profile are unchanged.
 
 ## v0.7.4.1 — Settings Navigation Access Hotfix
 

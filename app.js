@@ -35,7 +35,15 @@ async function loadNativeHomeRow(id){
   result=cacheNativeItems(result);nativeHomeRowCache.set(id,result);return result;
 }
 async function primeNativeHomeRows(){if(!nativeCatalogMode||nativeHomePrimeBusy||state.page!=='home')return;const skip=new Set(['continue','recently-watched','recommended','recent-live','mylist','because-you-watched']);const ids=selectedHomeRows().map(x=>x.id).filter(id=>!WEB_ROW_IDS.has(id)&&!String(id).startsWith('custom:')&&!skip.has(id)&&!nativeHomeRowCache.has(id)).slice(0,10);if(!ids.length)return;nativeHomePrimeBusy=true;try{for(const id of ids){await loadNativeHomeRow(id).catch(()=>[]);await new Promise(r=>setTimeout(r,0))}}finally{nativeHomePrimeBusy=false;if(state.page==='home'&&!modal)render()}}
-function cacheNativeItems(list=[]){for(const item of list||[])if(item?.id)nativeItemCache.set(item.id,item);return list||[]}
+function cacheNativeItems(list=[]){
+  for(const item of list||[]){
+    if(!item?.id)continue;
+    nativeItemCache.set(item.id,item);
+    if(item._nativeSourceId)nativeItemCache.set(String(item._nativeSourceId),item);
+    for(const alias of Array.isArray(item._nativeSourceIds)?item._nativeSourceIds:[])if(alias)nativeItemCache.set(String(alias),item);
+  }
+  return list||[];
+}
 function nativeEnabledProviderIds(){return state?.providers?.filter(p=>p.enabled!==false).map(p=>p.id)||[]}
 function nativeTotal(kind,raw=false){if(!nativeCatalogStats)return 0;const enabled=new Set(nativeEnabledProviderIds()),rows=(nativeCatalogStats.providers||[]).filter(x=>x.kind===kind&&(!enabled.size||enabled.has(x.provider_id)));return rows.reduce((n,r)=>n+Number(r?.[raw?'raw_count':'unique_count']||0),0)}
 function catalogLogicalTotal(){return nativeCatalogMode?['live','movie','series'].reduce((n,k)=>n+nativeTotal(k),0):activeCatalog().length}
@@ -66,10 +74,10 @@ async function migrateCatalogToNative(){
   }finally{nativeCatalogMigration=false}
 }
 async function ensureNativePage(kind,{force=false}={}){
-  if(!nativeCatalogMode)return null;const cache=nativePageCache[kind],limit=viewLimits[kind]||120,group=kind==='live'?liveCategory:(pageCategory[kind]||''),key=`${providerFilter}|${group}|${limit}`;if(!force&&cache.key===key&&cache.items.length)return cache;if(cache.loading)return cache;cache.loading=true;
+  if(!nativeCatalogMode)return null;const cache=nativePageCache[kind],limit=viewLimits[kind]||(kind==='live'?96:72),group=kind==='live'?liveCategory:(pageCategory[kind]||''),key=`${providerFilter}|${group}|${limit}`;if(!force&&cache.key===key&&cache.items.length)return cache;if(cache.loading)return cache;cache.loading=true;
   try{const result=await nativeCatalogQuery({kind,providerId:providerFilter,providerIds:providerFilter==='all'?nativeEnabledProviderIds():[],group,limit,offset:0,sort:kind==='live'?'name':'recent'});cache.key=key;cache.items=cacheNativeItems(result?.items||[]);cache.total=Number(result?.total||cache.items.length);return cache}finally{cache.loading=false}
 }
-function scheduleNativePage(kind,force=false){if(!nativeCatalogMode)return;const cache=nativePageCache[kind],group=kind==='live'?liveCategory:(pageCategory[kind]||''),want=`${providerFilter}|${group}|${viewLimits[kind]||120}`;if(!force&&cache.key===want&&cache.items.length)return;setTimeout(async()=>{const before=cache.key;await ensureNativePage(kind,{force});if((before!==cache.key||force)&&((state.page==='movies'&&kind==='movie')||(state.page==='series'&&kind==='series')||(state.page==='live'&&kind==='live')))render()},0)}
+function scheduleNativePage(kind,force=false){if(!nativeCatalogMode)return;const cache=nativePageCache[kind],group=kind==='live'?liveCategory:(pageCategory[kind]||''),want=`${providerFilter}|${group}|${viewLimits[kind]||(kind==='live'?96:72)}`;if(!force&&cache.key===want&&cache.items.length)return;setTimeout(async()=>{const before=cache.key;await ensureNativePage(kind,{force});if((before!==cache.key||force)&&((state.page==='movies'&&kind==='movie')||(state.page==='series'&&kind==='series')||(state.page==='live'&&kind==='live')))render()},0)}
 const DEFAULT_HOME_ROWS=['continue','recently-watched','recommended','recent-live','mylist','top20-movies','top20-shows','trending-movies','trending-shows','new-hot-movies','new-hot-shows','live-now','new-movies','new-shows','action-movies','comedy-movies','drama-shows'];
 const DEFAULT_STATE={page:'home',catalog:[],provider:null,providers:[],myList:[],favourites:[],liveFavourites:[],continueWatching:[],watchHistory:[],recentLive:[],profiles:[],activeProfileId:'',mdblistRows:[],webDiscovery:{},metadataCache:{},settings:{mdblistApiKey:'',xtreamRelayUrl:'',xtreamRelayToken:'',metadataServiceUrl:'',themeId:'chill',backgroundColor:'#050505',backgroundOverride:false,movieSourcePreferences:{},homeRows:[...DEFAULT_HOME_ROWS],smartHomeOrder:true,performanceMode:'auto'}};
 const loaded=loadState()||{};
@@ -137,7 +145,7 @@ const discoveryBundleMemory=new Map();
 let detailItem=null,detailPayload=null,detailLoading=false,detailError='',detailSeason='';
 const detailCache=new Map();
 const detailEpisodeItems=new Map();
-const viewLimits={live:180,movie:120,series:120};
+const viewLimits={live:96,movie:72,series:72};
 let guideLimit=24,liveCategory='',providerFilter='all',pageCategory={movie:'',series:''};
 let guideStart=Math.floor(Date.now()/1800000)*1800000;
 const epgCache=new Map();
@@ -160,7 +168,9 @@ let storageRestoring=false;
 let libraryRestored=Boolean(state.catalog.length);
 let libraryRestorePromise=null;
 const artworkCache=new Map();
-const artworkRelayQueue=[]; let artworkRelayActive=0; const ARTWORK_RELAY_LIMIT=6;
+const artworkRelayQueue=[]; let artworkRelayActive=0;
+let artworkObserver=null;
+let detailReturnScroll=0,detailScrollTop=0;
 const $app=document.querySelector('#app');
 
 function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
@@ -181,7 +191,15 @@ function getLiveStackIndex(){const catalog=activeCatalog(),priorityKey=state.pro
 function resetMovieStackIndex(){activeCatalogSourceRef=null;activeCatalogContext='';activeCatalogCache=[];movieStackCatalogRef=null;movieStackIndex=null;movieStackPriorityKey='';liveStackCatalogRef=null;liveStackIndex=null;liveStackPriorityKey='';searchIndexKey='';searchIndexCache=[];if(typeof nativeHomeRowCache!=='undefined')nativeHomeRowCache.clear();for(const k of ['movie','series','live'])if(nativePageCache?.[k]){nativePageCache[k].key='';nativePageCache[k].items=[];nativePageCache[k].total=0}}
 function items(kind){if(kind==='movie')return getMovieStackIndex().stacked;if(kind==='live')return getLiveStackIndex().stacked;return activeCatalog().filter(x=>x.kind===kind)}
 function preferredLiveSource(item){if(item?.kind!=='live')return item;if(providerFilter!=='all'&&Array.isArray(item.sources)){const filtered=item.sources.filter(s=>s.providerId===providerFilter);if(filtered.length)return selectLiveSource({...item,sources:filtered},providerPriorityMap())}return selectLiveSource(item,providerPriorityMap())}
-function logicalItemIds(item){return item?[item.id,...(Array.isArray(item.sources)?item.sources.map(x=>x.id):[])]:[]}
+function logicalItemIds(item){
+  if(!item)return[];
+  return [...new Set([
+    item.id,
+    item._nativeSourceId,
+    ...(Array.isArray(item._nativeSourceIds)?item._nativeSourceIds:[]),
+    ...(Array.isArray(item.sources)?item.sources.map(x=>x.id):[])
+  ].filter(Boolean).map(String))];
+}
 function isLiveFavourite(item){return Boolean(item?.id&&state.liveFavourites.includes(item.id))}
 function toggleLiveFavourite(item){if(!item?.id||item.kind!=='live')return;const on=isLiveFavourite(item);state.liveFavourites=on?state.liveFavourites.filter(id=>id!==item.id):[item.id,...state.liveFavourites.filter(id=>id!==item.id)].slice(0,120);persist();toast(on?'Removed from Favourite Channels':'Added to Favourite Channels');render()}
 function savedMovieSourcePreference(item){return item?.id?String(state.settings.movieSourcePreferences?.[item.id]||''):''}
@@ -573,7 +591,7 @@ function homeRowMarkup(def){
   const baseLimit=def.ranked?20:(def.id==='live-now'?14:18),limit=largeLibraryMode()&&!def.ranked?Math.min(HOME_EAGER_CARDS,baseLimit):baseLimit;
   return rail(def.label,data.slice(0,limit),def.poster,discoveryMeta(def.id,data),{page:def.page,ranked:def.ranked,rowId:def.id});
 }
-function lazyHomePlaceholder(def){return `<section class="section lazy-home-row swoop-render-section" data-lazy-home-row="${esc(def.id)}"><div class="section-head"><div><h2>${esc(def.label)}</h2><span class="section-meta">Loading row as you reach it…</span></div></div><div class="lazy-row-skeleton">${Array.from({length:6},()=>'<i></i>').join('')}</div></section>`}
+function lazyHomePlaceholder(def){return `<section class="section lazy-home-row swoop-render-section ${def.poster?'poster-placeholder':'landscape-placeholder'}" data-lazy-home-row="${esc(def.id)}"><div class="section-head"><div><h2>${esc(def.label)}</h2><span class="section-meta">Ready as you scroll</span></div></div><div class="lazy-row-skeleton ${def.poster?'poster-skeleton':'landscape-skeleton'}">${Array.from({length:5},()=>'<i></i>').join('')}</div></section>`}
 function mountLazyHomeRows(root=document){
   lazyHomeObserver?.disconnect?.();lazyHomeObserver=null;
   const nodes=[...root.querySelectorAll('[data-lazy-home-row]')];if(!nodes.length)return;
@@ -642,7 +660,7 @@ function home(){
   </div></main>`;
 }
 function page(kind,title){
-  const nativeCache=nativePageCache[kind],arr=nativeCatalogMode?(nativeCache.items||[]):providerFiltered(items(kind)),limit=viewLimits[kind]||120,shown=nativeCatalogMode?arr:arr.slice(0,limit),total=nativeCatalogMode?Number(nativeCache.total||nativeTotal(kind)):arr.length,providerName=providerSummaryName(),providerPills=providerFilterOptions();
+  const nativeCache=nativePageCache[kind],arr=nativeCatalogMode?(nativeCache.items||[]):providerFiltered(items(kind)),limit=viewLimits[kind]||(kind==='live'?96:72),shown=nativeCatalogMode?arr:arr.slice(0,limit),total=nativeCatalogMode?Number(nativeCache.total||nativeTotal(kind)):arr.length,providerName=providerSummaryName(),providerPills=providerFilterOptions();
   const leadRaw=arr.find(x=>visualItem(x).backdrop||visualItem(x).logo)||arr[0];
   const lead=visualItem(leadRaw);
   const groups=nativeCatalogMode?(nativeCategoryCache[kind]||[]).map(x=>x.name).filter(Boolean).slice(0,14):[...new Set(arr.map(x=>x.group).filter(Boolean))].slice(0,10);
@@ -796,9 +814,38 @@ function backgroundLiveBar(){
 }
 function render(){
   applyTheme();
-  let body;if(storageRestoring)body=restoringPage();else if(profilePickerOpen)body=profilePickerPage();else if(state.page==='home')body=home();else if(state.page==='live')body=livePage();else if(state.page==='guide')body=guidePage();else if(state.page==='movies')body=page('movie','Movies');else if(state.page==='series')body=page('series','TV Shows');else if(state.page==='mylist')body=myListPage();else if(state.page==='search')body=searchPage();else body=settingsPage();
-  const shellNav=storageRestoring||profilePickerOpen?'':nav();
-  $app.innerHTML=`<div class="app-shell">${shellNav}${body}${modal?modalHtml():''}${!profilePickerOpen&&detailItem?detailHtml():''}${!profilePickerOpen&&sourceChoiceItem?sourceChoiceHtml():''}${!profilePickerOpen&&playerItem&&!playerUiHidden?playerHtml():''}${!profilePickerOpen?backgroundLiveBar():''}${!profilePickerOpen&&trailerKey?trailerHtml():''}</div>`;bind();bindHeroControls(document);if(!profilePickerOpen&&state.page==='search')runSearch('');hydrateArtwork();if(!profilePickerOpen&&state.page==='guide')setTimeout(loadGuideEpg,0);if(!profilePickerOpen&&state.page==='home'){mountLazyHomeRows(document);if(state.catalog.length)setTimeout(()=>refreshDiscoveryRows(false),largeLibraryMode()?900:0);if(nativeCatalogMode)setTimeout(primeNativeHomeRows,80);}if(!profilePickerOpen&&playerItem?.kind==='live')setTimeout(()=>{loadPlayerNowNext(playerItem);loadLiveMiniGuide(playerItem)},0);if(!profilePickerOpen&&state.catalog.length)setTimeout(scheduleMetadataEnrichment,largeLibraryMode()?1200:80);if(!profilePickerOpen&&nativeCatalogMode){if(state.page==='movies')scheduleNativePage('movie');if(state.page==='series')scheduleNativePage('series');if(state.page==='live')scheduleNativePage('live');}scheduleHeroRotation();
+  const oldDetailScroll=document.querySelector('.detail-scroll')?.scrollTop;
+  if(Number.isFinite(oldDetailScroll))detailScrollTop=oldDetailScroll;
+  artworkObserver?.disconnect?.();artworkObserver=null;
+  const detailRoute=Boolean(!profilePickerOpen&&detailItem);
+  let body;
+  if(storageRestoring)body=restoringPage();
+  else if(profilePickerOpen)body=profilePickerPage();
+  else if(detailRoute)body=detailHtml();
+  else if(state.page==='home')body=home();
+  else if(state.page==='live')body=livePage();
+  else if(state.page==='guide')body=guidePage();
+  else if(state.page==='movies')body=page('movie','Movies');
+  else if(state.page==='series')body=page('series','TV Shows');
+  else if(state.page==='mylist')body=myListPage();
+  else if(state.page==='search')body=searchPage();
+  else body=settingsPage();
+  const shellNav=storageRestoring||profilePickerOpen||detailRoute?'':nav();
+  $app.innerHTML=`<div class="app-shell">${shellNav}${body}${modal?modalHtml():''}${!profilePickerOpen&&!detailRoute&&sourceChoiceItem?sourceChoiceHtml():''}${!profilePickerOpen&&!detailRoute&&playerItem&&!playerUiHidden?playerHtml():''}${!profilePickerOpen&&!detailRoute?backgroundLiveBar():''}${!profilePickerOpen&&trailerKey?trailerHtml():''}</div>`;
+  if(detailRoute){const scroller=document.querySelector('.detail-scroll');if(scroller)scroller.scrollTop=detailScrollTop;}
+  bind();bindHeroControls(document);
+  if(!profilePickerOpen&&!detailRoute&&state.page==='search')runSearch('');
+  hydrateArtwork();
+  if(!profilePickerOpen&&!detailRoute&&state.page==='guide')setTimeout(loadGuideEpg,0);
+  if(!profilePickerOpen&&!detailRoute&&state.page==='home'){
+    mountLazyHomeRows(document);
+    if(state.catalog.length)setTimeout(()=>refreshDiscoveryRows(false),largeLibraryMode()?1200:0);
+    if(nativeCatalogMode)setTimeout(primeNativeHomeRows,140);
+  }
+  if(!profilePickerOpen&&!detailRoute&&playerItem?.kind==='live')setTimeout(()=>{loadPlayerNowNext(playerItem);loadLiveMiniGuide(playerItem)},0);
+  if(!profilePickerOpen&&state.catalog.length)setTimeout(scheduleMetadataEnrichment,largeLibraryMode()?1800:120);
+  if(!profilePickerOpen&&!detailRoute&&nativeCatalogMode){if(state.page==='movies')scheduleNativePage('movie');if(state.page==='series')scheduleNativePage('series');if(state.page==='live')scheduleNativePage('live');}
+  if(!detailRoute)scheduleHeroRotation();
 }
 
 function providerModal(){
@@ -894,36 +941,51 @@ function detailHtml(){
   const sourceProviders=Array.isArray(detailItem.sources)?[...new Set(detailItem.sources.map(x=>providerDisplayName(x)))]:[providerDisplayName(detailItem)];const facts=[['Genre',meta.genre],['Director / Creator',meta.director],['Country',meta.country],['Runtime',meta.duration],['Rating',meta.age],['Providers',sourceProviders.filter(Boolean).join(', ')],['Playback sources',detailItem.sourceCount>1?`${detailItem.sourceCount} available`:'']].filter(([,v])=>v);
   const castBlock=meta.castList.length?`<section class="detail-cast"><div class="detail-section-head"><div><span class="eyebrow">CAST</span><h3>Cast & Characters</h3></div></div><div class="cast-rail">${meta.castList.map(person=>`<div class="cast-card">${person.profile?`<img data-swoop-art="${esc(person.profile)}" alt="">`:`<div class="cast-fallback">${esc((person.name||'?').slice(0,1))}</div>`}<strong>${esc(person.name)}</strong><span>${esc(person.character||'')}</span></div>`).join('')}</div></section>`:'';
   const trailerButton=meta.youtube?`<button class="btn secondary detail-trailer" data-trailer="${esc(meta.youtube)}" data-trailer-title="${esc(meta.trailerName||meta.title)}"><span>▶</span> Trailer</button>`:'';
-  return `<div class="detail-shell" role="dialog" aria-modal="true" aria-label="${esc(meta.title)}"><button class="detail-back" data-detail-close>←</button><div class="detail-scroll"><section class="detail-hero ${hasCinematicBackdrop?'has-backdrop':'poster-fallback'}"><div class="detail-media"><div class="detail-fallback" style="--detail-fallback:${detailItem.demoColor||'linear-gradient(135deg,#151b2a,#050609)'}"></div>${backdrop?`<img class="detail-backdrop" data-swoop-art="${esc(backdrop)}" alt="">`:''}</div><div class="detail-vignette"></div><div class="detail-copy"><div class="eyebrow">${esc(kindLabel(detailItem).toUpperCase())}</div>${meta.titleLogo?`<img class="detail-title-logo" data-swoop-art="${esc(meta.titleLogo)}" alt="${esc(meta.title)}">`:`<h2>${esc(meta.title)}</h2>`}<div class="detail-meta">${[meta.year,meta.rating?`★ ${meta.rating}`:'',meta.age,detailItem.group].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>${esc(meta.plot||`Available from ${providerSummaryName()}.`)}</p><div class="cta-row">${primary}${trailerButton}<button class="btn secondary detail-list ${saved?'saved':''}" data-toggle-list="${esc(detailItem.id)}"><span>${saved?'✓':'＋'}</span> ${saved?'In My List':'My List'}</button></div></div>${meta.cover&&!hasCinematicBackdrop?`<img class="detail-poster" data-swoop-art="${esc(meta.cover)}" alt="">`:''}</section>
-  ${episodeBlock}${castBlock}<section class="detail-info"><div><span class="eyebrow">ABOUT</span><h3>More about ${esc(meta.title)}</h3></div><div class="detail-facts">${facts.length?facts.map(([k,v])=>`<div><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join(''):'<div><span>Source</span><strong>Your connected provider</strong></div>'}</div></section>${related.length?`<section class="detail-related">${rail('More Like This',related,detailItem.kind!=='live')}</section>`:''}</div></div>`;
+  return `<main class="detail-overlay detail-route" aria-label="${esc(meta.title)}"><button class="detail-close" data-detail-close aria-label="Back">←</button><div class="detail-scroll"><section class="detail-hero ${hasCinematicBackdrop?'has-backdrop':'poster-fallback'}"><div class="detail-media"><div class="detail-fallback" style="--detail-fallback:${detailItem.demoColor||'linear-gradient(135deg,#151b2a,#050609)'}"></div>${backdrop?`<img class="detail-backdrop" data-swoop-art="${esc(backdrop)}" alt="">`:''}</div><div class="detail-vignette"></div><div class="detail-copy"><div class="eyebrow">${esc(kindLabel(detailItem).toUpperCase())}</div>${meta.titleLogo?`<img class="detail-title-logo" data-swoop-art="${esc(meta.titleLogo)}" alt="${esc(meta.title)}">`:`<h2>${esc(meta.title)}</h2>`}<div class="detail-meta">${[meta.year,meta.rating?`★ ${meta.rating}`:'',meta.age,detailItem.group].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>${esc(meta.plot||`Available from ${providerSummaryName()}.`)}</p><div class="cta-row">${primary}${trailerButton}<button class="btn secondary detail-list ${saved?'saved':''}" data-toggle-list="${esc(detailItem.id)}"><span>${saved?'✓':'＋'}</span> ${saved?'In My List':'My List'}</button></div></div>${meta.cover&&!hasCinematicBackdrop?`<img class="detail-poster" data-swoop-art="${esc(meta.cover)}" alt="">`:''}</section>
+  ${episodeBlock}${castBlock}<section class="detail-info"><div><span class="eyebrow">ABOUT</span><h3>More about ${esc(meta.title)}</h3></div><div class="detail-facts">${facts.length?facts.map(([k,v])=>`<div><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join(''):'<div><span>Source</span><strong>Your connected provider</strong></div>'}</div></section>${related.length?`<section class="detail-related">${rail('More Like This',related,detailItem.kind!=='live')}</section>`:''}</div></main>`;
 }
 function trailerHtml(){return trailerKey?`<div class="trailer-shell" role="dialog" aria-modal="true"><div class="trailer-card"><button class="trailer-close" data-trailer-close>✕</button><iframe src="https://www.youtube.com/embed/${esc(trailerKey)}?autoplay=1&rel=0" title="${esc(trailerTitle||'Trailer')}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe><div class="trailer-caption"><span class="eyebrow">TRAILER</span><strong>${esc(trailerTitle||'Official Trailer')}</strong></div></div></div>`:''}
 
+async function resolveNativeCatalogItem(item,{includeSources=true}={}){
+  if(!item||!nativeCatalogMode||!item._nativeLogicalKey||item.kind==='episode')return item;
+  if(includeSources&&Array.isArray(item.sources)&&item.sources.length)return item;
+  try{
+    const result=await nativeCatalogSources(item._nativeLogicalKey),sources=cacheNativeItems(result?.items||[]);
+    if(!sources.length)return item;
+    const representative=sources.find(x=>x.providerId===item.providerId)||sources[0];
+    const resolved={...item,...representative,id:item.id,name:item.name||representative.name,_nativeLogicalKey:item._nativeLogicalKey,_nativeSourceIds:item._nativeSourceIds||sources.map(x=>x.id),sourceCount:Math.max(Number(item.sourceCount||0),sources.length)};
+    if(includeSources&&sources.length>1)resolved.sources=sources;
+    cacheNativeItems([resolved]);
+    return resolved;
+  }catch{return item}
+}
+
 async function openDetail(item){
-  if(!item)return;detailItem=item;detailSeason='';detailError='';detailPayload=detailCache.get(item.id)||null;detailLoading=false;render();if(['movie','series'].includes(item.kind))setTimeout(()=>enrichItemMetadata(item,{rerender:true}),0);
+  if(!item)return;if(!detailItem){detailReturnScroll=window.scrollY||document.documentElement.scrollTop||0;detailScrollTop=0;}item=await resolveNativeCatalogItem(item,{includeSources:true});detailItem=item;detailSeason='';detailError='';detailPayload=detailCache.get(item.id)||null;detailLoading=false;render();if(['movie','series'].includes(item.kind))setTimeout(()=>enrichItemMetadata(item,{rerender:true}),0);
   if(detailPayload||item.source!=='xtream'||!['movie','series'].includes(item.kind))return;
   const cfg=providerConfigFor(item);if(!cfg.server||!cfg.username||!cfg.password){detailError=`Reconnect ${providerDisplayName(item)} or save its Xtream login to load full title details.`;render();return}
   detailLoading=true;render();
   try{const payload=item.kind==='series'?await fetchXtreamSeriesInfo(cfg,item.seriesId):await fetchXtreamVodInfo(cfg,item.streamId);detailCache.set(item.id,payload||{});if(detailItem?.id===item.id){detailPayload=payload||{};detailLoading=false;render()}}
   catch(err){if(detailItem?.id===item.id){detailLoading=false;detailError=err.message||'Could not load title details.';render()}}
 }
-function closeDetail(){detailItem=null;detailPayload=null;detailLoading=false;detailError='';detailSeason='';detailEpisodeItems.clear();render()}
+function closeDetail(){detailItem=null;detailPayload=null;detailLoading=false;detailError='';detailSeason='';detailEpisodeItems.clear();detailScrollTop=0;render();requestAnimationFrame(()=>window.scrollTo(0,detailReturnScroll||0))}
 function toggleMyList(item){if(!item)return;const ids=new Set(logicalItemIds(item)),saved=state.myList.some(id=>ids.has(id));if(saved){state.myList=state.myList.filter(id=>!ids.has(id));toast('Removed from My List')}else{state.myList.unshift(item.id);toast('Added to My List')}persist();render()}
 function recordWatchHistory(item){
   if(!item)return;
+  const ids=new Set(logicalItemIds(item));
   if(item.kind==='live'){
-    state.recentLive=[item.id,...state.recentLive.filter(id=>id!==item.id)].slice(0,20);
+    state.recentLive=[item.id,...state.recentLive.filter(id=>!ids.has(String(id)))].slice(0,20);
     return;
   }
   const entry={id:item.id,item:compactMediaSnapshot(item),lastPlayed:Date.now(),selectedSourceId:item._selectedSourceId||''};
-  state.watchHistory=state.watchHistory.filter(x=>x.id!==item.id);state.watchHistory.unshift(entry);state.watchHistory=state.watchHistory.slice(0,80);
+  state.watchHistory=state.watchHistory.filter(x=>!ids.has(String(x?.id||'')));state.watchHistory.unshift(entry);state.watchHistory=state.watchHistory.slice(0,80);
 }
 function rememberWatching(item){
   if(!item)return;recordWatchHistory(item);
   if(item.kind==='live'){persist();return}
   const old=continueEntry(item.id)||{};
   const entry={id:item.id,item:compactMediaSnapshot(item),lastPlayed:Date.now(),progress:Number(old.progress||0),position:Number(old.position||0),duration:Number(old.duration||0),selectedSourceId:item._selectedSourceId||old.selectedSourceId||''};
-  state.continueWatching=state.continueWatching.filter(x=>x.id!==item.id);state.continueWatching.unshift(entry);state.continueWatching=state.continueWatching.slice(0,40);persist();
+  const ids=new Set(logicalItemIds(item));state.continueWatching=state.continueWatching.filter(x=>!ids.has(String(x?.id||'')));state.continueWatching.unshift(entry);state.continueWatching=state.continueWatching.slice(0,40);persist();
 }
 function resumeSeconds(item){
   const e=continueEntry(item?.id);if(!e)return 0;
@@ -938,11 +1000,11 @@ function updateContinueProgress(item,pb,force=false){
   const pct=duration>0?Math.max(0,Math.min(100,(pos/duration)*100)):Math.max(0,Math.min(100,Number(pb.percentPos||0)));
   const complete=Boolean(pb.eofReached)||(duration>60&&pct>=95);
   recordWatchHistory(item);
-  if(complete){state.continueWatching=state.continueWatching.filter(x=>x.id!==item.id);persist();return}
+  if(complete){const ids=new Set(logicalItemIds(item));state.continueWatching=state.continueWatching.filter(x=>!ids.has(String(x?.id||'')));persist();return}
   if(pos<8&&pct<1&&!force)return;
   const old=continueEntry(item.id)||{};
   const entry={id:item.id,item:compactMediaSnapshot(item),lastPlayed:Date.now(),position:pos||Number(old.position||0),duration:duration||Number(old.duration||0),progress:pct||Number(old.progress||0),selectedSourceId:item._selectedSourceId||old.selectedSourceId||''};
-  state.continueWatching=state.continueWatching.filter(x=>x.id!==item.id);state.continueWatching.unshift(entry);state.continueWatching=state.continueWatching.slice(0,40);
+  const ids=new Set(logicalItemIds(item));state.continueWatching=state.continueWatching.filter(x=>!ids.has(String(x?.id||'')));state.continueWatching.unshift(entry);state.continueWatching=state.continueWatching.slice(0,40);
   if(force||Date.now()-lastPlaybackPersist>7000){lastPlaybackPersist=Date.now();persist()}
 }
 function nextEpisodeFromMap(item){
@@ -1056,14 +1118,35 @@ async function startPlayback(item){
   if(NATIVE_WINDOWS){try{const startSeconds=resumeSeconds(item);const result=await nativePlay(item,{startSeconds});playerStartedAt=Date.now();const status=document.querySelector('#playerStatus');if(status)status.textContent=startSeconds>0?`Resuming from ${Math.floor(startSeconds/60)}m ${Math.floor(startSeconds%60)}s…`:'Native player starting…';const msg=document.querySelector('#playerMessage');if(msg&&item.kind!=='live')msg.textContent=startSeconds>0?'Opening mpv at your saved position…':'Swoop is checking that native playback stays open…';await new Promise(r=>setTimeout(r,1400));const diag=await nativeDiagnostics();if(diag?.playing){if(status)status.textContent=item.kind==='live'?'● LIVE · Native player opened':startSeconds>0?'Resumed in native player':'Playing in native window';if(msg&&item.kind!=='live')msg.textContent=`Playback is running${result?.pid?` · process ${result.pid}`:''}. Swoop will keep your Continue Watching position in sync.`;if(item.kind==='movie'&&item._selectedSourceId)rememberMovieSourcePreference(item,item._selectedSourceId);startPlaybackMonitor(item);if(item.kind==='live'){loadPlayerNowNext(item);loadLiveMiniGuide(item)}}else{if(item.kind==='movie'&&Array.isArray(item.sources)&&item.sources.length>1&&await autoFallbackSource(item))return;const lines=Array.isArray(diag?.logTail)?diag.logTail.filter(Boolean):[];const tail=lines.slice(-6).join(' | ');const code=diag?.exitCode!==null&&diag?.exitCode!==undefined?` Exit code ${diag.exitCode}.`:'';setPlayerMessage(`The native player started but closed immediately.${code}${tail?` mpv: ${tail}`:' Check the Swoop TV Windows Bridge window for the launch result.'}`,true)}}catch(err){if(item.kind==='movie'&&Array.isArray(item.sources)&&item.sources.length>1&&await autoFallbackSource(item))return;setPlayerMessage(err.message||'Could not launch the Windows native player.',true)}return}
   const video=document.querySelector('#swoopVideo');if(!video||!item)return;const url=hlsCandidate(item);if(location.protocol==='https:'&&/^http:\/\//i.test(url)){setPlayerMessage('This provider is sending an HTTP video stream. An HTTPS web app cannot safely play it in Chrome. Swoop stopped the request instead of letting the browser hang. A secure HTTPS/HLS stream or the native Swoop app is required for this source.',true);return}const lower=url.split('?')[0].toLowerCase(),isHls=/\.m3u8$/.test(lower);if(item.kind==='live'&&!isHls){setPlayerMessage('This live stream is not browser-safe HLS. Swoop has deliberately not opened the raw transport stream because that was causing Chrome to become unresponsive.',true);return}if(isHls){if(video.canPlayType('application/vnd.apple.mpegurl')){video.src=url;video.addEventListener('loadedmetadata',()=>{const s=document.querySelector('#playerStatus');if(s)s.textContent=item.kind==='live'?'● LIVE':'Playing'},{once:true});video.addEventListener('timeupdate',()=>{if(item.kind!=='live'&&video.duration)updateContinueProgress(item,{timePos:video.currentTime,duration:video.duration,percentPos:video.currentTime/video.duration*100},false)});video.addEventListener('ended',()=>handlePlaybackFinished(item),{once:true});video.addEventListener('error',()=>setPlayerMessage('The browser could not open this HLS stream. The provider may block browser playback or the stream may use an unsupported codec.',true),{once:true});try{video.currentTime=resumeSeconds(item);await video.play()}catch{}return}try{const Hls=await loadHlsLibrary();if(!Hls.isSupported())throw new Error('This browser does not provide MediaSource playback.');activeHls=new Hls({enableWorker:true,lowLatencyMode:true,backBufferLength:60,maxBufferLength:20});activeHls.attachMedia(video);activeHls.on(Hls.Events.MEDIA_ATTACHED,()=>activeHls?.loadSource(url));activeHls.on(Hls.Events.MANIFEST_PARSED,()=>{const s=document.querySelector('#playerStatus');if(s)s.textContent=item.kind==='live'?'● LIVE':'Playing';if(item.kind!=='live'&&resumeSeconds(item)>0)try{video.currentTime=resumeSeconds(item)}catch{}video.play().catch(()=>{})});video.addEventListener('timeupdate',()=>{if(item.kind!=='live'&&video.duration)updateContinueProgress(item,{timePos:video.currentTime,duration:video.duration,percentPos:video.currentTime/video.duration*100},false)});video.addEventListener('ended',()=>handlePlaybackFinished(item),{once:true});activeHls.on(Hls.Events.ERROR,(_,data)=>{if(!data?.fatal)return;const detail=data?.details?` (${data.details})`:'';setPlayerMessage(`The HLS stream could not be played${detail}. Many IPTV providers allow native apps but block browser HLS/CORS.`,true);try{activeHls?.destroy()}catch{}activeHls=null})}catch(err){setPlayerMessage(err.message||'Could not start HLS playback.',true)}return}if(/\.(mp4|webm|m4v)$/.test(lower)){video.src=url;video.addEventListener('loadedmetadata',()=>{const s=document.querySelector('#playerStatus');if(s)s.textContent='Playing';const resume=resumeSeconds(item);if(resume>0)try{video.currentTime=resume}catch{}},{once:true});video.addEventListener('timeupdate',()=>{if(video.duration)updateContinueProgress(item,{timePos:video.currentTime,duration:video.duration,percentPos:video.currentTime/video.duration*100},false)});video.addEventListener('ended',()=>handlePlaybackFinished(item),{once:true});video.addEventListener('error',()=>setPlayerMessage('The browser could not play this video file or codec.',true),{once:true});try{await video.play()}catch{}return}setPlayerMessage('This video container is not supported safely by the web player yet.',true)
 }
-async function play(item,{sourceSelected=false}={}){if(!item)return;if(nativeCatalogMode&&Number(item.sourceCount||0)>1&&!Array.isArray(item.sources)&&item._nativeLogicalKey){try{const result=await nativeCatalogSources(item._nativeLogicalKey),sources=cacheNativeItems(result?.items||[]);item={...item,sources,sourceCount:sources.length};nativeItemCache.set(item.id,item);if(item.kind==='movie'&&!sourceSelected){sourceChoiceItem=item;render();return}}catch(err){toast(err.message||'Could not load alternate sources');return}}if(item.kind==='live'&&Array.isArray(item.sources)&&item.sources.length>1)item=preferredLiveSource(item);if(NATIVE_WINDOWS&&item.kind==='live'&&playerItem?.kind==='live'){await switchLiveChannel(item);return}if(item.kind==='movie'&&Array.isArray(item.sources)&&item.sources.length>1&&!sourceSelected){sourceChoiceItem=item;render();return}if(!item.streamUrl){toast(item.source==='demo'?'Demo item — connect your provider for playback.':item.kind==='series'?'Open the series to choose an episode.':'No playable URL available.');if(item.kind==='series')openDetail(item);return}sourceChoiceItem=null;if(playerItem)await stopPlayback(true);rememberWatching(item);playerItem=item;playerUiHidden=false;render();requestAnimationFrame(()=>startPlayback(item))}
+async function play(item,{sourceSelected=false}={}){
+  if(!item)return;
+  if(nativeCatalogMode&&item._nativeLogicalKey){
+    const resolved=await resolveNativeCatalogItem(item,{includeSources:true});
+    if(resolved)item=resolved;
+  }
+  if(item.kind==='live'&&Array.isArray(item.sources)&&item.sources.length>1)item=preferredLiveSource(item);
+  if(NATIVE_WINDOWS&&item.kind==='live'&&playerItem?.kind==='live'){await switchLiveChannel(item);return}
+  if(item.kind==='movie'&&Array.isArray(item.sources)&&item.sources.length>1&&!sourceSelected){sourceChoiceItem=item;render();return}
+  if(!item.streamUrl){
+    toast(item.source==='demo'?'Demo item — connect your provider for playback.':item.kind==='series'?'Open the series to choose an episode.':'Swoop could not resolve a playable source for this title.');
+    if(item.kind==='series')openDetail(item);
+    return;
+  }
+  sourceChoiceItem=null;
+  if(playerItem)await stopPlayback(true);
+  rememberWatching(item);playerItem=item;playerUiHidden=false;render();requestAnimationFrame(()=>startPlayback(item));
+}
 
 function queueArtworkRelay(task){return new Promise((resolve,reject)=>{artworkRelayQueue.push({task,resolve,reject});pumpArtworkRelay()})}
-function pumpArtworkRelay(){while(artworkRelayActive<ARTWORK_RELAY_LIMIT&&artworkRelayQueue.length){const job=artworkRelayQueue.shift();artworkRelayActive++;Promise.resolve().then(job.task).then(job.resolve,job.reject).finally(()=>{artworkRelayActive--;pumpArtworkRelay()})}}
+function artworkRelayLimit(){return largeLibraryMode()?3:6}
+function pumpArtworkRelay(){while(artworkRelayActive<artworkRelayLimit()&&artworkRelayQueue.length){const job=artworkRelayQueue.shift();artworkRelayActive++;Promise.resolve().then(job.task).then(job.resolve,job.reject).finally(()=>{artworkRelayActive--;pumpArtworkRelay()})}}
 async function relayArtworkUrl(url){if(artworkCache.has(url))return artworkCache.get(url);const promise=queueArtworkRelay(async()=>{const blob=await fetchXtreamAssetBlob({relayUrl:sessionRelay.url,relayToken:sessionRelay.token},url);return URL.createObjectURL(blob)}).catch(err=>{artworkCache.delete(url);throw err});artworkCache.set(url,promise);return promise}
 function canRelayArtwork(){return !NATIVE_WINDOWS&&Boolean(sessionRelay.url&&sessionRelay.token&&enabledProviders().some(p=>p.type==='xtream'))}
-function loadArtwork(img){if(img.dataset.swoopLoaded==='1')return;img.dataset.swoopLoaded='1';const url=img.dataset.swoopArt||'';if(!url)return;const fallback=async()=>{if(!canRelayArtwork())return;try{img.src=await relayArtworkUrl(url);img.classList.add('loaded')}catch{img.removeAttribute('src')}};if(location.protocol==='https:'&&/^http:\/\//i.test(url)&&canRelayArtwork()){fallback();return}img.onload=()=>img.classList.add('loaded');img.onerror=()=>fallback();img.src=url}
-function hydrateArtwork(root=document){const imgs=[...root.querySelectorAll('img[data-swoop-art]')];if('IntersectionObserver'in window){const observer=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){observer.unobserve(entry.target);loadArtwork(entry.target)}},{rootMargin:'300px'});imgs.forEach(img=>observer.observe(img))}else imgs.forEach(loadArtwork)}
+function optimizedArtworkUrl(url,img){const raw=String(url||'');if(!/image\.tmdb\.org\/t\/p\//i.test(raw))return raw;const cls=img?.className||'';let size='w500';if(/backdrop|hero-art|hero-backdrop|detail-backdrop/i.test(cls))size='w1280';else if(/title-logo/i.test(cls))size='w500';else if(/cast/i.test(cls))size='w185';else if(img?.closest?.('.poster, .poster-content-grid'))size='w342';return raw.replace(/\/t\/p\/(?:original|w\d+)\//i,`/t/p/${size}/`)}
+function revealArtwork(img){const show=()=>img.classList.add('loaded');if(typeof img.decode==='function')img.decode().then(show).catch(show);else show()}
+function loadArtwork(img){if(img.dataset.swoopLoaded==='1')return;img.dataset.swoopLoaded='1';const original=img.dataset.swoopArt||'';if(!original)return;const url=optimizedArtworkUrl(original,img);img.decoding='async';if(!/hero|detail-backdrop|title-logo/i.test(img.className||'')){img.loading='lazy';try{img.fetchPriority='low'}catch{}}const fallback=async()=>{if(!canRelayArtwork())return;try{img.onload=()=>revealArtwork(img);img.src=await relayArtworkUrl(original)}catch{img.removeAttribute('src')}};if(location.protocol==='https:'&&/^http:\/\//i.test(original)&&canRelayArtwork()){fallback();return}img.onload=()=>revealArtwork(img);img.onerror=()=>fallback();img.src=url}
+function hydrateArtwork(root=document){const imgs=[...root.querySelectorAll('img[data-swoop-art]')].filter(img=>img.dataset.swoopLoaded!=='1');if(!imgs.length)return;if(!('IntersectionObserver'in window)){imgs.forEach(loadArtwork);return}if(!artworkObserver)artworkObserver=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){artworkObserver?.unobserve(entry.target);loadArtwork(entry.target)}},{rootMargin:largeLibraryMode()?'120px 0px':'280px 0px',threshold:.01});imgs.forEach(img=>artworkObserver.observe(img))}
+
 let searchIndexKey='',searchIndexCache=[];
 function searchIndex(){const key=`${activeCatalogContext}|${movieStackPriorityKey}|${liveStackPriorityKey}|${metadataRevision}`;if(searchIndexKey===key&&searchIndexCache.length)return searchIndexCache;const logical=[...items('movie'),...items('series'),...items('live')];searchIndexCache=logical.map(item=>({item,text:`${item.name||''} ${item.group||''} ${item.year||''}`.toLowerCase()}));searchIndexKey=key;return searchIndexCache}
 async function runSearch(q){
@@ -1141,15 +1224,15 @@ function bind(){
   document.querySelectorAll('[data-channel-step]').forEach(el=>el.onclick=()=>{const next=adjacentLive(playerItem,Number(el.dataset.channelStep||1));if(next)switchLiveChannel(next)});
   document.querySelectorAll('[data-mini-channel]').forEach(el=>el.onclick=()=>{const next=savedItem(el.dataset.miniChannel);if(next)switchLiveChannel(next)});
   document.querySelectorAll('[data-live-favourite]').forEach(el=>el.onclick=()=>{const item=savedItem(el.dataset.liveFavourite)||playerItem;if(item)toggleLiveFavourite(item)});
-  document.querySelectorAll('[data-live-category]').forEach(el=>el.onclick=()=>{liveCategory=el.dataset.liveCategory||'';viewLimits.live=180;if(nativeCatalogMode)nativePageCache.live.key='';render()});
+  document.querySelectorAll('[data-live-category]').forEach(el=>el.onclick=()=>{liveCategory=el.dataset.liveCategory||'';viewLimits.live=96;if(nativeCatalogMode)nativePageCache.live.key='';render()});
   document.querySelectorAll('[data-player-guide]').forEach(el=>el.onclick=async()=>{if(playerItem?.kind==='live'){playerUiHidden=true;state.page='guide';render()}else{await closePlayer();state.page='guide';render()}});
   document.querySelectorAll('[data-trailer]').forEach(el=>el.onclick=()=>{trailerKey=el.dataset.trailer||'';trailerTitle=el.dataset.trailerTitle||detailItem?.name||'Trailer';render()});
   document.querySelectorAll('[data-trailer-close]').forEach(el=>el.onclick=()=>{trailerKey='';trailerTitle='';render()});
-  document.querySelectorAll('[data-load-more]').forEach(el=>el.onclick=()=>{const kind=el.dataset.loadMore;viewLimits[kind]=(viewLimits[kind]||120)+(kind==='live'?180:120);if(nativeCatalogMode&&nativePageCache[kind])nativePageCache[kind].key='';render()});
-  document.querySelectorAll('[data-search-term]').forEach(el=>el.onclick=()=>{state.page='search';render();const input=document.querySelector('#searchInput');if(input){input.value=el.dataset.searchTerm;runSearch(input.value)}});document.querySelectorAll('[data-page-category]').forEach(el=>el.onclick=()=>{const kind=el.dataset.pageCategory,group=el.dataset.pageGroup||'';if(nativeCatalogMode&&['movie','series'].includes(kind)){pageCategory[kind]=group;viewLimits[kind]=120;nativePageCache[kind].key='';render()}else{state.page='search';render();const input=document.querySelector('#searchInput');if(input){input.value=group;runSearch(group)}}});
+  document.querySelectorAll('[data-load-more]').forEach(el=>el.onclick=()=>{const kind=el.dataset.loadMore;viewLimits[kind]=(viewLimits[kind]||(kind==='live'?96:72))+(kind==='live'?96:72);if(nativeCatalogMode&&nativePageCache[kind])nativePageCache[kind].key='';render()});
+  document.querySelectorAll('[data-search-term]').forEach(el=>el.onclick=()=>{state.page='search';render();const input=document.querySelector('#searchInput');if(input){input.value=el.dataset.searchTerm;runSearch(input.value)}});document.querySelectorAll('[data-page-category]').forEach(el=>el.onclick=()=>{const kind=el.dataset.pageCategory,group=el.dataset.pageGroup||'';if(nativeCatalogMode&&['movie','series'].includes(kind)){pageCategory[kind]=group;viewLimits[kind]=72;nativePageCache[kind].key='';render()}else{state.page='search';render();const input=document.querySelector('#searchInput');if(input){input.value=group;runSearch(group)}}});
   document.querySelector('[data-guide-now]')?.addEventListener('click',()=>{guideStart=Math.floor(Date.now()/1800000)*1800000;render()});
   document.querySelector('[data-guide-more]')?.addEventListener('click',()=>{guideLimit+=24;m3uGuideLoaded=false;m3uGuideLoadedProviders.clear();render()});
-  document.querySelectorAll('[data-provider-filter]').forEach(el=>el.onclick=()=>{providerFilter=el.dataset.providerFilter||'all';viewLimits.live=180;viewLimits.movie=120;viewLimits.series=120;if(nativeCatalogMode)for(const k of ['live','movie','series'])nativePageCache[k].key='';render()});
+  document.querySelectorAll('[data-provider-filter]').forEach(el=>el.onclick=()=>{providerFilter=el.dataset.providerFilter||'all';viewLimits.live=96;viewLimits.movie=72;viewLimits.series=72;if(nativeCatalogMode)for(const k of ['live','movie','series'])nativePageCache[k].key='';render()});
   document.querySelectorAll('[data-provider-toggle]').forEach(el=>el.onclick=()=>toggleProviderEnabled(el.dataset.providerToggle));
   document.querySelectorAll('[data-provider-refresh]').forEach(el=>el.onclick=()=>refreshProvider(el.dataset.providerRefresh));
   document.querySelectorAll('[data-provider-edit]').forEach(el=>el.onclick=()=>{const id=el.dataset.providerEdit,p=providerById(id),cfg=providerConfigById(id)||p;if(!p)return;const tab=document.querySelector(`[data-provider-tab="${p.type}"]`);tab?.click();const form=document.querySelector(p.type==='xtream'?'#xtreamForm':'#m3uForm');if(!form)return;const set=(name,value)=>{const input=form.querySelector(`[name="${name}"]`);if(input)input.value=value||''};set('name',p.name);if(p.type==='xtream'){set('server',cfg.server||p.server);set('username',cfg.username||'');set('password',cfg.password||'');set('relayUrl',cfg.relayUrl||p.relayUrl||'');set('relayToken',cfg.relayToken||'')}else{set('url',cfg.url||p.url||'');set('epgUrl',cfg.epgUrl||p.epgUrl||'')}form.scrollIntoView({behavior:'smooth',block:'start'});toast(`Editing ${p.name}`)});
