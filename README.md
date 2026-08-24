@@ -1,7 +1,14 @@
 # Swoop TV
 
-**Current build: v0.7.27 — TV Guide Header Clipping Hotfix**
+**Current build: v0.7.28 — Brand Lockup Cleanup**
 
+
+
+### v0.7.28 — Brand Lockup Cleanup
+
+- Fixes the Swoop TV header/profile lockup rendering as **SWOOP TV TV** in themed UI.
+- The brand now renders as one clean **SWOOP TV** lockup everywhere while preserving the existing accent styling on the final **TV**.
+- Branding/presentation-only hotfix. No provider, Guide, metadata, SQLite, profile, watched/resume or playback behavior changes.
 
 ### v0.7.27 — TV Guide Header Clipping Hotfix
 

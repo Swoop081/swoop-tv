@@ -1,3 +1,10 @@
+## v0.7.28 — Brand Lockup Cleanup
+
+- Fixed the navigation/profile brand lockup displaying **SWOOP TV TV**.
+- The lockup now renders **SWOOP TV** once, retaining the existing smaller accent treatment for **TV**.
+- Branding-only change; no provider, Guide, metadata, SQLite, profile, watched/resume or playback behavior changes.
+- Automated tests and JavaScript syntax checks pass; ZIP integrity is verified.
+
 ## v0.7.27 — TV Guide Header Clipping Hotfix
 
 - Fixed the category-first TV Guide header overlaying/clipping the first channel row.
