@@ -1,11 +1,31 @@
 # Swoop TV Release Notes
 
+## v0.7.21 — Cast Library Browsing
+
+- Makes every cast portrait/name on movie and TV detail pages clickable.
+- Selecting a cast member opens a dedicated filmography page showing only that actor/actress's **movies and TV shows that are actually available in the enabled Swoop TV provider library**.
+- Uses TMDb person/combined-credit identity, then reuses Swoop TV's strict local title/year/ID matching rather than treating the online filmography as playable content. Wrong-year or ambiguous titles are not shown as local matches.
+- Native Windows/SQLite builds can match up to 800 movie credits and 800 TV credits per person, matching the Worker’s 800-credit filmography cap. Browser-mode libraries use the same strict local matcher.
+- Adds visible staged progress while Swoop TV resolves the person, loads filmography credits and matches Movies/TV Shows to the provider catalogue.
+- Preserves navigation state in both directions: Back from a cast page restores the exact original title detail; opening a title from the cast page and pressing Back restores the exact cast page and scroll position.
+- Existing metadata caches without TMDb person IDs remain usable: the Worker can resolve a cast member by exact name until refreshed metadata supplies the person ID.
+- Cloudflare Worker **v0.1.12** adds the `person-credits` route and includes TMDb person IDs in future cast metadata. Redeploy the bundled Worker for cast browsing to work.
+- No provider refresh, SQLite rebuild, discovery reset, watched/resume reset or playback change is required.
+
+## v0.7.20 — Branding Consistency
+
+- Standardises the visible product name as **Swoop TV** throughout the app. Short-form user-facing product-name references now read **Swoop TV**.
+- Updates long-task/progress copy such as **SWOOP TV IS WORKING**, **Still running — Swoop TV has not frozen**, provider refresh/indexing messages, connection-helper text and local catalogue status messages.
+- Updates user-facing native Windows bridge/bootstrap messages, player/dialog labels, storage/service errors, sample/demo labels and bundled documentation to use the full **Swoop TV** brand.
+- Keeps lowercase implementation identifiers such as `swoop-tv-*` storage/cache keys, `x-swoop-token`, CSS/data attribute names and local filenames unchanged because they are technical identifiers rather than visible brand copy.
+- Branding-only release: no provider refresh, SQLite rebuild, discovery reset, metadata change, watched/resume change or Windows/mpv playback change is required.
+
 ## v0.7.19 — Ranked Rail Stability + Strict Discovery Matching
 
 - Fixes the Top 100 horizontal rails jumping/bouncing back toward rank 1 while the user is scrolling. Mounted rails now record active horizontal interaction and defer asynchronous row replacement instead of swapping the entire rail under the pointer/trackpad.
 - Ranked rails disable CSS scroll snapping and forced smooth scrolling, giving mouse wheel, trackpad and drag input direct native horizontal movement without the jagged snap-back behavior shown in the screen recording.
 - Expands Top 100 discovery depth substantially. The client scans up to 600 candidates per blended source, the native SQLite matcher accepts up to 800 candidates, and the Worker supplies a multi-page TMDb popularity pool rather than only the first 20 results.
-- If a blended Top 100 result still has fewer than 100 local matches and MDBList is configured, Swoop supplements it from the full official MDBList popularity list and keeps the original blended order first.
+- If a blended Top 100 result still has fewer than 100 local matches and MDBList is configured, Swoop TV supplements it from the full official MDBList popularity list and keeps the original blended order first.
 - Discovery matching now follows the same identity rule as metadata matching: when a web candidate has an explicit year, title matches require that exact year. ID matches are also rejected when both sides have conflicting years.
 - Discovery matching no longer writes TMDb/IMDb IDs back onto provider catalogue items merely because a title candidate matched, preventing a discovery guess from contaminating later metadata resolution.
 - Fixes the `Odyssey (2025)` / `The Odyssey (2026)` case at the ranked-list matching layer, not just at the artwork/metadata layer.
@@ -15,11 +35,11 @@
 ## v0.7.18 — Visible Progress + Long Task Feedback
 
 - Adds a consistent long-task feedback system so users are never left with only a spinner or the word “Refreshing…” during work that can take several seconds or minutes.
-- Provider refresh cards now show a live **percentage, moving progress bar and plain-language stage** while Swoop contacts the provider, downloads sections, indexes SQLite and saves the refreshed library.
+- Provider refresh cards now show a live **percentage, moving progress bar and plain-language stage** while Swoop TV contacts the provider, downloads sections, indexes SQLite and saves the refreshed library.
 - **Refresh All** shows an overall persistent progress HUD with current provider, overall percentage and elapsed time; it remains visible even if the Provider Manager is not the only thing on screen.
 - Provider connection retains its existing step list but now adds a numeric percentage beside the progress bar. Large-library restore also displays its calculated percentage beside restored/indexed item counts.
 - TV Guide loading now reports channel-by-channel progress and fills rows progressively. Native SQLite browse/search and series-episode waits use animated indeterminate activity bars when a truthful exact percentage is not available.
-- Active progress bars include a moving highlight and explicit **Still running — Swoop has not frozen** reassurance so slow network stages still visibly look alive.
+- Active progress bars include a moving highlight and explicit **Still running — Swoop TV has not frozen** reassurance so slow network stages still visibly look alive.
 - No provider catalogue semantics, SQLite schema, Top 100/recently-added rails, metadata matching, IMDb hydration, watched/resume state or Windows/mpv playback behavior changes.
 
 ## v0.7.17 — Top 100 Ranked Rails
@@ -36,13 +56,13 @@
 - Renames **New & Recent Movies** to **Recently Added Movies** and **New & Recent TV Shows** to **Recently Added TV Shows** so the labels describe the source of recency accurately.
 - Xtream movie imports retain the provider `added` timestamp; series imports retain `added` / `last_modified` timestamps when supplied by the provider.
 - Adds a dedicated Windows SQLite `provider-added` sort. Duplicate movie stacks use the newest provider timestamp across their sources, while older indexed rows fall back to provider stream/series sequence until refreshed.
-- Existing users can use the rows immediately. For exact timestamp ordering on a catalogue imported before v0.7.16, run **Refresh All** once so Swoop captures the provider's addition timestamps. No SQLite rebuild is required.
+- Existing users can use the rows immediately. For exact timestamp ordering on a catalogue imported before v0.7.16, run **Refresh All** once so Swoop TV captures the provider's addition timestamps. No SQLite rebuild is required.
 - Only the two provider recency Home rows change. v0.7.15 strict title/year matching, IMDb hydration, 100-item rails, source stacking, watched/resume state and Windows/mpv playback remain preserved.
 
 ## v0.7.15 — Strict Title-Year Metadata Matching
 
 - Fixes false TMDb/IMDb enrichment where a provider title could inherit artwork and ratings from a different release with a similar name, such as `Odyssey (2025)` being decorated as `The Odyssey (2026)`.
-- Removes the old year-qualified-search fallback that retried a title without its year when TMDb returned no same-year result. If an explicit provider year cannot be matched, Swoop now keeps the provider identity/artwork rather than guessing.
+- Removes the old year-qualified-search fallback that retried a title without its year when TMDb returned no same-year result. If an explicit provider year cannot be matched, Swoop TV now keeps the provider identity/artwork rather than guessing.
 - Adds strict normalized-title + exact-year validation for title-search matches.
 - Validates supplied/cached TMDb and IMDb IDs against the provider year before trusting them, preventing stale IDs from earlier false matches from continuing to contaminate metadata.
 - Adds a client-side identity guard for both full metadata and lightweight IMDb-rating responses. Wrong-year artwork, title logos, metadata and IMDb scores are rejected even if an older Worker returns them.
@@ -63,7 +83,7 @@
 ## v0.7.13 — Viewport IMDb Rating Hydration
 
 - Fixes IMDb badges being absent across large category rails even when the underlying films/shows clearly have IMDb ratings.
-- Poster cards now request IMDb ratings as they approach the viewport instead of relying only on Swoop's small general metadata-enrichment queue.
+- Poster cards now request IMDb ratings as they approach the viewport instead of relying only on Swoop TV's small general metadata-enrichment queue.
 - Adds a separate throttled viewport rating queue with conservative concurrency in Auto/large-library mode, so long 100-item rails can progressively populate without attempting to enrich the whole library at once.
 - IMDb rating results are cached for 30 days. Existing v0.7.12 blank-rating cache state is selectively invalidated once without clearing poster/backdrop metadata or rebuilding the provider catalogue.
 - Visible cards update their gold IMDb badge in place after the rating arrives; the page does not need a full re-render.
@@ -100,7 +120,7 @@
 - Fixes misleading artwork appearing on the built-in mock/demo catalogue when no TV provider is connected.
 - Demo movie/show names are synthetic UI placeholders and are now excluded from TMDb metadata lookups, preventing title-name collisions from attaching unrelated real posters/backdrops.
 - Cached metadata from earlier builds is ignored for demo items, so existing users do not need to clear storage.
-- Disconnected demo cards return to intentional Swoop gradient artwork with the demo title/year visible; real provider titles continue to use normal TMDb artwork enrichment.
+- Disconnected demo cards return to intentional Swoop TV gradient artwork with the demo title/year visible; real provider titles continue to use normal TMDb artwork enrichment.
 - No provider, SQLite catalogue, discovery, watched/resume or Windows/mpv playback changes. No provider refresh is required.
 
 ## v0.7.8 — Poster Cleanup + Recommendation Trust
@@ -129,8 +149,8 @@
 - Fixes **Play / Resume appearing to do nothing from a full-screen title detail page**. The v0.7.5 detail route was hiding the Smart Source chooser and native-player overlay behind the detail route; both now render above title details.
 - Detail thumbnails now navigate **immediately**. SQLite source hydration and Xtream detail loading continue after the dedicated title screen is already visible instead of blocking the click.
 - Single-source SQLite titles with an existing playable URL skip an unnecessary source lookup round-trip.
-- Play/Resume gives immediate **Opening…** feedback while Swoop resolves a source.
-- Detail Play uses the already-resolved detail item directly; if a native item alias is missing from memory, Swoop performs a targeted SQLite get instead of silently doing nothing.
+- Play/Resume gives immediate **Opening…** feedback while Swoop TV resolves a source.
+- Detail Play uses the already-resolved detail item directly; if a native item alias is missing from memory, Swoop TV performs a targeted SQLite get instead of silently doing nothing.
 - Background discovery and Home-row priming no longer force a Home rerender while a title detail/player interaction is active.
 - The native startup cache is reduced further; Movies/Shows/Live continue to page from SQLite on demand.
 - Existing SQLite catalogue, provider credentials, profiles, resume data and the proven mpv compatibility profile are preserved. No provider refresh is required.
@@ -222,8 +242,8 @@
 ## v0.7.2 — Blended Discovery + Startup Stability
 
 ### Discovery
-- Replaces the single-chart Trending implementation with a **blended Swoop ranking**.
-- Adds TMDb daily trending, weekly trending, popular and current-release/airing signals through the owner-managed Swoop metadata service.
+- Replaces the single-chart Trending implementation with a **blended Swoop TV ranking**.
+- Adds TMDb daily trending, weekly trending, popular and current-release/airing signals through the owner-managed Swoop TV metadata service.
 - Worker v0.1.7 can optionally use owner secret `MDBLIST_API_KEY` to add MDBList/JustWatch and supported Trakt/IMDb popularity inputs without requiring end-user accounts.
 - **Trending Now** weights fast-moving daily, Trakt/streaming and weekly activity rather than mirroring one chart.
 - **Top 20** is kept steadier using popular/IMDb/TMDb/streaming inputs.
@@ -233,7 +253,7 @@
 - A local MDBList key is now described only as an optional requirement for custom personal MDBList rows.
 
 ### Large-library stability
-- Fixes a major profile/startup freeze path. Swoop no longer starts restoring a very large IndexedDB catalog while **Who’s Watching?** is still on screen.
+- Fixes a major profile/startup freeze path. Swoop TV no longer starts restoring a very large IndexedDB catalog while **Who’s Watching?** is still on screen.
 - Library restore begins only after a profile is selected and shows real progress.
 - Durable catalog storage is upgraded from one huge IndexedDB value to **2,000-item catalog chunks** with a manifest and separate metadata/discovery records.
 - Existing single-record v0.7.1 catalogs migrate through a background Web Worker, with catalog data returned to the UI in smaller chunks.
@@ -270,7 +290,7 @@
 - **Prime Time** — navy/blue modern streaming presentation with rounded cards and cleaner hierarchy.
 - **Rewind** — blue/yellow nostalgic video-store treatment with retro marquee and shelf-style rows.
 - **Vice** — neon pink/cyan/purple Miami-night treatment with sunset/glow styling.
-- All themes are original Swoop implementations and do not include third-party logos or copied branded artwork.
+- All themes are original Swoop TV implementations and do not include third-party logos or copied branded artwork.
 
 ### Migration / persistence
 - Existing profiles default to **Chill**.
@@ -297,7 +317,7 @@
 ## v0.7.0 — Multi-Provider + Unified Library
 
 ### New
-- Added a full **Provider Manager**. Swoop can keep multiple Xtream Codes and M3U providers connected at the same time.
+- Added a full **Provider Manager**. Swoop TV can keep multiple Xtream Codes and M3U providers connected at the same time.
 - Adding a new provider extends the library instead of replacing the existing catalog.
 - Providers can be **enabled/disabled, refreshed, reordered by priority, edited/reconnected, or removed** independently.
 - Added **Refresh All Providers** and per-provider health / last-refresh information.

@@ -31,7 +31,7 @@ function Ensure-Sqlite {
   New-Item -ItemType Directory -Force -Path $SqliteRoot | Out-Null
   $existing = Get-ChildItem -Path $SqliteRoot -Filter 'sqlite3.exe' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($existing) { return $existing.FullName }
-  Write-Header 'First run: installing Swoop local catalogue database'
+  Write-Header 'First run: installing Swoop TV local catalogue database'
   Write-Host 'Downloading official SQLite 3.53.4 tools (about 6 MB). This happens once.' -ForegroundColor Yellow
   $zipPath = Join-Path $env:TEMP 'swoop-sqlite-3.53.4.zip'
   if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
@@ -47,7 +47,7 @@ function Ensure-Sqlite {
   Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
   $sqlite = Get-ChildItem -Path $SqliteRoot -Filter 'sqlite3.exe' -File -Recurse | Select-Object -First 1
   if (-not $sqlite) { throw 'sqlite3.exe was not found after extraction.' }
-  Write-Host 'Swoop local catalogue database engine installed.' -ForegroundColor Green
+  Write-Host 'Swoop TV local catalogue database engine installed.' -ForegroundColor Green
   return $sqlite.FullName
 }
 
@@ -322,7 +322,7 @@ SELECT raw_json,logical_key,source_count,source_ids,display_name FROM ranked WHE
 function Catalog-Match($Data) {
   $candidates=@($Data.candidates|Select-Object -First 800);if(-not $candidates.Count){return @{ok=$true;items=@()}}
   $kind=if([string]$Data.mediaType -in @('show','tv','series')){'series'}else{'movie'}
-  $limit=[Math]::Max(1,[Math]::Min(100,[int]$Data.limit));if(-not $Data.limit){$limit=70}
+  $limit=[Math]::Max(1,[Math]::Min(800,[int]$Data.limit));if(-not $Data.limit){$limit=70}
   $path=Write-JsonTemp $candidates
   try{
     $dbPath=$path.Replace('\','/').Replace("'","''")
@@ -369,7 +369,7 @@ function Ensure-Mpv {
   $existing = Get-ChildItem -Path $EngineRoot -Filter 'mpv.exe' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($existing) { return $existing.FullName }
 
-  Write-Header 'First run: installing Swoop native playback engine'
+  Write-Header 'First run: installing Swoop TV native playback engine'
   Write-Host 'Downloading mpv 0.41.0 (about 60 MB). This happens once.' -ForegroundColor Yellow
   $zipPath = Join-Path $env:TEMP 'swoop-mpv-0.41.0.zip'
   if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
@@ -839,13 +839,13 @@ function Handle-Request($Request, [string]$MpvPath) {
     if ($path -eq '/native/status') {
       $playing = $false
       if ($script:MpvProcess) { try { $playing = -not $script:MpvProcess.HasExited } catch {} }
-      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.19'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
+      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.21'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
       return
     }
 
     if ($path.StartsWith('/native/')) {
       if (-not (Require-Token $Request)) {
-        Send-Json $stream @{ ok=$false; error='Invalid Swoop native session token.' } 401 'Unauthorized'
+        Send-Json $stream @{ ok=$false; error='Invalid Swoop TV native session token.' } 401 'Unauthorized'
         return
       }
       $data = $null
@@ -955,7 +955,7 @@ function Handle-Request($Request, [string]$MpvPath) {
 
     if ([IO.Path]::GetFileName($full).ToLowerInvariant() -eq 'index.html') {
       $html = Get-Content -Path $full -Raw -Encoding UTF8
-      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.19',platform:'windows'};</script>"
+      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.21',platform:'windows'};</script>"
       $html = $html -replace '</head>', ($bootstrap + '</head>')
       Send-Text $stream $html 'text/html; charset=utf-8'
       return
@@ -968,7 +968,7 @@ function Handle-Request($Request, [string]$MpvPath) {
   }
 }
 
-Write-Header 'Swoop TV v0.7.19 — Ranked Rail Stability + Strict Discovery Matching'
+Write-Header 'Swoop TV v0.7.21 — Cast Library Browsing'
 Write-Host 'This local bridge keeps IPTV video provider-to-device and launches mpv for playback.'
 Write-Host 'No administrator rights are required.'
 

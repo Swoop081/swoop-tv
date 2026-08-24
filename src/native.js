@@ -10,7 +10,7 @@ export function isNativeWindows() {
 
 export async function nativeRequest(path, payload = null, {expect='json', timeoutMs=45000} = {}) {
   const info = nativeInfo();
-  if (!info) throw new Error('Swoop native bridge is not available.');
+  if (!info) throw new Error('Swoop TV native bridge is not available.');
   const controller = new AbortController();
   const timer = setTimeout(()=>controller.abort(), timeoutMs);
   try {
@@ -29,7 +29,7 @@ export async function nativeRequest(path, payload = null, {expect='json', timeou
     if (expect === 'text') return await res.text();
     return await res.json();
   } catch (err) {
-    if (err?.name === 'AbortError') throw new Error('Swoop Windows bridge timed out.');
+    if (err?.name === 'AbortError') throw new Error('Swoop TV Windows bridge timed out.');
     throw err;
   } finally { clearTimeout(timer); }
 }

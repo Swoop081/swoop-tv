@@ -22,18 +22,18 @@ function openDb(){
     const req=indexedDB.open(DB_NAME,DB_VERSION);
     req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE)};
     req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error||new Error('Could not open Swoop storage'));
+    req.onerror=()=>reject(req.error||new Error('Could not open Swoop TV storage'));
   });
 }
 
 async function idbPut(key,value){
   const db=await openDb();
-  try{await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(value,key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error||new Error('Could not save Swoop library'));tx.onabort=()=>reject(tx.error||new Error('Swoop storage transaction aborted'))})}finally{db.close()}
+  try{await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(value,key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error||new Error('Could not save Swoop TV library'));tx.onabort=()=>reject(tx.error||new Error('Swoop TV storage transaction aborted'))})}finally{db.close()}
 }
 
 async function idbGet(key){
   const db=await openDb();
-  try{return await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readonly');const req=tx.objectStore(STORE).get(key);req.onsuccess=()=>resolve(req.result??null);req.onerror=()=>reject(req.error||new Error('Could not restore Swoop library'))})}finally{db.close()}
+  try{return await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readonly');const req=tx.objectStore(STORE).get(key);req.onsuccess=()=>resolve(req.result??null);req.onerror=()=>reject(req.error||new Error('Could not restore Swoop TV library'))})}finally{db.close()}
 }
 
 async function idbDelete(key){
@@ -42,7 +42,7 @@ async function idbDelete(key){
 
 async function idbKeys(){
   const db=await openDb();
-  try{return await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readonly'),req=tx.objectStore(STORE).getAllKeys();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error||new Error('Could not inspect Swoop storage'))})}finally{db.close()}
+  try{return await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readonly'),req=tx.objectStore(STORE).getAllKeys();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error||new Error('Could not inspect Swoop TV storage'))})}finally{db.close()}
 }
 
 const yieldToUi=()=>new Promise(resolve=>setTimeout(resolve,0));
@@ -108,9 +108,9 @@ function loadLegacyViaWorker(onProgress){
       }else if(msg.type==='done'){
         finish(resolve,{catalog,webDiscovery:msg.webDiscovery||{},metadataCache:{},mdblistRows:Array.isArray(msg.mdblistRows)?msg.mdblistRows:[],savedAt:Number(msg.savedAt||0),schema:1,legacy:true,droppedLegacyMetadata:true});
       }else if(msg.type==='empty')finish(resolve,null);
-      else if(msg.type==='error')finish(reject,new Error(msg.message||'Could not restore legacy Swoop library'));
+      else if(msg.type==='error')finish(reject,new Error(msg.message||'Could not restore legacy Swoop TV library'));
     };
-    worker.onerror=e=>finish(reject,new Error(e?.message||'Could not start the Swoop storage worker'));
+    worker.onerror=e=>finish(reject,new Error(e?.message||'Could not start the Swoop TV storage worker'));
     worker.postMessage({type:'load-legacy',chunkSize:1000});
   });
 }

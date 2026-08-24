@@ -44,7 +44,7 @@ async function directJson(config, action='', params={}, timeoutMs=20000) {
   } catch (err) {
     if (err?.name === 'AbortError') throw new Error('Xtream provider timed out.');
     if (err instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(String(err?.message || err))) {
-      throw new Error('Browser could not reach the Xtream API. This is usually CORS, mixed-content, or provider network blocking. Configure the Swoop Connection Helper for this provider.');
+      throw new Error('Browser could not reach the Xtream API. This is usually CORS, mixed-content, or provider network blocking. Configure the Swoop TV Connection Helper for this provider.');
     }
     throw err;
   } finally { clearTimeout(timer); }
@@ -74,11 +74,11 @@ async function relayJson(config, action='', params={}, timeoutMs=30000) {
         params:params || {}
       })
     });
-    return await parseJsonResponse(res, 'Swoop Connection Helper');
+    return await parseJsonResponse(res, 'Swoop TV Connection Helper');
   } catch (err) {
-    if (err?.name === 'AbortError') throw new Error('Swoop Connection Helper timed out.');
+    if (err?.name === 'AbortError') throw new Error('Swoop TV Connection Helper timed out.');
     if (err instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(String(err?.message || err))) {
-      throw new Error('Could not reach the Swoop Connection Helper. Check the Worker URL and deployment.');
+      throw new Error('Could not reach the Swoop TV Connection Helper. Check the Worker URL and deployment.');
     }
     throw err;
   } finally { clearTimeout(timer); }

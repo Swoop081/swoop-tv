@@ -26,7 +26,7 @@ export const SWOOP_THEMES=[
   {
     id:'vice',
     name:'Vice',
-    tagline:'After dark in Swoop City',
+    tagline:'After dark on Swoop TV',
     description:'Neon cyan, hot pink and deep purple with sunset gradients and a high-energy Miami-night feel.',
     bg:'#130927',surface:'#21103d',surface2:'#2d1452',surface3:'#3a1965',accent:'#ff4fc3',accent2:'#2de2e6',text:'#fff8ff',muted:'#c7b4d9',
     swatch:'linear-gradient(135deg,#130927 0 35%,#7c38ff 35% 55%,#ff4fc3 55% 75%,#2de2e6 75%)'

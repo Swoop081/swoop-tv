@@ -1,16 +1,16 @@
 # Swoop TV
 
-**Current build: v0.7.19 — Ranked Rail Stability + Strict Discovery Matching**
+**Current build: v0.7.21 — Cast Library Browsing**
 
-This build fixes the Top 100 behavior captured in the 24 August screen recording. Horizontally scrolled Home rails are no longer replaced underneath the user while discovery refreshes in the background, ranked rails use unsnapped native horizontal scrolling, and Top 100 discovery scans a much deeper popularity candidate pool so it can fill toward 100 locally available titles instead of stopping around the first few dozen.
+Cast portraits on movie and TV detail pages are now interactive. Selecting a cast member opens a dedicated Swoop TV filmography page that checks that person's TMDb movie/TV credits against the titles actually available from the user's enabled TV providers, then shows only confident local matches.
 
-Discovery identity is now strict as well as metadata identity: a ranked web candidate with an explicit year can only match the same cleaned title and release/first-air year in the provider catalogue. This closes the separate path that allowed a provider `Odyssey (2025)` item to stand in for `The Odyssey (2026)` even after the metadata mismatch fix. Pre-v0.7.19 ranked discovery cache is discarded once on upgrade; provider data, watched/resume state and playback are untouched.
+The cast route preserves the title-detail screen underneath it, and opening a movie/show from the cast page preserves the cast page as well, so Back works as a proper navigation stack: **title → cast member → another title → cast member → original title**. The bundled Cloudflare Worker advances to **v0.1.12** for person-credit lookup. Redeploy the Worker to enable the new cast browsing service.
 
 
 ## Visible progress for long-running work
 
 - **Provider refresh:** each provider card shows a live percentage, moving bar and current stage such as login verification, provider download, SQLite indexing or saving.
-- **Refresh All:** a persistent bottom progress HUD shows the current provider, overall percentage, elapsed time and a clear reassurance that Swoop is still running.
+- **Refresh All:** a persistent bottom progress HUD shows the current provider, overall percentage, elapsed time and a clear reassurance that Swoop TV is still running.
 - **Provider connection:** the existing step-by-step connection screen now includes a large numeric percentage beside its progress bar.
 - **Large-library startup/restore:** the restore screen now shows a numeric percentage as well as item counts.
 - **TV Guide:** guide loading shows a channel-by-channel percentage and progress bar while rows continue filling in.
@@ -21,13 +21,13 @@ Discovery identity is now strict as well as metadata identity: a ranked web cand
 
 - **New & Recent Movies** is renamed **Recently Added Movies** and sorts by the provider's own addition timestamp instead of movie release year.
 - **New & Recent TV Shows** is renamed **Recently Added TV Shows** and sorts by the provider's own `added` / `last_modified` timestamp instead of first-air year.
-- Xtream imports now retain these provider timestamps on catalogue items. For already-indexed libraries, Swoop falls back to numeric provider stream/series sequence so the rails improve immediately; running **Refresh All** once captures the provider timestamps for exact ordering.
+- Xtream imports now retain these provider timestamps on catalogue items. For already-indexed libraries, Swoop TV falls back to numeric provider stream/series sequence so the rails improve immediately; running **Refresh All** once captures the provider timestamps for exact ordering.
 - Native Windows/SQLite queries use a dedicated `provider-added` sort and take the newest timestamp across duplicate movie sources without rebuilding the database schema.
 - This changes only these two Home rails. **All Movies**, **All TV Shows**, web Trending/New & Hot rows, Top 100 ranked rows, source stacking, metadata, watched/resume state and mpv playback are unchanged.
 
 ## Strict title-year metadata matching
 
-- Year-qualified TMDb searches are now strict: if the requested provider year has no valid match, Swoop leaves the provider artwork/identity alone instead of retrying the title without a year.
+- Year-qualified TMDb searches are now strict: if the requested provider year has no valid match, Swoop TV leaves the provider artwork/identity alone instead of retrying the title without a year.
 - Search results must match the cleaned normalized provider title and the exact release/first-air year before artwork or metadata is accepted.
 - Existing TMDb/IMDb IDs are checked against the provider year before they are trusted, protecting against stale IDs left behind by an earlier incorrect enrichment.
 - The browser client performs its own identity check before accepting metadata or IMDb rating results, so an older/misconfigured Worker cannot silently attach a different-year movie.
@@ -57,8 +57,8 @@ Discovery identity is now strict as well as metadata identity: a ranked web cand
 ## Poster IMDb rating overlay
 
 - Movie and TV poster cards no longer show release year or a generic star score over the artwork.
-- When metadata resolves an IMDb title ID and the Swoop Worker has `MDBLIST_API_KEY`, Swoop requests the IMDb rating through MDBList and renders **IMDb x.x** in a compact gold badge at the bottom-right of the poster.
-- Swoop never relabels a TMDb/provider rating as IMDb. If the IMDb rating is missing, unavailable or the MDBList key is not configured, no badge is shown.
+- When metadata resolves an IMDb title ID and the Swoop TV Worker has `MDBLIST_API_KEY`, Swoop TV requests the IMDb rating through MDBList and renders **IMDb x.x** in a compact gold badge at the bottom-right of the poster.
+- Swoop TV never relabels a TMDb/provider rating as IMDb. If the IMDb rating is missing, unavailable or the MDBList key is not configured, no badge is shown.
 - IMDb IDs are taken from TMDb `external_ids`, avoiding fuzzy title matching for the rating request.
 - Existing cached provider/library data is reused; no provider refresh is required.
 
@@ -78,10 +78,10 @@ Discovery identity is now strict as well as metadata identity: a ranked web cand
 
 ## Disconnected demo artwork
 
-- Swoop's built-in demo movie/show names are fictional UI placeholders and are now **blocked from TMDb metadata/artwork matching**.
+- Swoop TV's built-in demo movie/show names are fictional UI placeholders and are now **blocked from TMDb metadata/artwork matching**.
 - This prevents synthetic names such as `Northbound`, `The Long Way Home` or `The Last Horizon` from accidentally picking up posters/backdrops belonging to unrelated real titles with the same name.
 - Any stale demo metadata already cached by an older build is ignored immediately, so upgrading does not require clearing storage.
-- While no provider is connected, demo movie/show cards use Swoop's intentional gradient placeholders with their demo title/year rather than misleading third-party artwork or ratings.
+- While no provider is connected, demo movie/show cards use Swoop TV's intentional gradient placeholders with their demo title/year rather than misleading third-party artwork or ratings.
 
 ## Poster cards, ratings and recommendations
 
@@ -120,7 +120,7 @@ Profiles now use eight playful animal choices: **Lion, Elephant, Monkey, Tiger, 
 
 ## Upgrade
 
-Close Swoop and the black Windows Bridge window, extract this build and run `START-SWOOP-TV-WINDOWS.cmd`. Your existing SQLite catalogue, provider credentials, profiles and resume data are reused.
+Close Swoop TV and the black Windows Bridge window, extract this build and run `START-SWOOP-TV-WINDOWS.cmd`. Your existing SQLite catalogue, provider credentials, profiles and resume data are reused.
 
 ---
 
@@ -139,11 +139,11 @@ Swoop TV is a content-neutral IPTV player for user-provided, authorised Xtream C
 
 ## Why this build exists
 
-Very large providers can expose 40,000–60,000+ channels, movies and shows. Previous Swoop builds progressively reduced browser work, but the web UI still had to restore and manipulate a large catalogue. v0.7.4.1 changes that model on Windows.
+Very large providers can expose 40,000–60,000+ channels, movies and shows. Previous Swoop TV builds progressively reduced browser work, but the web UI still had to restore and manipulate a large catalogue. v0.7.4.1 changes that model on Windows.
 
 The Windows-native path is now:
 
-`Xtream / M3U → Swoop local bridge → SQLite + FTS5 → small paged query results → Swoop UI`
+`Xtream / M3U → Swoop TV local bridge → SQLite + FTS5 → small paged query results → Swoop TV UI`
 
 The browser no longer needs the complete provider dump in memory after the one-time migration.
 
@@ -168,9 +168,9 @@ The browser no longer needs the complete provider dump in memory after the one-t
 
 ## One-time migration
 
-If you already have a saved Swoop library, after choosing a profile v0.7.4.1 shows a migration/progress screen while it indexes the existing catalogue into SQLite. This is a one-time operation.
+If you already have a saved Swoop TV library, after choosing a profile v0.7.4.1 shows a migration/progress screen while it indexes the existing catalogue into SQLite. This is a one-time operation.
 
-After the native database is confirmed ready, Swoop retires the large browser-side catalogue copy. Future launches query SQLite directly and restore only the small pieces needed for the current screen.
+After the native database is confirmed ready, Swoop TV retires the large browser-side catalogue copy. Future launches query SQLite directly and restore only the small pieces needed for the current screen.
 
 ## New/updated Settings information
 
@@ -180,13 +180,13 @@ The existing **Auto / Recommended** performance mode remains available and still
 
 ## Windows first run
 
-1. Close any older Swoop app window and the black Windows Bridge window.
+1. Close any older Swoop TV app window and the black Windows Bridge window.
 2. Extract this ZIP completely.
 3. Run `START-SWOOP-TV-WINDOWS.cmd`.
 4. Keep the black **Swoop TV Windows Bridge** window open.
-5. On the first v0.7.4.1 launch, Swoop downloads the official SQLite Windows x64 tools (about 6.25 MiB) and verifies the archive before installation.
+5. On the first v0.7.4.1 launch, Swoop TV downloads the official SQLite Windows x64 tools (about 6.25 MiB) and verifies the archive before installation.
 6. Choose your profile.
-7. If an older browser catalogue exists, allow the one-time **Optimizing your library into Swoop's local SQLite catalogue** step to complete.
+7. If an older browser catalogue exists, allow the one-time **Optimizing your library into Swoop TV's local SQLite catalogue** step to complete.
 8. Open **Settings** and confirm **SQLite query mode is active**.
 
 The existing mpv installation is reused. The proven IPTV playback compatibility/buffering profile is unchanged.
@@ -194,7 +194,7 @@ The existing mpv installation is reused. The proven IPTV playback compatibility/
 ## Important scope
 
 - The SQLite catalogue path is currently **Windows-native only**.
-- Hosted/PWA Swoop retains the browser/IndexedDB catalogue architecture and v0.7.3 performance safeguards.
+- Hosted/PWA Swoop TV retains the browser/IndexedDB catalogue architecture and v0.7.3 performance safeguards.
 - The Windows build still uses the local PowerShell bridge and separate mpv playback window; a signed packaged Windows app remains a later milestone.
 - SQLite stores provider catalogue metadata and stream addresses locally on the device. Treat `%LOCALAPPDATA%\SwoopTV` as private user data.
 

@@ -20,7 +20,7 @@ const MDBLIST_BASE = 'https://api.mdblist.com';
 
 function tmdbHeaders(env) {
   const token=String(env.TMDB_API_TOKEN || '').trim();
-  if (!token) throw new Error('TMDb metadata is not configured on the Swoop service.');
+  if (!token) throw new Error('TMDb metadata is not configured on the Swoop TV service.');
   return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.3'};
 }
 
@@ -124,7 +124,7 @@ function metadataFromTmdb(item,type='movie',imdbRating='') {
   const date=type==='tv'?item.first_air_date:item.release_date;
   const backdrops=bestBackdropPaths(item);
   const backdrop=backdrops[0]||item.backdrop_path||'';
-  const cast=(Array.isArray(item?.credits?.cast)?item.credits.cast:[]).slice(0,10).map(x=>({name:x.name||'',character:x.character||'',profile:tmdbImage(x.profile_path,'w185')})).filter(x=>x.name);
+  const cast=(Array.isArray(item?.credits?.cast)?item.credits.cast:[]).slice(0,10).map(x=>({id:x.id?String(x.id):'',name:x.name||'',character:x.character||'',profile:tmdbImage(x.profile_path,'w185')})).filter(x=>x.name);
   const director=type==='movie'?(Array.isArray(item?.credits?.crew)?item.credits.crew:[]).filter(x=>x.job==='Director').slice(0,3).map(x=>x.name).filter(Boolean).join(', '):(Array.isArray(item?.created_by)?item.created_by:[]).map(x=>x.name).filter(Boolean).join(', ');
   const trailer=bestTrailer(item);
   return {
@@ -168,8 +168,8 @@ async function fetchMdbImdbRating(env,imdbId,type='movie') {
 }
 
 async function handleImdbRating(request, env, body) {
-  if(!String(env.TMDB_API_TOKEN||'').trim()) return json(request,{error:'Swoop IMDb matching is not configured. Add the TMDB_API_TOKEN secret to the Swoop Worker.'},503);
-  if(!String(env.MDBLIST_API_KEY||'').trim()) return json(request,{error:'Swoop IMDb ratings are not configured. Add the MDBLIST_API_KEY secret to the Swoop Worker.'},503);
+  if(!String(env.TMDB_API_TOKEN||'').trim()) return json(request,{error:'Swoop TV IMDb matching is not configured. Add the TMDB_API_TOKEN secret to the Swoop TV Worker.'},503);
+  if(!String(env.MDBLIST_API_KEY||'').trim()) return json(request,{error:'Swoop TV IMDb ratings are not configured. Add the MDBLIST_API_KEY secret to the Swoop TV Worker.'},503);
   const type=String(body?.mediaType||'movie')==='tv'?'tv':'movie';
   const suppliedTmdbId=String(body?.tmdbId||'').trim(),suppliedImdbId=String(body?.imdbId||'').trim();
   const title=cleanSearchTitle(body?.title||''),year=safeYear(body?.year||body?.title||'');
@@ -190,7 +190,7 @@ async function handleImdbRating(request, env, body) {
 }
 
 async function handleMetadata(request, env, body) {
-  if(!String(env.TMDB_API_TOKEN||'').trim()) return json(request,{error:'Swoop cinematic artwork is not configured yet. Add the TMDB_API_TOKEN secret to the Swoop Worker.'},503);
+  if(!String(env.TMDB_API_TOKEN||'').trim()) return json(request,{error:'Swoop TV cinematic artwork is not configured yet. Add the TMDB_API_TOKEN secret to the Swoop TV Worker.'},503);
   const type=String(body?.mediaType||'movie')==='tv'?'tv':'movie';
   const tmdbId=String(body?.tmdbId||'').trim(),imdbId=String(body?.imdbId||'').trim();
   const title=cleanSearchTitle(body?.title||''),year=safeYear(body?.year||body?.title||'');
@@ -209,6 +209,48 @@ async function handleMetadata(request, env, body) {
     if(resolvedImdbId&&String(env.MDBLIST_API_KEY||'').trim()){try{imdbRating=await fetchMdbImdbRating(env,resolvedImdbId,type)}catch{}}
     return new Response(JSON.stringify({metadata:metadataFromTmdb(item,type,imdbRating)}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=21600'}});
   }catch(error){return json(request,{error:error.message||'Could not load TMDb metadata.'},502)}
+}
+
+
+function compactPersonCredit(x={}){
+  const type=x.media_type==='tv'?'tv':x.media_type==='movie'?'movie':'';
+  if(!type||!x.id)return null;
+  const title=type==='tv'?(x.name||x.original_name||''):(x.title||x.original_title||'');
+  if(!title)return null;
+  return {
+    tmdb:String(x.id),
+    title,
+    year:safeYear(type==='tv'?x.first_air_date:x.release_date),
+    media_type:type,
+    character:x.character||'',
+    poster:tmdbImage(x.poster_path,'w342'),
+    popularity:Number(x.popularity||0)
+  };
+}
+function dedupePersonCredits(list=[]){
+  const seen=new Set(),out=[];
+  for(const raw of list){const credit=compactPersonCredit(raw);if(!credit)continue;const key=`${credit.media_type}:${credit.tmdb}`;if(seen.has(key))continue;seen.add(key);out.push(credit)}
+  return out.sort((a,b)=>(Number(b.year||0)-Number(a.year||0))||(Number(b.popularity||0)-Number(a.popularity||0))||a.title.localeCompare(b.title));
+}
+async function handlePersonCredits(request,env,body){
+  if(!String(env.TMDB_API_TOKEN||'').trim())return json(request,{error:'Swoop TV cast browsing is not configured. Add the TMDB_API_TOKEN secret to the Swoop TV Worker.'},503);
+  const suppliedId=String(body?.personId||'').trim(),requestedName=String(body?.name||'').trim();
+  try{
+    let personId=suppliedId;
+    if(!personId&&requestedName){
+      const found=await tmdbFetch('/search/person',env,{query:requestedName,language:'en-AU',include_adult:'false'}),normalized=normalizedIdentityTitle(requestedName);
+      const exact=(Array.isArray(found?.results)?found.results:[]).find(x=>normalizedIdentityTitle(x?.name||'')===normalized)||null;
+      personId=exact?.id?String(exact.id):'';
+    }
+    if(!/^\d+$/.test(personId))return json(request,{person:null},200);
+    const person=await tmdbFetch(`/person/${encodeURIComponent(personId)}`,env,{language:'en-AU',append_to_response:'combined_credits,external_ids'});
+    const credits=dedupePersonCredits(Array.isArray(person?.combined_credits?.cast)?person.combined_credits.cast:[]).slice(0,800);
+    return new Response(JSON.stringify({person:{
+      id:String(person.id||personId),name:person.name||requestedName||'',profile:tmdbImage(person.profile_path,'w500'),
+      knownForDepartment:person.known_for_department||'',biography:person.biography||'',birthday:person.birthday||'',placeOfBirth:person.place_of_birth||'',
+      credits
+    }}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=86400'}});
+  }catch(error){return json(request,{error:error.message||'Could not load cast credits.'},502)}
 }
 
 
@@ -247,7 +289,7 @@ async function mdbFetch(path,env,params={}){
   const key=String(env.MDBLIST_API_KEY||'').trim();if(!key)throw new Error('MDBList discovery is not configured.');
   const url=new URL(`${MDBLIST_BASE}${path}`);url.searchParams.set('apikey',key);
   Object.entries(params).forEach(([k,v])=>{if(v!==undefined&&v!==null&&v!=='')url.searchParams.set(k,String(v))});
-  const res=await fetch(url.toString(),{headers:{'Accept':'application/json','User-Agent':'SwoopTV-Discovery/0.7.19'},cf:{cacheTtl:3600,cacheEverything:true}});
+  const res=await fetch(url.toString(),{headers:{'Accept':'application/json','User-Agent':'SwoopTV-Discovery/0.7.21'},cf:{cacheTtl:3600,cacheEverything:true}});
   if(!res.ok)throw new Error(`MDBList returned HTTP ${res.status}.`);return res.json();
 }
 async function firstMdbOfficial(env,candidates=[]){
@@ -256,7 +298,7 @@ async function firstMdbOfficial(env,candidates=[]){
 }
 async function safeMdb(path,env){try{return compactDiscoveryMdb(await mdbFetch(path,env))}catch{return[]}}
 async function handleDiscovery(request,env,body){
-  if(!String(env.TMDB_API_TOKEN||'').trim())return json(request,{error:'Swoop discovery is not configured yet. Add the TMDB_API_TOKEN secret to the Swoop Worker.'},503);
+  if(!String(env.TMDB_API_TOKEN||'').trim())return json(request,{error:'Swoop TV discovery is not configured yet. Add the TMDB_API_TOKEN secret to the Swoop TV Worker.'},503);
   const type=String(body?.mediaType||'movie')==='tv'?'tv':'movie';
   try{
     const [day,week,popular,fresh]=await Promise.all([
@@ -286,7 +328,7 @@ async function handleDiscovery(request,env,body){
       Object.assign(sources,{justwatch,stable,traktTrending,mostWatched,imdbPopular,boxOffice});
     }
     return new Response(JSON.stringify({mediaType:type,updatedAt:Date.now(),enhanced,sources}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=1800'}});
-  }catch(error){return json(request,{error:error.message||'Could not load Swoop discovery charts.'},502)}
+  }catch(error){return json(request,{error:error.message||'Could not load Swoop TV discovery charts.'},502)}
 }
 
 function corsHeaders(request) {
@@ -379,9 +421,9 @@ async function fetchPublicAsset(startUrl) {
     }
     if (!res.ok) throw new Error(`Artwork source returned HTTP ${res.status}.`);
     const contentLength = Number(res.headers.get('Content-Length') || 0);
-    if (contentLength > 4_000_000) throw new Error('Artwork is larger than the 4 MB Swoop limit.');
+    if (contentLength > 4_000_000) throw new Error('Artwork is larger than the 4 MB Swoop TV limit.');
     const bytes = await res.arrayBuffer();
-    if (bytes.byteLength > 4_000_000) throw new Error('Artwork is larger than the 4 MB Swoop limit.');
+    if (bytes.byteLength > 4_000_000) throw new Error('Artwork is larger than the 4 MB Swoop TV limit.');
     const type = inferredImageType(current, res.headers.get('Content-Type'));
     if (!type) throw new Error('Artwork source did not return a supported image type.');
     return {bytes, type};
@@ -411,12 +453,13 @@ async function handlePost(request, env) {
 
   if (String(body?.mode || '') === 'metadata') return handleMetadata(request, env, body);
   if (String(body?.mode || '') === 'imdb-rating') return handleImdbRating(request, env, body);
+  if (String(body?.mode || '') === 'person-credits') return handlePersonCredits(request, env, body);
   if (String(body?.mode || '') === 'discovery') return handleDiscovery(request, env, body);
 
   if (!String(env.SWOOP_PROXY_TOKEN || '')) {
     return json(request, {error:'Worker is not configured. Set the SWOOP_PROXY_TOKEN secret first.'}, 503);
   }
-  if (!authorized(request, env)) return json(request, {error:'Invalid Swoop Connection Helper token.'}, 401);
+  if (!authorized(request, env)) return json(request, {error:'Invalid Swoop TV Connection Helper token.'}, 401);
 
   if (String(body?.mode || '') === 'asset') return handleAsset(request, body);
 
@@ -462,7 +505,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.11',
+        version:'0.1.12',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
         discoveryConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),

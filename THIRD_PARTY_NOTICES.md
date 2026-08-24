@@ -22,16 +22,16 @@ Swoop TV can use The Movie Database (TMDb) API for movie and TV metadata, poster
 
 **Required attribution notice:** “This product uses the TMDB API but is not endorsed or certified by TMDB.”
 
-TMDb requires its approved logo and attribution to appear in an About/Credits-style surface for applications using its API. A production/public Swoop release should add the approved TMDb logo before distribution.
+TMDb requires its approved logo and attribution to appear in an About/Credits-style surface for applications using its API. A production/public Swoop TV release should add the approved TMDb logo before distribution.
 
 TMDb: `https://www.themoviedb.org/`
 
 ## YouTube trailers
 
-When TMDb supplies an official YouTube trailer key, Swoop can display that trailer using YouTube's standard embedded player. Swoop does not download or redistribute trailer video files.
+When TMDb supplies an official YouTube trailer key, Swoop TV can display that trailer using YouTube's standard embedded player. Swoop TV does not download or redistribute trailer video files.
 
 ## MDBList discovery + rating enrichment
 
-Swoop TV can optionally use an owner-managed MDBList API key through the Swoop Cloudflare Worker to enrich built-in discovery rankings with streaming/popularity list signals and to retrieve an IMDb rating for a title after TMDb has resolved its canonical IMDb ID. End-user IPTV credentials are not sent to MDBList.
+Swoop TV can optionally use an owner-managed MDBList API key through the Swoop TV Cloudflare Worker to enrich built-in discovery rankings with streaming/popularity list signals and to retrieve an IMDb rating for a title after TMDb has resolved its canonical IMDb ID. End-user IPTV credentials are not sent to MDBList.
 
 MDBList: `https://mdblist.com/`

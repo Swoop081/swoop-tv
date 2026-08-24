@@ -60,7 +60,7 @@ export async function fetchTitleMetadata({settings={}, item}) {
   if (!res.ok) {
     let detail='';
     try { detail=(await res.json())?.error || ''; } catch {}
-    throw new Error(detail || `Swoop artwork service returned HTTP ${res.status}.`);
+    throw new Error(detail || `Swoop TV artwork service returned HTTP ${res.status}.`);
   }
   const data = await res.json();
   const metadata=data?.metadata || null;
@@ -88,7 +88,7 @@ export async function fetchTitleImdbRating({settings={}, item}) {
   if (!res.ok) {
     let detail='';
     try { detail=(await res.json())?.error || ''; } catch {}
-    throw new Error(detail || `Swoop IMDb rating service returned HTTP ${res.status}.`);
+    throw new Error(detail || `Swoop TV IMDb rating service returned HTTP ${res.status}.`);
   }
   const data=await res.json();
   const rating=data?.rating || null;
@@ -98,4 +98,28 @@ export async function fetchTitleImdbRating({settings={}, item}) {
   // rather than ever displaying a rating from an ambiguous title match.
   const metadata=await fetchTitleMetadata({settings,item}).catch(()=>null);
   return metadata?{tmdbId:metadata.tmdbId||'',imdbId:metadata.imdbId||'',imdbRating:metadata.imdbRating||'',title:metadata.title||'',year:metadata.year||''}:null;
+}
+
+export async function fetchPersonCredits({settings={}, personId='', name=''}) {
+  const service = metadataServiceUrl(settings);
+  if (!service) return null;
+  const body = {
+    mode:'person-credits',
+    personId:String(personId||''),
+    name:String(name||'').trim()
+  };
+  const res = await fetch(service, {
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify(body),
+    cache:'no-store'
+  });
+  if (!res.ok) {
+    let detail='';
+    try { detail=(await res.json())?.error || ''; } catch {}
+    if(res.status===401||/connection helper token/i.test(detail))throw new Error('Cast browsing needs the bundled Swoop TV Worker v0.1.12 to be deployed.');
+    throw new Error(detail || `Swoop TV cast service returned HTTP ${res.status}.`);
+  }
+  const data=await res.json();
+  return data?.person || null;
 }

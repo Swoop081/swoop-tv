@@ -8,7 +8,7 @@ import {makeProfile, normalizeProfile, profileAllowsMedia, profileGenreAffinity,
 import {buildLiveStackIndex, selectLiveSource} from './src/liveStack.js';
 import {SWOOP_THEMES, themeById} from './src/themes.js';
 import {prepareNativeCatalogItems} from './src/nativeCatalog.js';
-import {fetchTitleMetadata, fetchTitleImdbRating, metadataIdentityMatches} from './src/tmdb.js';
+import {fetchTitleMetadata, fetchTitleImdbRating, fetchPersonCredits, metadataIdentityMatches} from './src/tmdb.js';
 
 function assert(condition, message){if(!condition) throw new Error(message)}
 
@@ -28,7 +28,7 @@ assert(messyMatch.length===1&&messyMatch[0].id==='m2','IPTV-prefixed title match
 assert(normalizeMediaTitle('EN - 4K - The Example (2025)')==='the example','IPTV title cleanup failed');
 
 
-// v0.7.19 ranked discovery must obey exact release identity and be able to fill a 100-title rail.
+// v0.7.20 ranked discovery must obey exact release identity and be able to fill a 100-title rail.
 const odysseyCatalog=[{id:'ody25',kind:'movie',name:'Odyssey (2025)',year:'2025'}];
 assert(matchMDBListToCatalog([{title:'The Odyssey',year:2026,tmdb:999}],odysseyCatalog,{mediaType:'movie',limit:100}).length===0,'Discovery matching must not substitute Odyssey (2025) for The Odyssey (2026)');
 assert(matchMDBListToCatalog([{title:'Odyssey',year:2025,tmdb:998}],odysseyCatalog,{mediaType:'movie',limit:100}).length===1,'Exact title/year discovery match should still resolve');
@@ -206,14 +206,14 @@ const vodWorkerResponse=await worker.fetch(vodWorkerRequest,{SWOOP_PROXY_TOKEN:t
 assert(vodWorkerResponse.status===200,'Worker VOD info allowlist failed');
 
 
-// Swoop owner-managed TMDb metadata endpoint.
+// Swoop TV owner-managed TMDb metadata endpoint.
 globalThis.fetch=async (url,options={})=>{
   const u=String(url);
   assert(String(options?.headers?.Authorization||'').startsWith('Bearer '),'TMDb bearer token missing');
   if(u.includes('api.themoviedb.org/3/search/movie')) return new Response(JSON.stringify({results:[{id:77,title:'Michael',release_date:'2026-01-01'}]}),{status:200,headers:{'content-type':'application/json'}});
   if(u.includes('api.themoviedb.org/3/movie/77')) {
     assert(u.includes('append_to_response=images'),'TMDb images were not appended to details');
-    return new Response(JSON.stringify({id:77,title:'Michael',release_date:'2026-01-01',overview:'Backdrop test',vote_average:7.8,runtime:122,genres:[{name:'Drama'}],poster_path:'/poster.jpg',backdrop_path:'/fallback.jpg',images:{backdrops:[{file_path:'/best-backdrop.jpg',width:1920,height:1080,aspect_ratio:1.7778,vote_average:8.6,vote_count:20},{file_path:'/other.jpg',width:1280,height:720,aspect_ratio:1.7778,vote_average:5.0,vote_count:3}],logos:[{file_path:'/logo.png',width:900,height:280,iso_639_1:'en',vote_average:8.0}]},credits:{cast:[{name:'Actor One',character:'Lead',profile_path:'/actor.jpg'}],crew:[{name:'Director One',job:'Director'}]},videos:{results:[{site:'YouTube',key:'abc123xyz',type:'Trailer',official:true,name:'Official Trailer'}]},recommendations:{results:[{id:88,title:'Related Film',release_date:'2025-02-02',poster_path:'/r.jpg'}]},release_dates:{results:[{iso_3166_1:'AU',release_dates:[{certification:'M'}]}]}}),{status:200,headers:{'content-type':'application/json'}});
+    return new Response(JSON.stringify({id:77,title:'Michael',release_date:'2026-01-01',overview:'Backdrop test',vote_average:7.8,runtime:122,genres:[{name:'Drama'}],poster_path:'/poster.jpg',backdrop_path:'/fallback.jpg',images:{backdrops:[{file_path:'/best-backdrop.jpg',width:1920,height:1080,aspect_ratio:1.7778,vote_average:8.6,vote_count:20},{file_path:'/other.jpg',width:1280,height:720,aspect_ratio:1.7778,vote_average:5.0,vote_count:3}],logos:[{file_path:'/logo.png',width:900,height:280,iso_639_1:'en',vote_average:8.0}]},credits:{cast:[{id:123,name:'Actor One',character:'Lead',profile_path:'/actor.jpg'}],crew:[{name:'Director One',job:'Director'}]},videos:{results:[{site:'YouTube',key:'abc123xyz',type:'Trailer',official:true,name:'Official Trailer'}]},recommendations:{results:[{id:88,title:'Related Film',release_date:'2025-02-02',poster_path:'/r.jpg'}]},release_dates:{results:[{iso_3166_1:'AU',release_dates:[{certification:'M'}]}]}}),{status:200,headers:{'content-type':'application/json'}});
   }
   throw new Error(`Unexpected TMDb URL ${u}`);
 };
@@ -224,11 +224,35 @@ const metadataJson=await metadataRes.json();
 assert(metadataJson.metadata?.backdrop==='https://image.tmdb.org/t/p/original/best-backdrop.jpg','TMDb backdrop mapping failed');
 assert(metadataJson.metadata?.backdrops?.length>=2,'TMDb backdrop gallery mapping failed');
 assert(metadataJson.metadata?.titleLogo==='https://image.tmdb.org/t/p/w500/logo.png','TMDb title logo mapping failed');
-assert(metadataJson.metadata?.cast?.[0]?.name==='Actor One','TMDb cast mapping failed');
+assert(metadataJson.metadata?.cast?.[0]?.name==='Actor One'&&metadataJson.metadata?.cast?.[0]?.id==='123','TMDb cast mapping/person ID failed');
 assert(metadataJson.metadata?.director==='Director One','TMDb director mapping failed');
 assert(metadataJson.metadata?.trailerKey==='abc123xyz','TMDb trailer mapping failed');
 assert(metadataJson.metadata?.recommendations?.[0]?.tmdbId==='88','TMDb recommendations mapping failed');
 assert(metadataJson.metadata?.certification==='M'&&metadataJson.metadata?.runtime==='122 min','TMDb certification/runtime mapping failed');
+
+// v0.7.21 cast-member filmography endpoint + client request.
+globalThis.fetch=async (url,options={})=>{
+  const u=String(url);
+  assert(String(options?.headers?.Authorization||'').startsWith('Bearer '),'TMDb person bearer token missing');
+  if(u.includes('api.themoviedb.org/3/search/person'))return new Response(JSON.stringify({results:[{id:123,name:'Actor One',profile_path:'/actor.jpg'}]}),{status:200,headers:{'content-type':'application/json'}});
+  if(u.includes('api.themoviedb.org/3/person/123'))return new Response(JSON.stringify({id:123,name:'Actor One',known_for_department:'Acting',profile_path:'/actor-big.jpg',combined_credits:{cast:[
+    {id:801,media_type:'movie',title:'Film One',release_date:'2025-03-01',character:'Lead',poster_path:'/film-one.jpg',popularity:12},
+    {id:802,media_type:'tv',name:'Show One',first_air_date:'2024-09-02',character:'Host',poster_path:'/show-one.jpg',popularity:9},
+    {id:801,media_type:'movie',title:'Film One',release_date:'2025-03-01',character:'Lead',poster_path:'/film-one.jpg',popularity:12}
+  ]}}),{status:200,headers:{'content-type':'application/json'}});
+  throw new Error(`Unexpected person URL ${u}`);
+};
+const personReq=new Request('https://relay.example.workers.dev/',{method:'POST',headers:{'content-type':'application/json','origin':'http://127.0.0.1:38673'},body:JSON.stringify({mode:'person-credits',name:'Actor One'})});
+const personRes=await worker.fetch(personReq,{TMDB_API_TOKEN:'tmdb-test-token',SWOOP_PROXY_TOKEN:token});
+assert(personRes.status===200,'Worker person credits request failed');
+const personJson=await personRes.json();
+assert(personJson.person?.id==='123'&&personJson.person?.credits?.length===2,'Worker person-credit identity/dedupe failed');
+assert(personJson.person?.credits?.some(x=>x.media_type==='movie'&&x.tmdb==='801'&&x.year==='2025'),'Worker movie person credit mapping failed');
+assert(personJson.person?.credits?.some(x=>x.media_type==='tv'&&x.tmdb==='802'&&x.year==='2024'),'Worker TV person credit mapping failed');
+let personClientBody=null;
+globalThis.fetch=async (url,options={})=>{personClientBody=JSON.parse(options.body||'{}');return new Response(JSON.stringify({person:{id:'123',name:'Actor One',credits:[]}}),{status:200,headers:{'content-type':'application/json'}});};
+const personClient=await fetchPersonCredits({settings:{metadataServiceUrl:'https://metadata.example.workers.dev'},personId:'123',name:'Actor One'});
+assert(personClientBody?.mode==='person-credits'&&personClientBody?.personId==='123'&&personClient?.name==='Actor One','Client person credits request failed');
 
 // v0.7.13 lightweight viewport IMDb rating endpoint.
 globalThis.fetch=async (url,options={})=>{
@@ -287,7 +311,7 @@ const rejectedMetadata=await fetchTitleMetadata({settings:{metadataServiceUrl:'h
 const rejectedRating=await fetchTitleImdbRating({settings:{metadataServiceUrl:'https://metadata.example.workers.dev'},item:{id:'ody-2025',kind:'movie',name:'Odyssey',year:'2025'}});
 assert(rejectedMetadata===null&&rejectedRating===null&&clientFallbackCalls>=3,'Client must reject wrong-year artwork and IMDb ratings even when an older worker returns them');
 
-// v0.7.2 blended Swoop discovery service: TMDb + owner-managed MDBList signals.
+// v0.7.2 blended Swoop TV discovery service: TMDb + owner-managed MDBList signals.
 globalThis.fetch=async (url,options={})=>{
   const u=String(url);
   if(u.includes('api.themoviedb.org/3/trending/movie/day'))return new Response(JSON.stringify({results:[{id:501,title:'Hot Today',release_date:'2026-08-20',popularity:99}]}),{status:200});
@@ -359,7 +383,7 @@ assert(appSource.includes('QUICK GUIDE')&&appSource.includes('switchLiveChannel'
 assert(appSource.includes('Who’s watching?')&&appSource.includes('profilePickerPage')&&appSource.includes('switchProfile')&&appSource.includes('Kids profile'),'Household profile UI/flow missing');
 assert(!appSource.includes('Because You Watched')&&appSource.includes('Recommended For You')&&appSource.includes('PINNED_HOME_ROWS'),'Home recommendation cleanup/pinned hierarchy missing');
 assert(appSource.includes('xtream-${Math.abs(hash(`${cfg.server}|${cfg.username}`))}')&&appSource.includes('m3u-${Math.abs(hash(`${url||name}`))}'),'Stable provider identity for profile continuity missing');
-assert(appSource.includes('Profile Theme Engine')||appSource.includes('Choose a Swoop theme')||appSource.includes('themePickerHtml'),'Profile-linked theme UI missing');
+assert(appSource.includes('Profile Theme Engine')||appSource.includes('Choose a Swoop TV theme')||appSource.includes('themePickerHtml'),'Profile-linked theme UI missing');
 assert(appSource.includes("PROFILE_SETTING_KEYS=['themeId','backgroundColor','backgroundOverride'"),'Theme persistence keys missing');
 
 globalThis.fetch=realFetch;
@@ -396,7 +420,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0719-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.19 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0721-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.21 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -405,7 +429,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.19'")&&swHotfix.includes('swoop-tv-v0719-shell'),'v0.7.19 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.21'")&&swHotfix.includes('swoop-tv-v0721-shell'),'v0.7.21 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -425,7 +449,7 @@ assert(appSource.includes("String(def.id).startsWith('top20-')?HOME_RANKED_ROW_L
 assert(appSource.includes('limit:HOME_STANDARD_ROW_LIMIT')&&appSource.includes('rowLimit=String(id).startsWith(\'top20-\')?HOME_RANKED_ROW_LIMIT:HOME_STANDARD_ROW_LIMIT'),'Native/web discovery Home row limits must support 100 items');
 assert(appSource.includes('function displayImdbRating')&&appSource.includes('card-imdb-rating')&&!appSource.includes("[item.year,trustedRating?`★ ${trustedRating}`"),'Poster cards must hide year/generic star metadata and expose the IMDb badge');
 const workerSource=fs.readFileSync(new URL('./cloudflare-worker/worker.js',import.meta.url),'utf8');
-assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.11'"),'IMDb viewport rating worker wiring missing');
+assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.12'"),'IMDb viewport rating worker wiring missing');
 assert(appSource.includes('IMDB_RATING_SCHEMA=2')&&appSource.includes('delete meta.imdbRating')&&appSource.includes('delete meta.imdbRatingCheckedAt'),'IMDb rating cache must selectively refresh without clearing artwork metadata');
 assert(appSource.includes('visibleMetadataQueue')&&appSource.includes('hydrateVisibleImdbRatings')&&appSource.includes('data-imdb-item')&&appSource.includes('fetchTitleImdbRating'),'Viewport-driven IMDb rating hydration missing');
 assert(appSource.includes('imdbRatingCheckedAt')&&appSource.includes('30*86400000'),'Long-lived IMDb rating cache missing');
@@ -445,7 +469,7 @@ assert(appSource.includes('METADATA_ARTWORK_SCHEMA=4'),'v0.7.15 must invalidate 
 assert(workerSource.includes('strictSearchMatch')&&workerSource.includes('resolveTmdbIdentity')&&!workerSource.includes("delete params[type==='tv'?'first_air_date_year':'year']"),'Strict title-year TMDb fallback guard missing');
 assert(tmdbClientSource.includes('metadataIdentityMatches')&&tmdbClientSource.includes('requestedYear!==resolvedYear'),'Client-side metadata identity guard missing');
 
-// v0.7.19 ranked rail stability / strict discovery matching.
+// v0.7.20 ranked rail stability / strict discovery matching.
 assert(appSource.includes('DISCOVERY_MATCH_SCHEMA=4')&&appSource.includes('if(!invalidateDiscovery&&aux.webDiscovery)'), 'Discovery cache schema must invalidate pre-fix ranked matches, including native aux cache');
 assert(appSource.includes("sourceLimit=mode==='top20'?600:200")&&appSource.includes('sourceLimit:800'), 'Top 100 discovery must scan a deeper candidate pool');
 assert(appSource.includes('bindRailStability')&&appSource.includes("current.dataset.deferredRefresh='1'")&&appSource.includes('left>6'), 'Scrolled Home rails must defer async DOM replacement');
@@ -453,10 +477,20 @@ assert(detailCss.includes('.ranked-section .rail{grid-auto-columns:minmax(205px,
 assert(sqlitePsHotfix.includes('Select-Object -First 800')&&sqlitePsHotfix.includes('(cand.year=0 OR c.year=cand.year)'), 'Native discovery matching must scan deeply and require exact title/year');
 assert(workerSource.includes('tmdbFetchPages')&&workerSource.includes("},20)")&&workerSource.includes('slice(0,500)'), 'Worker must provide a deep Top 100 candidate pool');
 
+
+// v0.7.21 clickable cast / local-library filmography browsing.
+assert(workerSource.includes('handlePersonCredits')&&workerSource.includes("mode || '') === 'person-credits'")&&workerSource.includes('combined_credits')&&workerSource.includes("id:x.id?String(x.id):''"),'Worker cast-person identity/credits route missing');
+assert(tmdbClientSource.includes('fetchPersonCredits')&&tmdbClientSource.includes("mode:'person-credits'"),'Client cast-person service missing');
+assert(appSource.includes('data-person-name')&&appSource.includes('function openPerson')&&appSource.includes('function personHtml')&&appSource.includes('matchPersonCreditsToLibrary'),'Clickable cast filmography route missing');
+assert(appSource.includes("nativeCatalogMatchPayload(moviePayload,'movie',{sourceLimit:800,limit:800")&&appSource.includes("nativeCatalogMatchPayload(showPayload,'show',{sourceLimit:800,limit:800"),'Native cast filmography matching depth missing');
+assert(appSource.includes('suspendDetailViewForPerson')&&appSource.includes('suspendPersonViewForDetail')&&appSource.includes('restoreSuspendedPersonView'),'Cast/detail nested navigation preservation missing');
+assert(detailCss.includes('.person-route')&&detailCss.includes('.person-progress-track')&&detailCss.includes('.cast-card:hover'),'Cast route/progress/interaction styling missing');
+assert(sqlitePsHotfix.includes('Math]::Min(800,[int]$Data.limit)'),'Native matcher must allow larger actor filmography result sets');
+
 // v0.7.18 visible progress / long-task reassurance.
 assert(appSource.includes('provider-inline-progress')&&appSource.includes('data-provider-progress-percent')&&appSource.includes('refreshProgress'),'Provider refresh percentage/progress UI missing');
-assert(appSource.includes('task-progress-hud')&&appSource.includes('Still running — Swoop has not frozen.')&&appSource.includes('longTaskElapsedLabel'),'Persistent long-task progress HUD/reassurance missing');
+assert(appSource.includes('task-progress-hud')&&appSource.includes('Still running — Swoop TV has not frozen.')&&appSource.includes('longTaskElapsedLabel'),'Persistent long-task progress HUD/reassurance missing');
 assert(appSource.includes('providerProgressPercent')&&appSource.includes('restoreProgressPercent'),'Provider-connect / restore numeric percentages missing');
 assert(appSource.includes('guide-load-progress')&&appSource.includes('data-guide-load-percent')&&appSource.includes('updateGuideProgress'),'TV Guide progress feedback missing');
 assert(appSource.includes('activity-progress indeterminate')&&detailCss.includes('.activity-progress.indeterminate')&&detailCss.includes('@keyframes swoopProgressShine'),'Indeterminate/moving activity feedback missing for unknown-duration work');
-console.log('Swoop TV v0.7.19 tests passed');
+console.log('Swoop TV v0.7.21 tests passed');

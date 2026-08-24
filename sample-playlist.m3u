@@ -1,5 +1,5 @@
 #EXTM3U
-#EXTINF:-1 tvg-id="swoop.news" tvg-name="Swoop News" group-title="News",Swoop News
+#EXTINF:-1 tvg-id="swoop.news" tvg-name="Swoop TV News" group-title="News",Swoop TV News
 https://example.com/live/news.m3u8
 #EXTINF:-1 tvg-id="arena.sports" tvg-name="Arena Sports" group-title="Sports",Arena Sports
 https://example.com/live/sports.m3u8

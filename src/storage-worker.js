@@ -7,10 +7,10 @@ function openDb(){
     const req=indexedDB.open(DB_NAME,DB_VERSION);
     req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE)};
     req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error||new Error('Could not open Swoop storage'));
+    req.onerror=()=>reject(req.error||new Error('Could not open Swoop TV storage'));
   });
 }
-function getKey(db,key){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readonly'),req=tx.objectStore(STORE).get(key);req.onsuccess=()=>resolve(req.result??null);req.onerror=()=>reject(req.error||new Error('Could not read Swoop storage'))})}
+function getKey(db,key){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readonly'),req=tx.objectStore(STORE).get(key);req.onsuccess=()=>resolve(req.result??null);req.onerror=()=>reject(req.error||new Error('Could not read Swoop TV storage'))})}
 const pause=()=>new Promise(resolve=>setTimeout(resolve,0));
 
 self.onmessage=async e=>{
