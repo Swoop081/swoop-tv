@@ -1,12 +1,37 @@
 # Swoop TV
 
-**Current build: v0.7.38 — Faster Browse Artwork Hydration**
+**Current build: v0.7.42 — Persistent Views + Browse Prewarm**
 
 
 
 
 
 
+
+
+
+
+### v0.7.42 — Persistent Views + Browse Prewarm
+- Home, Live TV, Guide, Movies, TV Shows, My List, Search and Settings keep their rendered DOM in memory when switching tabs, preserving loaded artwork, horizontal rail positions and vertical scroll positions.
+- Returning to a tab restores the exact existing view instead of rebuilding its cards and re-requesting artwork.
+- Swoop TV warms the first provider categories for Live TV, Movies and TV Shows in the background after Home opens, including a small artwork prefetch, so first entry into those tabs is faster.
+- Cached views are invalidated when the provider catalogue changes or the active profile changes, preventing stale-library/profile UI.
+- Existing detail-page DOM suspension remains intact, so title → Back and tab → Back now use the same preserve-rather-than-rebuild principle.
+
+### v0.7.41 — Home New & Hot Cleanup
+
+- Removes **New & Hot Movies** and **New & Hot TV Shows** from the active Home layout.
+- Existing profiles migrate once so those two rows disappear without resetting providers, themes, watched/resume state, My List, Continue Watching, SQLite data or custom rows.
+- **Recently Added Movies** and **Recently Added TV Shows** remain directly below the pinned Continue Watching / Top 100 rows.
+- Preserves the v0.7.40 **Remove from Continue Watching** controls on Home cards and detail pages.
+
+### v0.7.40 — Continue Watching Remove Control
+
+Continue Watching now has an explicit per-title **Remove** control directly on each Home card, so a user can clear a movie or TV series from the rail without marking it watched or clearing the whole profile history. TV removals clear the in-progress entries for that parent series so the show disappears cleanly from Home. When an in-progress Movie/TV detail page is open, the action row also offers **Remove from Continue Watching**. Removal is profile-scoped, persists immediately, and does not alter watch history, My List or provider data. No provider refresh, SQLite rebuild or Worker redeploy is required.
+
+### v0.7.39 — Automatic Launch Provider Refresh
+
+Swoop TV now refreshes every enabled provider that has reusable saved credentials/URL **before the profile picker, Home, Live TV, Movies or TV Shows are shown**. Launch opens on a dedicated provider-refresh progress screen, restores the last durable catalogue only behind that gate as a safety fallback, then refreshes the live provider catalogue and updates the native SQLite index before the app opens. If a provider is temporarily unavailable, Swoop TV keeps that provider's last saved catalogue instead of launching empty. Local-file-only M3U providers cannot be re-downloaded automatically and continue using their saved catalogue. No manual Refresh All is required after launch.
 
 ### v0.7.38 — Faster Browse Artwork Hydration
 
@@ -21,7 +46,7 @@ TV-series title cleanup now recognises Crunchyroll source prefixes including `CR
 
 ### v0.7.35 — Curated Home + Snoak Daily Rails
 
-Home is now a deliberately curated discovery surface. The active default layout keeps Continue Watching, Top 100 Movies/TV, New & Hot and provider Recently Added rows at the top; removes the older Recently Watched, Recent Channels, Trending, Live Now, Top Rated and three generic genre rows; then adds the requested Snoak/MDBList platform/latest/popular rails in a fixed order. **Recommended For You** and **My List** are retained at the bottom. Existing profiles migrate once without clearing provider, watch, resume, My List or SQLite state. The bundled Cloudflare Worker is **v0.1.19** and must be redeployed for the new Snoak feeds.
+Home is now a deliberately curated discovery surface. The active default layout keeps Continue Watching, Top 100 Movies/TV and provider Recently Added rows at the top; removes Recently Watched, Recent Channels, Trending, New & Hot, Live Now, Top Rated and three generic genre rows; then adds the requested Snoak/MDBList platform/latest/popular rails in a fixed order. **Recommended For You** and **My List** are retained at the bottom. Existing profiles migrate once without clearing provider, watch, resume, My List or SQLite state. The bundled Cloudflare Worker is **v0.1.19** and must be redeployed for the new Snoak feeds.
 
 
 ### v0.7.34 — TV Hero + Title Logo Reliability

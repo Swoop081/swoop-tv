@@ -81,13 +81,13 @@ async function ensureNativePage(kind,{force=false}={}){
 }
 function scheduleNativePage(kind,force=false){if(!nativeCatalogMode)return;const cache=nativePageCache[kind],group=kind==='live'?liveCategory:(pageCategory[kind]||''),want=`${providerFilter}|${group}|${viewLimits[kind]||(kind==='live'?96:72)}`;if(!force&&cache.key===want&&cache.items.length)return;setTimeout(async()=>{const before=cache.key;await ensureNativePage(kind,{force});if((before!==cache.key||force)&&((state.page==='movies'&&kind==='movie')||(state.page==='series'&&kind==='series')||(state.page==='live'&&kind==='live')))render()},0)}
 const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows'];
-const PRIMARY_HOME_ROWS=['new-hot-movies','new-hot-shows','new-movies','new-shows'];
+const PRIMARY_HOME_ROWS=['new-movies','new-shows'];
 const CURATED_SNOAK_HOME_ORDER=[
   'snoak-latest-netflix-shows','snoak-latest-amazon-prime-shows','snoak-latest-apple-tv-shows','snoak-latest-hbo-max-shows-a','snoak-latest-disney-shows','snoak-latest-hbo-max-shows-b','snoak-latest-miniseries-shows','snoak-popular-kdrama-shows','snoak-trending-anime-shows',
   'snoak-popular-action-movies','snoak-popular-action-shows','snoak-popular-animated-movies','snoak-popular-animated-shows','snoak-popular-comedy-movies','snoak-popular-comedy-shows','snoak-popular-documentary-movies','snoak-popular-documentary-shows','snoak-popular-drama-movies','snoak-popular-drama-shows','snoak-popular-horror-movies','snoak-popular-horror-shows','snoak-popular-reality-shows','snoak-popular-romance-movies','snoak-popular-romance-shows','snoak-popular-scifi-movies','snoak-popular-scifi-shows','snoak-popular-thriller-movies','snoak-popular-thriller-shows'
 ];
 const BOTTOM_HOME_ROWS=['recommended','mylist'];
-const HOME_REMOVED_ROWS=new Set(['recently-watched','recent-live','trending-movies','trending-shows','live-now','top-rated-movies','top-rated-shows','action-movies','comedy-movies','drama-shows']);
+const HOME_REMOVED_ROWS=new Set(['recently-watched','recent-live','trending-movies','trending-shows','live-now','top-rated-movies','top-rated-shows','action-movies','comedy-movies','drama-shows','new-hot-movies','new-hot-shows']);
 function normalizeHomeRows(rows=[]){const source=Array.isArray(rows)?rows:[],rest=[];for(const id of source){if(!id||id==='because-you-watched'||PINNED_HOME_ROWS.includes(id)||rest.includes(id))continue;rest.push(id)}return [...PINNED_HOME_ROWS,...rest]}
 function migrateCuratedHomeRows(rows=[]){
   const source=normalizeHomeRows(rows),locked=new Set([...PINNED_HOME_ROWS,...PRIMARY_HOME_ROWS,...CURATED_SNOAK_HOME_ORDER,...BOTTOM_HOME_ROWS]);
@@ -110,7 +110,7 @@ syncLegacyProvider();
 if(!Array.isArray(state.settings.homeRows)||!state.settings.homeRows.length)state.settings.homeRows=[...DEFAULT_HOME_ROWS];
 state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);
 if(Number(state.settings.personalizationSchemaVersion||0)<2){for(const id of ['recommended','recently-watched','recent-live'])if(!state.settings.homeRows.includes(id))state.settings.homeRows.push(id);state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);state.settings.personalizationSchemaVersion=2;}
-const HOME_LAYOUT_SCHEMA=4;
+const HOME_LAYOUT_SCHEMA=5;
 if(Number(state.settings.homeLayoutSchemaVersion||0)<HOME_LAYOUT_SCHEMA){
   state.settings.homeRows=migrateCuratedHomeRows(state.settings.homeRows);
   if(Array.isArray(state.profiles))state.profiles=state.profiles.map(p=>({...p,profileSettings:{...(p?.profileSettings||{}),homeRows:migrateCuratedHomeRows(p?.profileSettings?.homeRows||DEFAULT_HOME_ROWS)}}));
@@ -194,6 +194,9 @@ const discoveryBundleMemory=new Map();
 let detailItem=null,detailPayload=null,detailLoading=false,detailError='',detailSeason='';
 let personView=null,personLoading=false,personError='',personMovies=[],personShows=[],personProgress=0,personStatus='',personScrollTop=0;
 let suspendedBaseView=null,suspendedDetailView=null,suspendedPersonView=null;
+const persistentPageViews=new Map();
+const PERSISTENT_PAGE_IDS=new Set(['home','live','guide','movies','series','mylist','search','settings']);
+let browseWarmupTimer=null,browseWarmupRunning=false;
 const detailCache=new Map();
 const detailPrefetchPending=new Map();
 const detailEpisodeItems=new Map();
@@ -231,6 +234,8 @@ function syncProviderCounts(){for(const p of state.providers)p.counts=providerCa
 let sessionRelay={url:state.settings.xtreamRelayUrl||state.provider?.relayUrl||savedProviderProfile?.relayUrl||'',token:state.settings.xtreamRelayToken||state.provider?.relayToken||savedProviderProfile?.relayToken||''};
 let sessionXtream=providerConfigById(state.provider?.id)||{server:'',username:'',password:'',relayUrl:'',relayToken:''};
 let storageRestoring=false;
+let startupRefreshActive=false;
+let startupRefreshState={progress:2,title:'Preparing provider refresh…',detail:'Swoop TV is getting your saved provider ready before opening the app.',provider:'',summary:''};
 let libraryRestored=Boolean(state.catalog.length);
 let libraryRestorePromise=null;
 const artworkCache=new Map();
@@ -241,6 +246,68 @@ const $app=document.querySelector('#app');
 
 function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function hash(s=''){let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h)+s.charCodeAt(i)|0;return h}
+function clearPersistentPageViews(pages=null){
+  const targets=pages==null?[...persistentPageViews.keys()]:Array.isArray(pages)?pages:[pages];
+  for(const page of targets){const snap=persistentPageViews.get(page);if(snap?.main?.remove)snap.main.remove();persistentPageViews.delete(page)}
+}
+function cacheCurrentPageView(){
+  if(profilePickerOpen||startupRefreshActive||storageRestoring||detailItem||personView||modal||!PERSISTENT_PAGE_IDS.has(state.page))return false;
+  const shell=$app?.querySelector?.('.app-shell'),main=shell?.querySelector?.(':scope > main');if(!shell||!main)return false;
+  const prior=persistentPageViews.get(state.page);if(prior?.main&&prior.main!==main)prior.main.remove?.();
+  persistentPageViews.set(state.page,{main,scrollY:window.scrollY||document.documentElement.scrollTop||0,savedAt:Date.now()});
+  if(state.page==='home'&&heroRotationTimer){clearInterval(heroRotationTimer);heroRotationTimer=null}
+  lazyHomeObserver?.disconnect?.();lazyHomeObserver=null;artworkObserver?.disconnect?.();artworkObserver=null;visibleMetadataObserver?.disconnect?.();visibleMetadataObserver=null;
+  main.remove();return true;
+}
+function updateCachedNavState(page=state.page){
+  document.querySelectorAll('.desktop-nav [data-page],.bottom-nav [data-page],.top-actions [data-page]').forEach(el=>el.classList.toggle('active',el.dataset.page===page));
+}
+function resumePageWork(page,root=document){
+  hydrateArtwork(root);hydrateVisibleImdbRatings(root);bindRailStability(root);
+  if(page==='home'){mountLazyHomeRows(root);scheduleHeroRotation();if(nativeCatalogMode)setTimeout(primeNativeHomeRows,80);setTimeout(()=>refreshDiscoveryRows(false),1800);}
+  else if(page==='live')setTimeout(()=>primeLiveCategoryRails(),40);
+  else if(page==='movies')setTimeout(()=>primeMediaCategoryRails('movie'),40);
+  else if(page==='series')setTimeout(()=>primeMediaCategoryRails('series'),40);
+  else if(page==='guide')setTimeout(()=>loadGuideEpg(),250);
+  if(state.catalog.length)setTimeout(scheduleMetadataEnrichment,450);
+}
+function restorePersistentPageView(page){
+  const snap=persistentPageViews.get(page);if(!snap?.main)return false;
+  persistentPageViews.delete(page);
+  const shell=$app?.querySelector?.('.app-shell');if(!shell)return false;
+  const current=shell.querySelector(':scope > main');current?.remove?.();
+  const overlay=[...shell.children].find(el=>el!==snap.main&&(el.matches?.('.modal-backdrop,.source-choice-shell,.player-shell,.trailer-shell,.task-progress-hud')));
+  if(overlay)shell.insertBefore(snap.main,overlay);else shell.appendChild(snap.main);
+  applyTheme();updateCachedNavState(page);bind();bindHeroControls(document);resumePageWork(page,snap.main);
+  requestAnimationFrame(()=>{window.scrollTo(0,snap.scrollY||0);requestAnimationFrame(()=>window.scrollTo(0,snap.scrollY||0))});
+  return true;
+}
+function navigatePage(nextPage){
+  nextPage=String(nextPage||'home');if(nextPage===state.page&&!detailItem&&!personView)return;
+  if(profilePickerOpen||startupRefreshActive||storageRestoring||detailItem||personView){state.page=nextPage;if(nextPage==='guide')guideStart=Math.floor(Date.now()/1800000)*1800000;render();return}
+  cacheCurrentPageView();state.page=nextPage;if(nextPage==='guide')guideStart=Math.floor(Date.now()/1800000)*1800000;
+  if(restorePersistentPageView(nextPage))return;render();
+}
+function prewarmArtworkUrls(items=[],limit=28){
+  const urls=[];for(const item of items){for(const url of [item?.logo,item?.backdrop]){const value=String(url||'').trim();if(value&&!urls.includes(value))urls.push(value);if(urls.length>=limit)break}if(urls.length>=limit)break}
+  for(const url of urls){
+    if(location.protocol==='https:'&&/^http:\/\//i.test(url)&&canRelayArtwork()){relayArtworkUrl(url,'normal').catch(()=>null);continue}
+    try{const img=new Image();img.decoding='async';img.src=/image\.tmdb\.org\/t\/p\//i.test(url)?url.replace(/\/t\/p\/(?:original|w\d+)\//i,'/t/p/w342/'):url}catch{}
+  }
+}
+async function warmBrowseTabs(){
+  if(browseWarmupRunning||!nativeCatalogMode||startupRefreshActive||storageRestoring||!state.catalog.length)return;
+  browseWarmupRunning=true;
+  try{
+    await Promise.allSettled([ensureMediaProviderCategoryOrder('movie'),ensureMediaProviderCategoryOrder('series'),ensureGuideProviderCategoryOrder()]);
+    const movieCats=mediaRailCategories('movie').slice(0,6).map(x=>x.name).filter(Boolean),seriesCats=mediaRailCategories('series').slice(0,6).map(x=>x.name).filter(Boolean),liveCats=liveRailCategories().slice(0,5).map(x=>x.name).filter(Boolean);
+    const jobs=[...movieCats.map(name=>()=>ensureMediaCategoryRail('movie',name)),...seriesCats.map(name=>()=>ensureMediaCategoryRail('series',name)),...liveCats.map(name=>()=>ensureLiveCategoryRail(name))];
+    let cursor=0;async function worker(){while(cursor<jobs.length){const job=jobs[cursor++];try{await job()}catch{}}}
+    await Promise.all(Array.from({length:Math.min(5,jobs.length)},worker));
+    const warmItems=[];for(const name of movieCats){const snap=mediaRailSnapshot('movie',name);warmItems.push(...(snap.items||[]).slice(0,6))}for(const name of seriesCats){const snap=mediaRailSnapshot('series',name);warmItems.push(...(snap.items||[]).slice(0,6))}for(const name of liveCats){const snap=liveRailSnapshot(name);warmItems.push(...(snap.items||[]).slice(0,4))}prewarmArtworkUrls(warmItems,42);
+  }finally{browseWarmupRunning=false}
+}
+function scheduleBrowseWarmup(delay=900){if(browseWarmupTimer)clearTimeout(browseWarmupTimer);browseWarmupTimer=setTimeout(()=>{browseWarmupTimer=null;warmBrowseTabs().catch(()=>null)},delay)}
 function suspendBaseViewForDetail(){
   if(suspendedBaseView||detailItem||!$app?.firstElementChild)return;
   const shell=$app.firstElementChild,active=document.activeElement;
@@ -305,7 +372,7 @@ let movieStackCatalogRef=null,movieStackIndex=null,liveStackCatalogRef=null,live
 function getMovieStackIndex(){const catalog=activeCatalog(),priorityKey=state.providers.map(p=>`${p.id}:${p.priority}`).join('|');if(movieStackCatalogRef!==catalog||movieStackPriorityKey!==priorityKey||!movieStackIndex){movieStackCatalogRef=catalog;movieStackPriorityKey=priorityKey;movieStackIndex=buildMovieStackIndex(catalog,providerPriorityMap())}return movieStackIndex}
 function providerPriorityMap(){return Object.fromEntries(state.providers.map((p,i)=>[p.id,Number.isFinite(Number(p.priority))?Number(p.priority):i]))}
 function getLiveStackIndex(){const catalog=activeCatalog(),priorityKey=state.providers.map(p=>`${p.id}:${p.priority}`).join('|');if(liveStackCatalogRef!==catalog||liveStackPriorityKey!==priorityKey||!liveStackIndex){liveStackCatalogRef=catalog;liveStackPriorityKey=priorityKey;liveStackIndex=buildLiveStackIndex(catalog,providerPriorityMap())}return liveStackIndex}
-function resetMovieStackIndex(){activeCatalogSourceRef=null;activeCatalogContext='';activeCatalogCache=[];movieStackCatalogRef=null;movieStackIndex=null;movieStackPriorityKey='';liveStackCatalogRef=null;liveStackIndex=null;liveStackPriorityKey='';searchIndexKey='';searchIndexCache=[];if(typeof nativeHomeRowCache!=='undefined')nativeHomeRowCache.clear();if(typeof liveRailCache!=='undefined')liveRailCache.clear();if(typeof mediaRailCache!=='undefined')mediaRailCache.clear();for(const kind of ['movie','series'])if(typeof mediaProviderCategoryCache!=='undefined'&&mediaProviderCategoryCache[kind]){mediaProviderCategoryCache[kind].key='';mediaProviderCategoryCache[kind].items=[];mediaProviderCategoryCache[kind].loadedAt=0;mediaProviderCategoryCache[kind].loadingKey=''}for(const k of ['movie','series','live'])if(nativePageCache?.[k]){nativePageCache[k].key='';nativePageCache[k].items=[];nativePageCache[k].total=0}}
+function resetMovieStackIndex(){activeCatalogSourceRef=null;activeCatalogContext='';activeCatalogCache=[];movieStackCatalogRef=null;movieStackIndex=null;movieStackPriorityKey='';liveStackCatalogRef=null;liveStackIndex=null;liveStackPriorityKey='';searchIndexKey='';searchIndexCache=[];clearPersistentPageViews();if(typeof nativeHomeRowCache!=='undefined')nativeHomeRowCache.clear();if(typeof liveRailCache!=='undefined')liveRailCache.clear();if(typeof mediaRailCache!=='undefined')mediaRailCache.clear();for(const kind of ['movie','series'])if(typeof mediaProviderCategoryCache!=='undefined'&&mediaProviderCategoryCache[kind]){mediaProviderCategoryCache[kind].key='';mediaProviderCategoryCache[kind].items=[];mediaProviderCategoryCache[kind].loadedAt=0;mediaProviderCategoryCache[kind].loadingKey=''}for(const k of ['movie','series','live'])if(nativePageCache?.[k]){nativePageCache[k].key='';nativePageCache[k].items=[];nativePageCache[k].total=0}}
 function items(kind){if(kind==='movie')return getMovieStackIndex().stacked;if(kind==='live')return getLiveStackIndex().stacked;return activeCatalog().filter(x=>x.kind===kind)}
 function preferredLiveSource(item){if(item?.kind!=='live')return item;if(providerFilter!=='all'&&Array.isArray(item.sources)){const filtered=item.sources.filter(s=>s.providerId===providerFilter);if(filtered.length)return selectLiveSource({...item,sources:filtered},providerPriorityMap())}return selectLiveSource(item,providerPriorityMap())}
 function logicalItemIds(item){
@@ -882,7 +949,7 @@ async function switchProfile(id,{skipPin=false}={}){
   if(target.pinHash&&!skipPin){pendingProfileId=id;profilePinError='';modal='pin';profilePickerOpen=false;render();return}
   if(playerItem)await stopPlayback(true);
   const changed=target.id!==state.activeProfileId;
-  if(changed){syncActiveProfileFromState();state.activeProfileId=target.id;applyProfileToState(target);detailItem=null;sourceChoiceItem=null;heroRotationIndex=0;}
+  if(changed){clearPersistentPageViews();syncActiveProfileFromState();state.activeProfileId=target.id;applyProfileToState(target);detailItem=null;sourceChoiceItem=null;heroRotationIndex=0;}
   profilePickerOpen=false;modal=null;
   if(!libraryRestored&&state.providers.length&&!state.catalog.length){storageRestoring=true;render();const nativeReady=await activateNativeCatalogIfAvailable().catch(()=>false);if(!nativeReady)await ensureDurableLibraryRestored();storageRestoring=false;}
   else if(nativeCatalogMode)await hydrateNativeProfileItems();
@@ -898,7 +965,13 @@ function nav(){
 }
 function rail(title,data,poster=false,meta='',opts={}){
   if(!data.length)return'';
-  return `<section class="section swoop-render-section ${poster?'poster-section':'landscape-section'} ${opts.ranked?'ranked-section':''} ${opts.priority?'home-priority-row':''}"${opts.rowId?` data-home-row-mounted="${esc(opts.rowId)}"`:''}><div class="section-head"><div><h2>${esc(title)}</h2>${meta?`<span class="section-meta">${esc(meta)}</span>`:''}</div>${opts.page?`<button class="section-link" data-page="${opts.page}">Explore all →</button>`:'<span class="rail-arrow">›</span>'}</div><div class="rail">${data.map((x,i)=>card(x,poster,{progress:continueEntry(x.id)?.progress,rank:opts.ranked?i+1:null})).join('')}</div></section>`;
+  const cards=data.map((x,i)=>{
+    const markup=card(x,poster,{progress:continueEntry(x.id)?.progress,rank:opts.ranked?i+1:null});
+    if(opts.rowId!=='continue')return markup;
+    const label=cleanDisplayTitle({name:x._continueSeriesTitle||x.name||'title'});
+    return `<div class="continue-card-shell">${markup}<button type="button" class="continue-remove-btn" data-remove-continue="${esc(x.id)}" aria-label="Remove ${esc(label)} from Continue Watching" title="Remove from Continue Watching"><span>✕</span> Remove</button></div>`;
+  }).join('');
+  return `<section class="section swoop-render-section ${poster?'poster-section':'landscape-section'} ${opts.ranked?'ranked-section':''} ${opts.priority?'home-priority-row':''}"${opts.rowId?` data-home-row-mounted="${esc(opts.rowId)}"`:''}><div class="section-head"><div><h2>${esc(title)}</h2>${meta?`<span class="section-meta">${esc(meta)}</span>`:''}</div>${opts.page?`<button class="section-link" data-page="${opts.page}">Explore all →</button>`:'<span class="rail-arrow">›</span>'}</div><div class="rail">${cards}</div></section>`;
 }
 
 function homeRowMarkup(def){
@@ -927,7 +1000,7 @@ function patchMountedHomeRows(ids=[]){
     const currentRail=current.querySelector('.rail'),left=currentRail?.scrollLeft||0,lastInteraction=Number(current.dataset.railInteractedAt||0),userActive=Boolean(currentRail&&(left>6||Date.now()-lastInteraction<1800||current.matches(':hover')));
     if(userActive){const meta=current.querySelector('.section-meta'),data=homeRowItems(id);if(meta)meta.textContent=discoveryMeta(id,data);current.dataset.deferredRefresh='1';continue}
     const wrap=document.createElement('div');wrap.innerHTML=homeRowMarkup(def);const next=wrap.firstElementChild;
-    if(!next)continue;
+    if(!next){current.remove();changed=true;continue}
     current.replaceWith(next);const railEl=next.querySelector('.rail');if(railEl)railEl.scrollLeft=left;hydrateArtwork(next);bindDynamicCards(next);bindRailStability(next);changed=true;
   }
   const status=document.querySelector('.discovery-status');if(status){status.textContent=discoveryRefreshing?'Refreshing Swoop TV discovery…':discoveryMessage||'Snoak lists refresh about every 4 hours · Top 100 every 4 hours';status.classList.toggle('busy',discoveryRefreshing)}
@@ -997,6 +1070,19 @@ function hero(feature,providerName,rotation={}){
 }
 
 function listItems(){const out=[],seen=new Set();for(const id of state.myList){const item=savedItem(id);if(item&&!seen.has(item.id)){seen.add(item.id);out.push(item)}}return out}
+function removeFromContinueWatching(id){
+  const target=savedItem(id)||state.continueWatching.find(x=>String(x?.id||'')===String(id))?.item||null;
+  const targetSeriesId=target?.kind==='series'?String(target.id||''):target?.kind==='episode'?String(target.parentSeriesId||''):'';
+  const ids=new Set([String(id||''),...(target?logicalItemIds(target).map(String):[])]);
+  const before=state.continueWatching.length;
+  state.continueWatching=state.continueWatching.filter(entry=>{
+    const entryId=String(entry?.id||''),entryItem=entry?.item||savedItem(entryId);
+    if(targetSeriesId&&(String(entryItem?.parentSeriesId||'')===targetSeriesId||String(entryItem?.id||'')===targetSeriesId))return false;
+    if(ids.has(entryId))return false;
+    return !(entryItem&&logicalItemIds(entryItem).some(value=>ids.has(String(value))));
+  });
+  return state.continueWatching.length!==before;
+}
 function continueDisplayItem(item){
   if(!item||item.kind!=='episode'||!item.parentSeriesId)return item;
   const parent=savedItem(item.parentSeriesId);
@@ -1413,6 +1499,30 @@ function scheduleHeroRotation(){
   heroRotationTimer=setInterval(()=>{if(document.hidden||state.page!=='home'||modal||detailItem||playerItem)return;const pool=heroCandidates();if(pool.length<2)return;heroRotationIndex=(heroRotationIndex+1)%pool.length;replaceHomeHero()},HERO_ROTATION_MS);
 }
 
+function startupRefreshPage(){
+  const pct=Math.max(0,Math.min(100,Number(startupRefreshState.progress||0)));
+  return `<main class="page restoring-page"><div class="restore-card startup-refresh-card"><div class="provider-spinner" aria-hidden="true"></div><div class="eyebrow">UPDATING SWOOP TV</div><h1>Refreshing your TV library…</h1><p id="startupRefreshText">${esc(startupRefreshState.detail||'Swoop TV is refreshing your provider before opening the app.')}</p><div class="restore-progress"><div><span id="startupRefreshCount">${esc(startupRefreshState.provider||startupRefreshState.title||'Preparing provider refresh…')}</span><strong id="startupRefreshPercent">${Math.round(pct)}%</strong></div><i><b id="startupRefreshBar" style="width:${pct}%"></b></i></div><small id="startupRefreshSummary">${esc(startupRefreshState.summary||'Keep Swoop TV open — Swoop TV has not frozen. Connected providers refresh on every launch before browsing starts.')}</small></div></main>`;
+}
+function updateStartupRefreshProgress({progress,title,detail,provider,summary}={}){
+  if(progress!==undefined&&Number.isFinite(Number(progress)))startupRefreshState.progress=Math.max(0,Math.min(100,Number(progress)));
+  if(title!==undefined)startupRefreshState.title=String(title||'');
+  if(detail!==undefined)startupRefreshState.detail=String(detail||'');
+  if(provider!==undefined)startupRefreshState.provider=String(provider||'');
+  if(summary!==undefined)startupRefreshState.summary=String(summary||'');
+  const bar=document.querySelector('#startupRefreshBar'),pct=document.querySelector('#startupRefreshPercent'),count=document.querySelector('#startupRefreshCount'),text=document.querySelector('#startupRefreshText'),small=document.querySelector('#startupRefreshSummary');
+  if(bar)bar.style.width=`${startupRefreshState.progress}%`;
+  if(pct)pct.textContent=`${Math.round(startupRefreshState.progress)}%`;
+  if(count)count.textContent=startupRefreshState.provider||startupRefreshState.title||'Refreshing provider…';
+  if(text)text.textContent=startupRefreshState.detail||'Swoop TV is refreshing your provider before opening the app.';
+  if(small)small.textContent=startupRefreshState.summary||'Keep Swoop TV open — Swoop TV has not frozen. Connected providers refresh on every launch before browsing starts.';
+}
+function providerCanRefreshOnLaunch(provider){
+  const cfg=providerConfigById(provider?.id)||{};
+  if(provider?.type==='xtream')return Boolean(cfg.server&&cfg.username&&cfg.password);
+  if(provider?.type==='m3u')return Boolean(cfg.url||provider?.url);
+  return false;
+}
+
 function restoringPage(){
   return `<main class="page restoring-page"><div class="restore-card"><div class="provider-spinner" aria-hidden="true"></div><div class="eyebrow">RESTORING SWOOP TV</div><h1>Loading your TV library…</h1><p id="restoreProgressText">Your profile is ready. Swoop TV is loading the large provider catalog in the background without blocking the profile screen.</p><div class="restore-progress"><div><span id="restoreProgressCount">Preparing saved library…</span><strong id="restoreProgressPercent">4%</strong></div><i><b id="restoreProgressBar" style="width:4%"></b></i></div><small>Large libraries are restored in smaller chunks so Windows can keep the app responsive.</small></div></main>`;
 }
@@ -1439,7 +1549,8 @@ function render(){
   const detailRoute=Boolean(!profilePickerOpen&&!personRoute&&detailItem);
   const mediaRoute=personRoute||detailRoute;
   let body;
-  if(storageRestoring)body=restoringPage();
+  if(startupRefreshActive)body=startupRefreshPage();
+  else if(storageRestoring)body=restoringPage();
   else if(profilePickerOpen)body=profilePickerPage();
   else if(personRoute)body=personHtml();
   else if(detailRoute)body=detailHtml();
@@ -1451,7 +1562,7 @@ function render(){
   else if(state.page==='mylist')body=myListPage();
   else if(state.page==='search')body=searchPage();
   else body=settingsPage();
-  const shellNav=storageRestoring||profilePickerOpen||mediaRoute?'':nav();
+  const shellNav=startupRefreshActive||storageRestoring||profilePickerOpen||mediaRoute?'':nav();
   $app.innerHTML=`<div class="app-shell">${shellNav}${body}${modal?modalHtml():''}${!profilePickerOpen&&sourceChoiceItem?sourceChoiceHtml():''}${!profilePickerOpen&&playerItem&&!playerUiHidden?playerHtml():''}${!profilePickerOpen&&!mediaRoute?backgroundLiveBar():''}${!profilePickerOpen&&trailerKey?trailerHtml():''}${taskProgressHtml()}</div>`;
   if(detailRoute){const scroller=document.querySelector('.detail-scroll');if(scroller)scroller.scrollTop=detailScrollTop;}
   if(personRoute){const scroller=document.querySelector('.person-scroll');if(scroller)scroller.scrollTop=personScrollTop;}
@@ -1469,6 +1580,7 @@ function render(){
     const heroNow=featureItem();if(heroNow&&['movie','series'].includes(heroNow.kind))setTimeout(()=>enrichItemMetadata(heroNow,{rerender:false}).then(()=>patchHomeHeroTitle(heroNow)),40);
     if(state.catalog.length)setTimeout(()=>refreshDiscoveryRows(false),largeLibraryMode()?1200:0);
     if(nativeCatalogMode)setTimeout(primeNativeHomeRows,140);
+    scheduleBrowseWarmup(largeLibraryMode()?650:1000);
   }
   if(!profilePickerOpen&&!mediaRoute&&playerItem?.kind==='live')setTimeout(()=>{loadPlayerNowNext(playerItem);loadLiveMiniGuide(playerItem)},0);
   if(!profilePickerOpen&&state.catalog.length)setTimeout(scheduleMetadataEnrichment,largeLibraryMode()?1800:120);
@@ -1646,13 +1758,15 @@ function detailHtml(){
   }else if(detailItem.kind==='live') primary=`<button class="btn play-btn detail-play" data-play="${esc(detailItem.id)}">▶ Watch Live</button>`;
   const watched=isWatched(detailItem);
   const watchedButton=detailItem.kind!=='live'?`<button class="btn secondary detail-watched-toggle ${watched?'watched':''}" data-toggle-watched="${esc(detailItem.id)}"><span>${watched?'✓':'○'}</span> ${watched?'Mark as Unwatched':'Mark as Watched'}</button>`:'';
+  const detailContinueEntry=detailItem.kind==='series'?state.continueWatching.find(x=>x?.item?.parentSeriesId===detailItem.id||x?.id===detailItem.id):detailItem.kind==='movie'?continueEntry(detailItem.id):null;
+  const removeContinueButton=detailContinueEntry?`<button class="btn secondary detail-remove-continue" data-remove-continue="${esc(detailContinueEntry.id||detailItem.id)}"><span>✕</span> Remove from Continue Watching</button>`:'';
   const tmdbRelated=matchTmdbRecommendations(meta.recommendations,detailItem.kind);
   const providerRelated=detailItem.kind==='movie'?items('movie').filter(x=>x.id!==detailItem.id&&x.group===detailItem.group):activeCatalog().filter(x=>x.id!==detailItem.id&&x.kind===detailItem.kind&&x.group===detailItem.group);
   const related=[...new Map([...tmdbRelated,...providerRelated].filter(x=>x.id!==detailItem.id).map(x=>[x.id,x])).values()].slice(0,18);
   const sourceProviders=Array.isArray(detailItem.sources)?[...new Set(detailItem.sources.map(x=>providerDisplayName(x)))]:[providerDisplayName(detailItem)];const facts=[['Genre',meta.genre],['Director / Creator',meta.director],['Country',meta.country],['Runtime',meta.duration],['Rating',meta.age],['Providers',sourceProviders.filter(Boolean).join(', ')],['Playback sources',detailItem.sourceCount>1?`${detailItem.sourceCount} available`:'']].filter(([,v])=>v);
   const castBlock=meta.castList.length?`<section class="detail-cast"><div class="detail-section-head"><div><span class="eyebrow">CAST</span><h3>Cast & Characters</h3></div><span class="cast-hint">Select a cast member to browse titles in your library</span></div><div class="cast-rail">${meta.castList.map(person=>`<button class="cast-card" data-person-id="${esc(person.id||'')}" data-person-name="${esc(person.name||'')}" data-person-profile="${esc(person.profile||'')}" data-person-character="${esc(person.character||'')}" aria-label="Browse ${esc(person.name||'cast member')} titles in your Swoop TV library">${person.profile?`<img data-swoop-art="${esc(person.profile)}" alt="">`:`<div class="cast-fallback">${esc((person.name||'?').slice(0,1))}</div>`}<strong>${esc(person.name)}</strong><span>${esc(person.character||'')}</span></button>`).join('')}</div></section>`:'';
   const trailerButton=meta.youtube?`<button class="btn secondary detail-trailer" data-trailer="${esc(meta.youtube)}" data-trailer-title="${esc(meta.trailerName||meta.title)}"><span>▶</span> Trailer</button>`:'';
-  return `<main class="detail-overlay detail-route" aria-label="${esc(meta.title)}"><button class="detail-close" data-detail-close aria-label="Back">←</button><div class="detail-scroll"><section class="detail-hero ${hasCinematicBackdrop?'has-backdrop':'poster-fallback'}"><div class="detail-media"><div class="detail-fallback" style="--detail-fallback:${detailItem.demoColor||'linear-gradient(135deg,#151b2a,#050609)'}"></div>${backdrop?`<img class="detail-backdrop" data-swoop-art="${esc(backdrop)}" alt="">`:''}</div><div class="detail-vignette"></div><div class="detail-copy"><div class="eyebrow">${esc(kindLabel(detailItem).toUpperCase())}</div>${(()=>{const logoState=detailTitleLogoState(detailItem,meta);return `<div class="detail-title-slot ${logoState.pending?'logo-pending':''} ${meta.titleLogo?'has-logo':''}" data-detail-title><h2 class="detail-title-text">${esc(meta.title)}</h2><span class="detail-title-wait" aria-hidden="true"></span>${meta.titleLogo?`<img class="detail-title-logo" data-swoop-art="${esc(meta.titleLogo)}" alt="${esc(meta.title)}">`:''}</div>`})()}<div class="detail-meta">${[meta.year,meta.rating?`★ ${meta.rating}`:'',meta.age,detailItem.group].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>${esc(meta.plot||`Available from ${providerSummaryName()}.`)}</p><div class="cta-row">${primary}${trailerButton}<button class="btn secondary detail-list ${saved?'saved':''}" data-toggle-list="${esc(detailItem.id)}"><span>${saved?'✓':'＋'}</span> ${saved?'In My List':'My List'}</button>${watchedButton}</div></div>${meta.cover&&!hasCinematicBackdrop?`<img class="detail-poster" data-swoop-art="${esc(meta.cover)}" alt="">`:''}</section>
+  return `<main class="detail-overlay detail-route" aria-label="${esc(meta.title)}"><button class="detail-close" data-detail-close aria-label="Back">←</button><div class="detail-scroll"><section class="detail-hero ${hasCinematicBackdrop?'has-backdrop':'poster-fallback'}"><div class="detail-media"><div class="detail-fallback" style="--detail-fallback:${detailItem.demoColor||'linear-gradient(135deg,#151b2a,#050609)'}"></div>${backdrop?`<img class="detail-backdrop" data-swoop-art="${esc(backdrop)}" alt="">`:''}</div><div class="detail-vignette"></div><div class="detail-copy"><div class="eyebrow">${esc(kindLabel(detailItem).toUpperCase())}</div>${(()=>{const logoState=detailTitleLogoState(detailItem,meta);return `<div class="detail-title-slot ${logoState.pending?'logo-pending':''} ${meta.titleLogo?'has-logo':''}" data-detail-title><h2 class="detail-title-text">${esc(meta.title)}</h2><span class="detail-title-wait" aria-hidden="true"></span>${meta.titleLogo?`<img class="detail-title-logo" data-swoop-art="${esc(meta.titleLogo)}" alt="${esc(meta.title)}">`:''}</div>`})()}<div class="detail-meta">${[meta.year,meta.rating?`★ ${meta.rating}`:'',meta.age,detailItem.group].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>${esc(meta.plot||`Available from ${providerSummaryName()}.`)}</p><div class="cta-row">${primary}${trailerButton}<button class="btn secondary detail-list ${saved?'saved':''}" data-toggle-list="${esc(detailItem.id)}"><span>${saved?'✓':'＋'}</span> ${saved?'In My List':'My List'}</button>${watchedButton}${removeContinueButton}</div></div>${meta.cover&&!hasCinematicBackdrop?`<img class="detail-poster" data-swoop-art="${esc(meta.cover)}" alt="">`:''}</section>
   <div class="detail-body" data-detail-body>${episodeBlock}${castBlock}<section class="detail-info"><div><span class="eyebrow">ABOUT</span><h3>More about ${esc(meta.title)}</h3></div><div class="detail-facts">${facts.length?facts.map(([k,v])=>`<div><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join(''):'<div><span>Source</span><strong>Your connected provider</strong></div>'}</div></section>${related.length?`<section class="detail-related">${rail('More Like This',related,detailItem.kind!=='live')}</section>`:''}</div></div></main>`;
 }
 function patchDetailHeroFromState(){
@@ -1764,7 +1878,7 @@ function closeDetail(){
   if(restoreSuspendedBaseView())return;
   render();requestAnimationFrame(()=>window.scrollTo(0,detailReturnScroll||0));
 }
-function toggleMyList(item){if(!item)return;const ids=new Set(logicalItemIds(item)),saved=state.myList.some(id=>ids.has(id));if(saved){state.myList=state.myList.filter(id=>!ids.has(id));toast('Removed from My List')}else{state.myList.unshift(item.id);toast('Added to My List')}persist();if(detailItem)patchDetailSectionsFromState({controls:true});else render()}
+function toggleMyList(item){if(!item)return;clearPersistentPageViews(['home','mylist','movies','series']);const ids=new Set(logicalItemIds(item)),saved=state.myList.some(id=>ids.has(id));if(saved){state.myList=state.myList.filter(id=>!ids.has(id));toast('Removed from My List')}else{state.myList.unshift(item.id);toast('Added to My List')}persist();if(detailItem)patchDetailSectionsFromState({controls:true});else render()}
 function watchHistoryEntry(itemOrId){
   const item=typeof itemOrId==='string'?savedItem(itemOrId):itemOrId,id=typeof itemOrId==='string'?itemOrId:itemOrId?.id;
   const ids=new Set(item?logicalItemIds(item):[id]);
@@ -1772,7 +1886,7 @@ function watchHistoryEntry(itemOrId){
 }
 function isWatched(item){const entry=watchHistoryEntry(item);return Boolean(entry?.completed||entry?.manualWatched)}
 function toggleWatched(item){
-  if(!item||item.kind==='live')return;
+  if(!item||item.kind==='live')return;clearPersistentPageViews(['home','movies','series']);
   const ids=new Set(logicalItemIds(item));
   if(isWatched(item)){
     state.watchHistory=state.watchHistory.filter(x=>!ids.has(String(x?.id||'')));
@@ -2035,6 +2149,18 @@ function providerFiltered(list){return providerFilter==='all'?list:list.filter(x
 
 function bindDynamicCards(root=document){
   hydrateVisibleImdbRatings(root);bindRailStability(root);
+  root.querySelectorAll('[data-remove-continue]').forEach(el=>{
+    if(el.dataset.boundRemoveContinue)return;el.dataset.boundRemoveContinue='1';
+    el.onclick=async event=>{
+      event.preventDefault();event.stopPropagation();
+      const id=String(el.dataset.removeContinue||'');if(!id)return;
+      if(!removeFromContinueWatching(id))return;
+      await persist();
+      if(detailItem){patchDetailHeroFromState();patchDetailSectionsFromState({controls:true});}
+      if(state.page==='home'&&!detailItem&&!playerItem)patchMountedHomeRows(['continue']);
+      toast('Removed from Continue Watching');
+    };
+  });
   root.querySelectorAll('[data-play]').forEach(el=>{
     if(el.dataset.boundPlay)return;el.dataset.boundPlay='1';
     el.onclick=async()=>{
@@ -2074,7 +2200,7 @@ function bind(){
   document.querySelector('#profilePinForm')?.addEventListener('submit',async e=>{e.preventDefault();const target=state.profiles.find(p=>p.id===pendingProfileId),pin=String(new FormData(e.currentTarget).get('pin')||'');if(!target)return;const digest=await pinDigest(pin,target.pinSalt);if(digest!==target.pinHash){profilePinError='Incorrect PIN. Try again.';render();return}const id=target.id;pendingProfileId='';profilePinError='';await switchProfile(id,{skipPin:true})});
   document.querySelector('#profileForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),id=String(fd.get('id')||''),existing=state.profiles.find(p=>p.id===id)||null,name=String(fd.get('name')||'Profile').trim(),avatar=String(fd.get('avatar')||'lion'),kids=Boolean(fd.get('kids')),smartHome=Boolean(fd.get('smartHome')),themeId=themeById(String(fd.get('themeId')||existing?.profileSettings?.themeId||'chill')).id,pin=String(fd.get('pin')||'').trim(),removePin=Boolean(fd.get('removePin'));if(!name){toast('Enter a profile name');return}if(pin&&!/^\d{4,8}$/.test(pin)){toast('Profile PIN must be 4–8 digits');return}if(existing?.id===state.activeProfileId)syncActiveProfileFromState();let next=existing?normalizeProfile(state.profiles.find(p=>p.id===id)||existing):makeProfile({name,avatar,kids,profileSettings:{themeId:'chill',backgroundColor:'#050505',backgroundOverride:false,movieSourcePreferences:{},homeRows:[...DEFAULT_HOME_ROWS],smartHomeOrder:true}});next={...next,name:name.slice(0,24),avatar:avatarById(avatar).id,kids,profileSettings:{...(next.profileSettings||{}),smartHomeOrder:smartHome,themeId}};if(kids){const rawById=x=>state.catalog.find(item=>item.id===x)||next.continueWatching.find(e=>e.id===x)?.item||next.watchHistory.find(e=>e.id===x)?.item||null;next.myList=next.myList.filter(id=>{const item=rawById(id);return !item||profileAllowsMedia(next,item,state.metadataCache?.[item.id]||{})});next.continueWatching=next.continueWatching.filter(e=>!e?.item||profileAllowsMedia(next,e.item,state.metadataCache?.[e.id]||{}));next.watchHistory=next.watchHistory.filter(e=>!e?.item||profileAllowsMedia(next,e.item,state.metadataCache?.[e.id]||{}));}if(removePin){next.pinHash='';next.pinSalt=''}else if(pin){next.pinSalt=randomSalt();next.pinHash=await pinDigest(pin,next.pinSalt)}if(existing){const i=state.profiles.findIndex(p=>p.id===existing.id);state.profiles[i]=next;if(existing.id===state.activeProfileId){applyProfileToState(next)}}else{state.profiles.push(next);state.activeProfileId=next.id;applyProfileToState(next)}profileEditId='';modal=null;profilePickerOpen=false;await persist();render();toast(existing?'Profile updated':`Welcome, ${next.name}`)});
   document.querySelectorAll('[data-profile-delete]').forEach(el=>el.onclick=async()=>{const id=el.dataset.profileDelete;if(state.profiles.length<=1){toast('Swoop TV needs at least one profile');return}const wasActive=id===state.activeProfileId;state.profiles=state.profiles.filter(p=>p.id!==id);if(wasActive){state.activeProfileId=state.profiles[0].id;applyProfileToState(state.profiles[0])}profileEditId='';modal='profiles';await persist();render();toast('Profile deleted')});
-  document.querySelectorAll('[data-page]').forEach(el=>el.onclick=()=>{state.page=el.dataset.page;if(state.page==='guide')guideStart=Math.floor(Date.now()/1800000)*1800000;render()});
+  document.querySelectorAll('[data-page]').forEach(el=>el.onclick=()=>navigatePage(el.dataset.page));
   document.querySelectorAll('[data-modal]').forEach(el=>el.onclick=()=>{modal=el.dataset.modal;render()});
   document.querySelectorAll('[data-close]').forEach(el=>el.onclick=()=>{modal=null;render()});
   document.querySelectorAll('[data-close-modal]').forEach(el=>el.onclick=e=>{if(e.target===el){modal=null;render()}});
@@ -2105,7 +2231,7 @@ function bind(){
   document.querySelector('[data-guide-now]')?.addEventListener('click',()=>{guideStart=Math.floor(Date.now()/1800000)*1800000;guideLoadToken++;render()});
   document.querySelectorAll('[data-guide-category]').forEach(el=>el.onclick=()=>{const next=el.dataset.guideCategory||'';if(next===guideCategory)return;guideCategory=next;guideLimit=48;guideError='';guideLoading=false;guideLoadToken++;guideChannelCache.key='';guideChannelCache.items=[];guideChannelCache.total=0;render()});
   document.querySelector('[data-guide-more]')?.addEventListener('click',()=>{guideLimit+=48;guideError='';guideLoadToken++;guideChannelCache.key='';render()});
-  document.querySelectorAll('[data-provider-filter]').forEach(el=>el.onclick=()=>{providerFilter=el.dataset.providerFilter||'all';viewLimits.live=96;viewLimits.movie=72;viewLimits.series=72;liveRailCategoryLimit=LIVE_RAIL_CATEGORY_BATCH;mediaRailCategoryLimit.movie=MEDIA_RAIL_CATEGORY_BATCH;mediaRailCategoryLimit.series=MEDIA_RAIL_CATEGORY_BATCH;if(nativeCatalogMode)for(const k of ['live','movie','series'])nativePageCache[k].key='';render()});
+  document.querySelectorAll('[data-provider-filter]').forEach(el=>el.onclick=()=>{clearPersistentPageViews(['live','guide','movies','series']);providerFilter=el.dataset.providerFilter||'all';viewLimits.live=96;viewLimits.movie=72;viewLimits.series=72;liveRailCategoryLimit=LIVE_RAIL_CATEGORY_BATCH;mediaRailCategoryLimit.movie=MEDIA_RAIL_CATEGORY_BATCH;mediaRailCategoryLimit.series=MEDIA_RAIL_CATEGORY_BATCH;if(nativeCatalogMode)for(const k of ['live','movie','series'])nativePageCache[k].key='';render()});
   document.querySelectorAll('[data-provider-toggle]').forEach(el=>el.onclick=()=>toggleProviderEnabled(el.dataset.providerToggle));
   document.querySelectorAll('[data-provider-refresh]').forEach(el=>el.onclick=()=>refreshProvider(el.dataset.providerRefresh));
   document.querySelectorAll('[data-provider-edit]').forEach(el=>el.onclick=()=>{const id=el.dataset.providerEdit,p=providerById(id),cfg=providerConfigById(id)||p;if(!p)return;const tab=document.querySelector(`[data-provider-tab="${p.type}"]`);tab?.click();const form=document.querySelector(p.type==='xtream'?'#xtreamForm':'#m3uForm');if(!form)return;const set=(name,value)=>{const input=form.querySelector(`[name="${name}"]`);if(input)input.value=value||''};set('name',p.name);if(p.type==='xtream'){set('server',cfg.server||p.server);set('username',cfg.username||'');set('password',cfg.password||'');set('relayUrl',cfg.relayUrl||p.relayUrl||'');set('relayToken',cfg.relayToken||'')}else{set('url',cfg.url||p.url||'');set('epgUrl',cfg.epgUrl||p.epgUrl||'')}form.scrollIntoView({behavior:'smooth',block:'start'});toast(`Editing ${p.name}`)});
@@ -2186,4 +2312,46 @@ async function ensureDurableLibraryRestored(){
   return libraryRestorePromise;
 }
 
-render();
+async function bootstrapApp(){
+  const providers=enabledProviders();
+  if(!providers.length){render();return}
+  const refreshable=providers.filter(providerCanRefreshOnLaunch);
+  if(!refreshable.length){render();return}
+  startupRefreshActive=true;
+  startupRefreshState={progress:2,title:'Preparing provider refresh…',detail:'Swoop TV is preparing your saved TV library before the app opens.',provider:'Preparing saved library…',summary:'Keep Swoop TV open — Swoop TV has not frozen. Providers refresh before Home, Live TV, Movies or TV Shows are displayed.'};
+  render();
+
+  // Load the last durable catalogue behind the startup gate first. It is never shown before
+  // the refresh finishes, but it gives Swoop TV a safe fallback if a provider is temporarily
+  // offline and preserves unrefreshable/local-file providers while other providers update.
+  updateStartupRefreshProgress({progress:3,provider:'Preparing saved library…',detail:'Checking the last saved provider catalogue before contacting your TV provider.'});
+  try{
+    if(NATIVE_WINDOWS){
+      const nativeReady=await activateNativeCatalogIfAvailable().catch(()=>false);
+      if(!nativeReady&&!state.catalog.length)await ensureDurableLibraryRestored().catch(()=>false);
+    }else if(!state.catalog.length)await ensureDurableLibraryRestored().catch(()=>false);
+  }catch{}
+
+  let ok=0,failed=0;
+  const skipped=providers.length-refreshable.length;
+  for(let i=0;i<refreshable.length;i++){
+    const provider=refreshable[i];
+    updateStartupRefreshProgress({progress:5+(i/refreshable.length)*93,provider:`${provider.name||'TV Provider'} · provider ${i+1} of ${refreshable.length}`,detail:'Starting automatic launch refresh…'});
+    const success=await refreshProvider(provider.id,{quiet:true,manageTask:false,onProgress:info=>{
+      const fraction=(i+(Math.max(0,Math.min(100,Number(info.progress||0)))/100))/refreshable.length;
+      updateStartupRefreshProgress({progress:5+fraction*93,provider:`${provider.name||'TV Provider'} · provider ${i+1} of ${refreshable.length}`,detail:info.detail||'Refreshing provider catalogue…'});
+    }});
+    if(success)ok++;else failed++;
+  }
+
+  if(NATIVE_WINDOWS)await activateNativeCatalogIfAvailable().catch(()=>false);
+  syncProviderCounts();
+  const resultParts=[`${ok} refreshed`];
+  if(failed)resultParts.push(`${failed} using last saved library`);
+  if(skipped)resultParts.push(`${skipped} not auto-refreshable`);
+  updateStartupRefreshProgress({progress:100,provider:'Provider refresh complete',detail:failed?'Swoop TV finished the launch refresh. Any unavailable provider will use its last saved library.':'Your provider library is current and Swoop TV is ready to open.',summary:resultParts.join(' · ')});
+  startupRefreshActive=false;
+  render();
+}
+
+bootstrapApp();

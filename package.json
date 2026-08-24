@@ -1,6 +1,6 @@
 {
   "name": "swoop-tv",
-  "version": "0.7.38",
+  "version": "0.7.42",
   "private": true,
   "type": "module",
   "scripts": {

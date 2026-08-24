@@ -655,3 +655,13 @@ button,.btn,.card,.nav-btn,.icon-btn{touch-action:manipulation;-webkit-tap-highl
 .hero-title-slot.has-logo .hero-title-wait,.hero-title-slot.logo-unavailable .hero-title-wait{display:none}
 .hero-title-slot.logo-unavailable .hero-title-text{opacity:1!important;visibility:visible}
 @media(max-width:700px){.hero-title-slot{margin-bottom:15px;min-height:48px}.hero-title-wait{width:min(270px,68vw);height:46px}}
+
+/* v0.7.40 — explicit per-title Continue Watching removal (preserved in v0.7.41) */
+.continue-card-shell{position:relative;min-width:0;scroll-snap-align:start;isolation:isolate}
+.continue-card-shell>.card{width:100%;display:block;scroll-snap-align:none}
+.continue-remove-btn{position:absolute;right:9px;top:9px;z-index:30;display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 9px;background:rgba(8,8,10,.82);color:#fff;font:900 9px/1 inherit;letter-spacing:.03em;cursor:pointer;backdrop-filter:blur(9px);box-shadow:0 5px 18px rgba(0,0,0,.38);transition:transform .12s ease,background .12s ease,border-color .12s ease}
+.continue-remove-btn:hover,.continue-remove-btn:focus-visible{background:rgba(229,45,63,.94);border-color:rgba(255,255,255,.35);transform:translateY(-1px);outline:2px solid #fff;outline-offset:2px}
+.continue-remove-btn:active{transform:scale(.96)}
+.detail-remove-continue{border-color:rgba(229,45,63,.34)}
+.detail-remove-continue:hover,.detail-remove-continue:focus-visible{background:rgba(229,45,63,.18);border-color:rgba(229,45,63,.72)}
+@media(max-width:700px){.continue-remove-btn{right:7px;top:7px;padding:6px 8px;font-size:8px}}

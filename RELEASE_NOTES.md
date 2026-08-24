@@ -1,3 +1,41 @@
+## v0.7.42 — Persistent Views + Browse Prewarm
+
+- **Tabs stay loaded:** top-level Home, Live TV, Guide, Movies, TV Shows, My List, Search and Settings views are detached and retained in memory rather than destroyed when navigating to another tab. Returning restores the same DOM, loaded poster images, horizontal rail scroll positions and vertical page position.
+- **No routine re-hydration on Back/tab return:** already-loaded artwork keeps its resolved image/object URL and does not go back through gradient placeholders simply because the user visited another screen.
+- **Background browse prewarm:** after Home settles, Swoop TV quietly fetches the first provider categories/rails for Live TV, Movies and TV Shows and warms a bounded set of artwork URLs. First entry into those tabs therefore starts from populated caches rather than a cold SQLite/artwork path.
+- **Targeted resume work:** restoring a cached page only resumes missing lazy rows/EPG/category jobs; it does not rebuild the whole screen.
+- **Safe invalidation:** persistent views are cleared when the provider catalogue/index changes or when the user switches profile, so cached UI cannot survive a different library/profile context.
+- No Cloudflare Worker redeploy, provider refresh, SQLite rebuild, watched/resume reset or playback change is required.
+
+## v0.7.41 — Home New & Hot Cleanup
+
+- Removes **New & Hot Movies** and **New & Hot TV Shows** from the Home screen.
+- Bumps the Home layout schema so existing profiles drop those rows automatically on first launch of v0.7.41.
+- Keeps **Recently Added Movies** and **Recently Added TV Shows** as the provider-recency rows near the top of Home.
+- Preserves all v0.7.40 Continue Watching removal controls and all existing Snoak daily rails.
+- No provider refresh, SQLite rebuild, Cloudflare Worker redeploy, watched/resume reset or playback change is required.
+
+## v0.7.40 — Continue Watching Remove Control
+
+- Adds an always-available **Remove** button to each title card in the Home **Continue Watching** rail.
+- Removing a movie clears only that movie's resume entry; removing an episodic card clears the in-progress entries for that parent TV series so the show leaves Continue Watching cleanly.
+- Movie/TV detail pages now also show **Remove from Continue Watching** whenever that title currently has an in-progress entry.
+- Removal is profile-scoped and persists immediately without marking the title watched, deleting viewing history, changing My List, or altering provider/SQLite catalogue data.
+- When the last Continue Watching item is removed, the now-empty Home row disappears immediately instead of leaving stale UI behind.
+- No Cloudflare Worker redeploy, provider refresh, SQLite rebuild, profile reset or playback change is required.
+
+## v0.7.39 — Automatic Launch Provider Refresh
+
+- Adds a launch gate that refreshes enabled TV providers with reusable saved credentials/URLs before Swoop TV exposes the profile picker or any catalogue UI.
+- The first visible app screen is now a dedicated **Refreshing your TV library…** progress screen with live percentage and provider-stage messaging.
+- The previous durable/SQLite catalogue may be restored behind the launch gate only as a safety fallback; it is not displayed before the provider refresh finishes.
+- Xtream providers with saved server/username/password and URL-backed M3U providers refresh automatically on every app launch.
+- Successful refreshes replace that provider's catalogue and native SQLite rows before browsing starts.
+- If a provider is temporarily offline or its refresh fails, Swoop TV keeps the last saved catalogue for that provider so the app remains usable instead of opening empty.
+- Local-file-only M3U providers cannot be re-downloaded automatically and continue using their saved library.
+- Multi-provider launches refresh enabled providers sequentially with one overall progress percentage.
+- No Cloudflare Worker redeploy, profile reset, watched/resume reset or playback change is required.
+
 ## v0.7.38 — Faster Browse Artwork Hydration
 
 - Speeds up poster population across Home, Movies and TV Shows rails, especially large-library rows that previously sat on gradient placeholders while visible.

@@ -462,7 +462,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0738-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.34 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0742-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.41 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -471,7 +471,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.38'")&&swHotfix.includes('swoop-tv-v0738-shell'),'v0.7.34 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.42'")&&swHotfix.includes('swoop-tv-v0742-shell'),'v0.7.41 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -609,7 +609,7 @@ assert(appSource.includes('<span>SWOOP <b>TV</b></span>')&&appSource.includes('<
 // v0.7.36 curated Home + Snoak daily rails.
 const curatedHomeIds=['snoak-latest-netflix-shows','snoak-latest-amazon-prime-shows','snoak-latest-apple-tv-shows','snoak-latest-hbo-max-shows-a','snoak-latest-disney-shows','snoak-latest-hbo-max-shows-b','snoak-latest-miniseries-shows','snoak-popular-kdrama-shows','snoak-trending-anime-shows','snoak-popular-action-movies','snoak-popular-action-shows','snoak-popular-animated-movies','snoak-popular-animated-shows','snoak-popular-comedy-movies','snoak-popular-comedy-shows','snoak-popular-documentary-movies','snoak-popular-documentary-shows','snoak-popular-drama-movies','snoak-popular-drama-shows','snoak-popular-horror-movies','snoak-popular-horror-shows','snoak-popular-reality-shows','snoak-popular-romance-movies','snoak-popular-romance-shows','snoak-popular-scifi-movies','snoak-popular-scifi-shows','snoak-popular-thriller-movies','snoak-popular-thriller-shows'];
 for(const id of curatedHomeIds)assert(appSource.includes(`'${id}'`),`Missing curated Home row ${id}`);
-assert(appSource.includes("const BOTTOM_HOME_ROWS=['recommended','mylist']")&&appSource.includes('const HOME_LAYOUT_SCHEMA=4')&&appSource.includes('migrateCuratedHomeRows'),'Home migration/bottom-row lock missing');
+assert(appSource.includes("const BOTTOM_HOME_ROWS=['recommended','mylist']")&&appSource.includes('const HOME_LAYOUT_SCHEMA=5')&&appSource.includes('migrateCuratedHomeRows'),'Home migration/bottom-row lock missing');
 for(const removed of ['recently-watched','recent-live','trending-movies','trending-shows','live-now','top-rated-movies','top-rated-shows','action-movies','comedy-movies','drama-shows'])assert(appSource.includes(`'${removed}'`),'Legacy row definition unexpectedly removed instead of preserving underlying feature');
 assert(workerSource.includes("'latest-netflix-shows':{slug:'latest-netflix-tv-shows'")&&workerSource.includes("'latest-hbo-max-shows':{slug:'latest-max-tv-shows'")&&workerSource.includes("'popular-kdrama-shows':{slug:'popular-kdrama-shows'")&&workerSource.includes("'trending-anime-shows':{slug:'trending-anime-shows'")&&workerSource.includes("'genre-romance-shows':{slug:'popular-romance-shows'"),'Expanded Snoak allow-list missing');
 assert(workerSource.includes("version:'0.1.21'"),'Worker v0.1.21 version missing');
@@ -620,4 +620,17 @@ assert(appSource.includes("if(metadataFresh&&!force){if(!imdbFresh)queueVisibleM
 assert(workerSource.includes("metadataFromTmdb(item,type,'')")&&!workerSource.includes("metadataFromTmdb(item,type,imdbRating)"),'v0.7.37 fast metadata Worker path missing');
 assert(appSource.includes('function enrichVisibleCardMetadata')&&appSource.includes('visibleArtworkRepairIds')&&appSource.includes("largeLibraryMode()?8:12")&&appSource.includes("rootMargin:largeLibraryMode()?'700px 1200px':'1000px 1800px'"),'v0.7.38 faster browse artwork hydration missing');
 assert(appSource.includes("img.loading=eager?'eager':'lazy'")&&appSource.includes("queueVisibleMetadata(item,{forceArtwork:true})"),'v0.7.38 visible artwork priority/repair wiring missing');
-console.log('Swoop TV v0.7.38 tests passed');
+assert(appSource.includes('function startupRefreshPage')&&appSource.includes('function updateStartupRefreshProgress')&&appSource.includes('UPDATING SWOOP TV'),'v0.7.39 startup refresh progress gate missing');
+assert(appSource.includes('function providerCanRefreshOnLaunch')&&appSource.includes("provider?.type==='xtream'")&&appSource.includes("provider?.type==='m3u'"),'v0.7.39 launch refresh eligibility missing');
+assert(appSource.includes('async function bootstrapApp')&&appSource.includes('refreshProvider(provider.id,{quiet:true,manageTask:false')&&appSource.includes('bootstrapApp();'),'v0.7.39 automatic provider refresh bootstrap missing');
+assert(appSource.includes('const nativeReady=await activateNativeCatalogIfAvailable()')&&appSource.includes('last saved provider catalogue')&&appSource.includes("startupRefreshActive=false;\n  render();"),'v0.7.39 startup fallback/final-open sequencing missing');
+
+// v0.7.40 Continue Watching exposes per-title removal without clearing viewing history.
+assert(appSource.includes('function removeFromContinueWatching')&&appSource.includes('data-remove-continue')&&appSource.includes('Removed from Continue Watching'),'v0.7.40 per-title Continue Watching removal missing');
+assert(appSource.includes('detail-remove-continue')&&appSource.includes('Remove from Continue Watching'),'v0.7.40 detail Continue Watching removal control missing');
+assert(cssSource.includes('.continue-remove-btn')&&cssSource.includes('.continue-card-shell'),'v0.7.40 Continue Watching remove styling missing');
+assert(appSource.includes("const PRIMARY_HOME_ROWS=['new-movies','new-shows']")&&appSource.includes("'new-hot-movies','new-hot-shows'")&&appSource.includes('const HOME_LAYOUT_SCHEMA=5;'),'v0.7.41 New & Hot Home removal/migration missing');
+assert(appSource.includes('const persistentPageViews=new Map()')&&appSource.includes('function cacheCurrentPageView')&&appSource.includes('function restorePersistentPageView')&&appSource.includes('function navigatePage'),'v0.7.42 persistent top-level view cache missing');
+assert(appSource.includes('scheduleBrowseWarmup')&&appSource.includes('warmBrowseTabs')&&appSource.includes("mediaRailCategories('movie').slice(0,6)")&&appSource.includes('prewarmArtworkUrls'),'v0.7.42 browse/data/artwork prewarm missing');
+assert(appSource.includes("document.querySelectorAll('[data-page]').forEach(el=>el.onclick=()=>navigatePage(el.dataset.page))"),'v0.7.42 navigation must use persistent page restoration');
+console.log('Swoop TV v0.7.42 tests passed');
