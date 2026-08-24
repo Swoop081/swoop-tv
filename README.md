@@ -1,9 +1,17 @@
 # Swoop TV
 
-**Current build: v0.7.12 — Poster IMDb Rating Overlay**
+**Current build: v0.7.13 — Viewport IMDb Rating Hydration**
 
-This build removes year text from movie/TV poster cards and replaces the old card metadata line with a compact **gold IMDb rating badge** in the bottom-right corner when a verified IMDb rating is available. IMDb IDs are resolved through TMDb external IDs, while the rating itself is fetched through the existing owner-managed MDBList integration. If MDBList is not configured or no IMDb rating is available, the badge stays hidden rather than showing a different score as IMDb. The 100-item Home rails, provider-priority Settings layout and proven Windows mpv playback profile are preserved.
+This build fixes IMDb badges across long category/Home rails by loading ratings for movie/TV poster cards as they approach the viewport. The gold **IMDb x.x** badge now progressively fills visible 100-item rails instead of depending on the small general metadata queue. Ratings are cached for 30 days and update in place without a full page re-render. The client uses the lightweight Worker v0.1.9 rating route when available and remains compatible with the v0.1.8 full-metadata route. The clean poster presentation, provider-priority Settings layout and proven Windows mpv playback profile are preserved.
 
+
+## Viewport IMDb rating hydration
+
+- Movie/TV poster cards register with a dedicated IntersectionObserver and request their IMDb rating only when they are on-screen or close to entering the viewport.
+- Auto/large-library mode limits rating work to two concurrent requests; Full Cinematic mode allows four.
+- Ratings are cached for 30 days, while valid v0.7.12 IMDb scores are preserved and stale blank-rating state is retried once.
+- The card's gold badge is inserted directly after enrichment, avoiding a whole-page re-render or a provider refresh.
+- Worker v0.1.9 provides a lightweight `imdb-rating` route that resolves the IMDb ID through TMDb and fetches the score from MDBList without loading cast, trailers or recommendations.
 
 ## Poster IMDb rating overlay
 

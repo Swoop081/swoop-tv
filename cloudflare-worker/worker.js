@@ -21,7 +21,7 @@ const MDBLIST_BASE = 'https://api.mdblist.com';
 function tmdbHeaders(env) {
   const token=String(env.TMDB_API_TOKEN || '').trim();
   if (!token) throw new Error('TMDb metadata is not configured on the Swoop service.');
-  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.1'};
+  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.2'};
 }
 
 function safeYear(value='') { const m=String(value||'').match(/(?:19|20)\d{2}/); return m?m[0]:''; }
@@ -128,13 +128,47 @@ async function fetchMdbImdbRating(env,imdbId,type='movie') {
   url.searchParams.set('apikey',key);
   const res=await fetch(url.toString(),{
     method:'POST',
-    headers:{'Accept':'application/json','Content-Type':'application/json','User-Agent':'SwoopTV-Metadata/0.4.1'},
+    headers:{'Accept':'application/json','Content-Type':'application/json','User-Agent':'SwoopTV-Metadata/0.4.2'},
     body:JSON.stringify({ids:[String(imdbId)],provider:'imdb'})
   });
   if(!res.ok)return'';
   const payload=await res.json();
   const value=Number(payload?.ratings?.[0]?.rating);
   return Number.isFinite(value)&&value>0&&value<=10?value.toFixed(1):'';
+}
+
+async function handleImdbRating(request, env, body) {
+  if(!String(env.TMDB_API_TOKEN||'').trim()) return json(request,{error:'Swoop IMDb matching is not configured. Add the TMDB_API_TOKEN secret to the Swoop Worker.'},503);
+  if(!String(env.MDBLIST_API_KEY||'').trim()) return json(request,{error:'Swoop IMDb ratings are not configured. Add the MDBLIST_API_KEY secret to the Swoop Worker.'},503);
+  const type=String(body?.mediaType||'movie')==='tv'?'tv':'movie';
+  let tmdbId=String(body?.tmdbId||'').trim(),imdbId=String(body?.imdbId||'').trim();
+  const title=cleanSearchTitle(body?.title||''),year=safeYear(body?.year||body?.title||'');
+  try{
+    if(!imdbId&&tmdbId){
+      const external=await tmdbFetch(`/${type}/${encodeURIComponent(tmdbId)}/external_ids`,env,{language:'en-AU'});
+      imdbId=String(external?.imdb_id||'');
+    }
+    if(!tmdbId&&imdbId&&/^tt\d+$/i.test(imdbId)){
+      const found=await tmdbFetch(`/find/${encodeURIComponent(imdbId)}`,env,{external_source:'imdb_id',language:'en-AU'});
+      const match=(type==='tv'?found.tv_results:found.movie_results)?.[0]||null;
+      if(match?.id)tmdbId=String(match.id);
+    }
+    if(!tmdbId&&title){
+      const params={query:title,language:'en-AU',include_adult:'false'};
+      if(year)params[type==='tv'?'first_air_date_year':'year']=year;
+      let found=await tmdbFetch(`/search/${type}`,env,params);
+      if(!found?.results?.length&&year){delete params[type==='tv'?'first_air_date_year':'year'];found=await tmdbFetch(`/search/${type}`,env,params);}
+      const match=found?.results?.[0]||null;
+      if(match?.id)tmdbId=String(match.id);
+    }
+    if(!imdbId&&tmdbId){
+      const external=await tmdbFetch(`/${type}/${encodeURIComponent(tmdbId)}/external_ids`,env,{language:'en-AU'});
+      imdbId=String(external?.imdb_id||'');
+    }
+    if(!tmdbId&&!imdbId)return json(request,{rating:{tmdbId:'',imdbId:'',imdbRating:''}},200);
+    const imdbRating=imdbId?await fetchMdbImdbRating(env,imdbId,type):'';
+    return new Response(JSON.stringify({rating:{tmdbId,imdbId,imdbRating}}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=86400'}});
+  }catch(error){return json(request,{error:error.message||'Could not load IMDb rating.'},502)}
 }
 
 async function handleMetadata(request, env, body) {
@@ -370,6 +404,7 @@ async function handlePost(request, env) {
   catch { return json(request, {error:'Request body must be JSON.'}, 400); }
 
   if (String(body?.mode || '') === 'metadata') return handleMetadata(request, env, body);
+  if (String(body?.mode || '') === 'imdb-rating') return handleImdbRating(request, env, body);
   if (String(body?.mode || '') === 'discovery') return handleDiscovery(request, env, body);
 
   if (!String(env.SWOOP_PROXY_TOKEN || '')) {
@@ -421,7 +456,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.8',
+        version:'0.1.9',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
         discoveryConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),

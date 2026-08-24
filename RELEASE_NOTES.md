@@ -1,5 +1,16 @@
 # Swoop TV Release Notes
 
+## v0.7.13 — Viewport IMDb Rating Hydration
+
+- Fixes IMDb badges being absent across large category rails even when the underlying films/shows clearly have IMDb ratings.
+- Poster cards now request IMDb ratings as they approach the viewport instead of relying only on Swoop's small general metadata-enrichment queue.
+- Adds a separate throttled viewport rating queue with conservative concurrency in Auto/large-library mode, so long 100-item rails can progressively populate without attempting to enrich the whole library at once.
+- IMDb rating results are cached for 30 days. Existing v0.7.12 blank-rating cache state is selectively invalidated once without clearing poster/backdrop metadata or rebuilding the provider catalogue.
+- Visible cards update their gold IMDb badge in place after the rating arrives; the page does not need a full re-render.
+- General metadata requests now share in-flight work by title instead of dropping duplicate requests.
+- Cloudflare Worker v0.1.9 adds a lightweight `imdb-rating` metadata route that resolves the TMDb/IMDb identity and requests only the IMDb score. The client falls back to the v0.1.8 full metadata route when needed for compatibility.
+- No provider refresh, SQLite rebuild, watched/resume reset or playback change is required.
+
 ## v0.7.12 — Poster IMDb Rating Overlay
 
 - Removes the release year and generic star-rating metadata line from movie/TV poster cards so the artwork stays clean.

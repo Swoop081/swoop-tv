@@ -4,7 +4,7 @@ import {testXtream, importXtream, fetchXtreamAssetBlob, fetchXtreamSeriesInfo, f
 import {isNativeWindows, nativePlay, nativeStop, nativeFetchText, nativeDiagnostics, nativeControl, nativeSwitchLive} from './src/native.js';
 import {nativeCatalogStatus,nativeCatalogReplaceProvider,nativeCatalogRemoveProvider,nativeCatalogQuery,nativeCatalogSearch,nativeCatalogCategories,nativeCatalogGet,nativeCatalogSources,nativeCatalogMatchPayload} from './src/nativeCatalog.js';
 import {getMDBListItems, getMDBListOfficialItems, getMDBListStreamingChart, matchMDBListToCatalog, normalizeMediaTitle} from './src/mdblist.js';
-import {fetchTitleMetadata, metadataServiceUrl} from './src/tmdb.js';
+import {fetchTitleMetadata, fetchTitleImdbRating, metadataServiceUrl} from './src/tmdb.js';
 import {fetchSwoopDiscovery} from './src/discovery.js';
 import {buildMovieStackIndex, collapseMovieSources, cleanDisplayTitle, rankSources, sourceTraits, qualityLabel} from './src/sourceStack.js';
 import {buildLiveStackIndex, selectLiveSource} from './src/liveStack.js';
@@ -54,7 +54,7 @@ async function refreshNativeCatalogStats(){if(!NATIVE_WINDOWS)return null;try{na
 async function activateNativeCatalogIfAvailable(){
   if(!NATIVE_WINDOWS)return false;const status=await refreshNativeCatalogStats();if(!status?.rowCount)return false;
   nativeCatalogMode=true;
-  const aux=await loadAuxState().catch(()=>null);if(aux){if(aux.webDiscovery)state.webDiscovery=aux.webDiscovery;if(!invalidateMetadataArtwork&&aux.metadataCache)state.metadataCache=aux.metadataCache;metadataRevision++;if(Array.isArray(aux.mdblistRows)&&aux.mdblistRows.length){const compact=new Map((state.mdblistRows||[]).map(r=>[r.uid,r]));state.mdblistRows=aux.mdblistRows.map(r=>({...compact.get(r.uid),...r}))}}
+  const aux=await loadAuxState().catch(()=>null);if(aux){if(aux.webDiscovery)state.webDiscovery=aux.webDiscovery;if(!invalidateMetadataArtwork&&aux.metadataCache)state.metadataCache=sanitizeImdbMetadataCache(aux.metadataCache);metadataRevision++;if(Array.isArray(aux.mdblistRows)&&aux.mdblistRows.length){const compact=new Map((state.mdblistRows||[]).map(r=>[r.uid,r]));state.mdblistRows=aux.mdblistRows.map(r=>({...compact.get(r.uid),...r}))}}
   const [movies,series,live,catsM,catsS,catsL]=await Promise.all([
     nativeCatalogQuery({kind:'movie',providerIds:nativeEnabledProviderIds(),limit:144,sort:'recent'}),nativeCatalogQuery({kind:'series',providerIds:nativeEnabledProviderIds(),limit:96,sort:'recent'}),nativeCatalogQuery({kind:'live',providerIds:nativeEnabledProviderIds(),limit:144,sort:'name'}),
     nativeCatalogCategories('movie',{providerIds:nativeEnabledProviderIds(),limit:40}),nativeCatalogCategories('series',{providerIds:nativeEnabledProviderIds(),limit:40}),nativeCatalogCategories('live',{providerIds:nativeEnabledProviderIds(),limit:60})
@@ -100,6 +100,15 @@ if(state.settings.discoverySchemaVersion!==3){state.webDiscovery={};state.settin
 const METADATA_ARTWORK_SCHEMA=3;
 const invalidateMetadataArtwork=Number(state.settings.metadataArtworkSchemaVersion||0)!==METADATA_ARTWORK_SCHEMA;
 if(invalidateMetadataArtwork){state.metadataCache={};state.settings.metadataArtworkSchemaVersion=METADATA_ARTWORK_SCHEMA;}
+const IMDB_RATING_SCHEMA=2;
+const invalidateImdbRatings=Number(state.settings.imdbRatingSchemaVersion||0)!==IMDB_RATING_SCHEMA;
+function sanitizeImdbMetadataCache(cache={}){
+  if(!cache||typeof cache!=='object')return {};
+  if(invalidateImdbRatings){for(const meta of Object.values(cache)){if(!meta||typeof meta!=='object')continue;const valid=tenPointRating(meta.imdbRating);if(valid){meta.imdbRating=valid;meta.imdbRatingCheckedAt=Number(meta.imdbRatingCheckedAt||Date.now())}else{delete meta.imdbRating;delete meta.imdbRatingCheckedAt;}}}
+  return cache;
+}
+state.metadataCache=sanitizeImdbMetadataCache(state.metadataCache);
+state.settings.imdbRatingSchemaVersion=IMDB_RATING_SCHEMA;
 if(!Array.isArray(state.myList)||!state.myList.length) state.myList=Array.isArray(state.favourites)?[...state.favourites]:[];
 if(!Array.isArray(state.continueWatching)) state.continueWatching=[];
 if(!Array.isArray(state.watchHistory)) state.watchHistory=[];
@@ -143,7 +152,10 @@ let lazyHomeObserver=null,searchDebounceTimer=null;
 function largeLibraryMode(){return state.settings.performanceMode!=='cinematic'&&catalogLogicalTotal()>=LARGE_LIBRARY_THRESHOLD}
 function performanceLabel(){return largeLibraryMode()?'Optimized for large library':'Full cinematic rendering'}
 let discoveryRefreshing=false,discoveryMessage='';
-const metadataPending=new Set();
+const metadataPending=new Map();
+const visibleMetadataQueue=[];
+const visibleMetadataQueued=new Set();
+let visibleMetadataActive=0,visibleMetadataObserver=null;
 const DISCOVERY_REFRESH_MS=4*60*60*1000;
 const DISCOVERY_FAST_REFRESH_MS=90*60*1000;
 const discoveryBundleMemory=new Map();
@@ -229,18 +241,25 @@ function currentTheme(){return themeById(state.settings.themeId||'chill')}
 function profileTheme(profile){return themeById(profile?.profileSettings?.themeId||'chill')}
 function themePickerHtml(selectedId='chill',name='themeId'){const selected=themeById(selectedId).id;return `<div class="theme-picker-grid">${SWOOP_THEMES.map(t=>`<button type="button" class="theme-choice ${t.id===selected?'active':''}" data-profile-theme="${esc(t.id)}" data-theme-value="${esc(t.id)}"><span class="theme-swatch" style="--theme-swatch:${esc(t.swatch)}"><i></i><b>${esc(t.name)}</b></span><span><strong>${esc(t.name)}</strong><small>${esc(t.tagline)}</small></span></button>`).join('')}</div><input type="hidden" name="${esc(name)}" value="${esc(selected)}" id="profileThemeValue">`}
 async function enrichItemMetadata(item,{rerender=true}={}){
-  if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind)||metadataPending.has(item.id))return;
-  const cached=state.metadataCache?.[item.id];
-  if(cached?.checkedAt&&Date.now()-cached.checkedAt<7*86400000&&Object.prototype.hasOwnProperty.call(cached,'imdbRating'))return;
-  metadataPending.add(item.id);
-  try{
-    const metadata=await fetchTitleMetadata({settings:state.settings,item});
-    state.metadataCache[item.id]={...(cached||{}),...(metadata||{}),checkedAt:Date.now()};metadataRevision++;
-    if(metadata?.tmdbId&&!item.tmdbId)item.tmdbId=metadata.tmdbId;
-    persist('cache');
-    if(rerender&&(state.page==='home'||detailItem?.id===item.id||modal==='homeRows'))render();
-  }catch(err){state.metadataCache[item.id]={...(cached||{}),checkedAt:Date.now(),error:err.message||String(err)};metadataRevision++;persist('cache');}
-  finally{metadataPending.delete(item.id)}
+  if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind))return null;
+  if(metadataPending.has(item.id))return metadataPending.get(item.id);
+  const cached=state.metadataCache?.[item.id]||{},now=Date.now();
+  const metadataFresh=Boolean(cached.checkedAt&&now-cached.checkedAt<7*86400000);
+  const imdbFresh=Boolean(cached.imdbRatingCheckedAt&&now-cached.imdbRatingCheckedAt<30*86400000);
+  if(metadataFresh&&imdbFresh)return cached;
+  const task=(async()=>{
+    try{
+      const metadata=await fetchTitleMetadata({settings:state.settings,item}),stamp=Date.now(),hasImdbField=Boolean(tenPointRating(metadata?.imdbRating));
+      state.metadataCache[item.id]={...cached,...(metadata||{}),checkedAt:stamp,...(hasImdbField?{imdbRatingCheckedAt:stamp}:{})};metadataRevision++;
+      if(metadata?.tmdbId&&!item.tmdbId)item.tmdbId=metadata.tmdbId;
+      if(metadata?.imdbId&&!item.imdbId)item.imdbId=metadata.imdbId;
+      persist('cache');
+      if(rerender&&(state.page==='home'||detailItem?.id===item.id||modal==='homeRows'))render();
+      return state.metadataCache[item.id];
+    }catch(err){state.metadataCache[item.id]={...cached,checkedAt:Date.now(),error:err.message||String(err)};metadataRevision++;persist('cache');return state.metadataCache[item.id];}
+  })().finally(()=>metadataPending.delete(item.id));
+  metadataPending.set(item.id,task);
+  return task;
 }
 function scheduleMetadataEnrichment(){
   const queue=[];
@@ -250,6 +269,55 @@ function scheduleMetadataEnrichment(){
   for(const watched of watchHistoryItems().slice(0,largeLibraryMode()?2:6)){const source=watched.kind==='episode'?(savedItem(watched.parentSeriesId)||watched):watched;queue.push(source)}
   const unique=[...new Map(queue.filter(Boolean).map(x=>[x.id,x])).values()].filter(x=>!isDemoItem(x)&&['movie','series'].includes(x.kind)).slice(0,largeLibraryMode()?6:12);
   let i=0;const next=()=>{if(i>=unique.length)return;enrichItemMetadata(unique[i++],{rerender:false}).finally(()=>setTimeout(next,largeLibraryMode()?450:140))};next();
+}
+function visibleMetadataLimit(){return largeLibraryMode()?2:4}
+function visibleMetadataDelay(){return largeLibraryMode()?180:70}
+function updateVisibleImdbBadges(itemId){
+  const rating=displayImdbRating({id:itemId});
+  for(const el of document.querySelectorAll('[data-imdb-item]')){
+    if(el.dataset.imdbItem!==String(itemId))continue;
+    let badge=el.querySelector('.card-imdb-rating');
+    if(rating){if(!badge){badge=document.createElement('span');badge.className='card-imdb-rating';el.appendChild(badge)}badge.innerHTML=`<b>IMDb</b> ${rating}`;}else badge?.remove();
+    el.dataset.imdbHydrated='1';
+  }
+}
+async function enrichVisibleImdbRating(item){
+  if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind))return null;
+  const cached=state.metadataCache?.[item.id]||{},now=Date.now();
+  if(cached.imdbRatingCheckedAt&&now-cached.imdbRatingCheckedAt<30*86400000)return cached;
+  try{
+    let ratingMeta=null;
+    try{ratingMeta=await fetchTitleImdbRating({settings:state.settings,item:{...item,tmdbId:cached.tmdbId||item.tmdbId||'',imdbId:cached.imdbId||item.imdbId||''}})}catch{}
+    if(!ratingMeta||!Object.prototype.hasOwnProperty.call(ratingMeta,'imdbRating')){
+      const full=await enrichItemMetadata(item,{rerender:false});
+      return full||state.metadataCache?.[item.id]||null;
+    }
+    const stamp=Date.now();
+    state.metadataCache[item.id]={...cached,...ratingMeta,imdbRatingCheckedAt:stamp};metadataRevision++;
+    if(ratingMeta.tmdbId&&!item.tmdbId)item.tmdbId=ratingMeta.tmdbId;
+    if(ratingMeta.imdbId&&!item.imdbId)item.imdbId=ratingMeta.imdbId;
+    persist('cache');
+    return state.metadataCache[item.id];
+  }catch{return state.metadataCache?.[item.id]||null}
+}
+function pumpVisibleMetadata(){
+  while(visibleMetadataActive<visibleMetadataLimit()&&visibleMetadataQueue.length){
+    const item=visibleMetadataQueue.shift();if(!item)continue;visibleMetadataActive++;
+    enrichVisibleImdbRating(item).finally(()=>{updateVisibleImdbBadges(item.id);visibleMetadataQueued.delete(item.id);visibleMetadataActive--;setTimeout(pumpVisibleMetadata,visibleMetadataDelay())});
+  }
+}
+function queueVisibleMetadata(item){
+  if(!item||isDemoItem(item)||!['movie','series'].includes(item.kind)||visibleMetadataQueued.has(item.id))return;
+  const cached=state.metadataCache?.[item.id]||{},now=Date.now();
+  if(cached.imdbRatingCheckedAt&&now-cached.imdbRatingCheckedAt<30*86400000){updateVisibleImdbBadges(item.id);return}
+  visibleMetadataQueued.add(item.id);visibleMetadataQueue.push(item);pumpVisibleMetadata();
+}
+function hydrateVisibleImdbRatings(root=document){
+  const nodes=[...root.querySelectorAll('[data-imdb-item]')].filter(el=>el.dataset.imdbHydrated!=='1');if(!nodes.length)return;
+  const activate=el=>{const id=el.dataset.imdbItem,item=savedItem(id);if(!item){el.dataset.imdbHydrated='1';return}const cached=state.metadataCache?.[id]||{};if(displayImdbRating({id})){updateVisibleImdbBadges(id);return}if(cached.imdbRatingCheckedAt&&Date.now()-cached.imdbRatingCheckedAt<30*86400000){el.dataset.imdbHydrated='1';return}queueVisibleMetadata(item)};
+  if(!('IntersectionObserver'in window)){nodes.forEach(activate);return}
+  if(!visibleMetadataObserver)visibleMetadataObserver=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){visibleMetadataObserver?.unobserve(entry.target);activate(entry.target)}},{rootMargin:largeLibraryMode()?'260px 420px':'420px 720px',threshold:.01});
+  nodes.forEach(el=>visibleMetadataObserver.observe(el));
 }
 function resolveProviderAsset(value='',providerId=''){
   const raw=Array.isArray(value)?value.find(Boolean)||'':String(value||'').trim();if(!raw)return'';const cfg=providerConfigById(providerId)||sessionXtream||{};
@@ -553,7 +621,8 @@ function card(item,poster=false,opts={}){
   const progress=Number.isFinite(Number(opts.progress))?Math.max(0,Math.min(100,Number(opts.progress))):null;
   const rank=Number.isFinite(Number(opts.rank))&&Number(opts.rank)>0?Number(opts.rank):null;
   const rankBadge=rank?`<div class="rank-badge"><span>${rank}</span></div>`:'';
-  return `<button class="card ${poster?'poster':'landscape'} ${posterOwnsTitle?'poster-art-title':''} ${item.kind==='live'?'live-card':''} ${rank?'ranked-card':''}" ${action}="${esc(item.id)}" style="--card-bg:${fallback}" aria-label="${esc(displayTitle)}">
+  const imdbHydrationAttr=poster&&['movie','series'].includes(item.kind)?` data-imdb-item="${esc(item.id)}"`:'';
+  return `<button class="card ${poster?'poster':'landscape'} ${posterOwnsTitle?'poster-art-title':''} ${item.kind==='live'?'live-card':''} ${rank?'ranked-card':''}" ${action}="${esc(item.id)}"${imdbHydrationAttr} style="--card-bg:${fallback}" aria-label="${esc(displayTitle)}">
     <div class="card-bg"></div>${art}<div class="card-shade"></div>${rankBadge}${liveBadge}${saved}${liveFav}${qualityBadge}${sources}${watched}${imdbBadge}
     <div class="card-copy">${titleHtml}${subHtml}<div class="card-hover"><span class="card-hover-icon">${item.kind==='live'||item.kind==='episode'?'▶':'ⓘ'}</span><span>${hoverAction}</span></div></div>
     ${progress!==null?`<div class="progress"><i style="width:${progress}%"></i></div>`:''}</button>`;
@@ -838,7 +907,7 @@ function render(){
   applyTheme();
   const oldDetailScroll=document.querySelector('.detail-scroll')?.scrollTop;
   if(Number.isFinite(oldDetailScroll))detailScrollTop=oldDetailScroll;
-  artworkObserver?.disconnect?.();artworkObserver=null;
+  artworkObserver?.disconnect?.();artworkObserver=null;visibleMetadataObserver?.disconnect?.();visibleMetadataObserver=null;
   const detailRoute=Boolean(!profilePickerOpen&&detailItem);
   let body;
   if(storageRestoring)body=restoringPage();
@@ -1255,6 +1324,7 @@ function itemHasProvider(item,id){if(!id||id==='all')return true;if(item.provide
 function providerFiltered(list){return providerFilter==='all'?list:list.filter(x=>itemHasProvider(x,providerFilter))}
 
 function bindDynamicCards(root=document){
+  hydrateVisibleImdbRatings(root);
   root.querySelectorAll('[data-play]').forEach(el=>{
     if(el.dataset.boundPlay)return;el.dataset.boundPlay='1';
     el.onclick=async()=>{
