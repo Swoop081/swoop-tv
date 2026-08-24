@@ -1,5 +1,17 @@
 # Swoop TV Release Notes
 
+## v0.7.23 — Category-First TV Guide
+
+- Rebuilds the TV Guide around the provider's **live channel categories** instead of a single massive channel list.
+- Adds a left-side category navigator with channel counts. Selecting a category populates that category's channel logos in the middle and the three-hour EPG schedule on the right.
+- Native Windows/SQLite mode now queries only the selected live category. The initial guide page is limited to 48 channels and **Load more** adds 48 at a time, avoiding hydration/EPG work for thousands of off-screen channels.
+- Keeps **All Channels** as an option, but it uses the same paged 48-channel window rather than loading the full provider catalogue.
+- EPG loading is scoped to the currently displayed category channels, so progress percentages describe the work actually being performed.
+- M3U/XMLTV source documents are cached for ten minutes and then filtered per selected category. Switching groups does not repeatedly redownload the full XMLTV file, and categories not previously viewed can still receive EPG data.
+- Expands native live-category discovery from 60 to 200 groups so large providers expose substantially more of their own category structure.
+- Preserves channel logos, current-program highlighting, Jump to Now, channel playback, provider source behavior, existing EPG cache entries and v0.7.18 long-task feedback.
+- No Cloudflare Worker redeploy, provider refresh, SQLite rebuild, discovery reset, watched/resume reset or playback change is required.
+
 ## v0.7.22 — Snoak Daily Discovery
 
 - Promotes a curated set of **Snoak's actively maintained MDBList lists** to Swoop TV's primary external ranking layer while keeping the provider catalogue as the sole source of playable titles.

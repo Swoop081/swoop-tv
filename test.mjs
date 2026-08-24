@@ -440,7 +440,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0722-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.22 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0723-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.23 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -449,7 +449,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.22'")&&swHotfix.includes('swoop-tv-v0722-shell'),'v0.7.22 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.23'")&&swHotfix.includes('swoop-tv-v0723-shell'),'v0.7.23 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -514,10 +514,20 @@ assert(appSource.includes('DISCOVERY_MATCH_SCHEMA=5'),'Snoak discovery release m
 assert(workerSource.includes('SNOAK_LISTS')&&workerSource.includes("'movies-justwatch'")&&workerSource.includes("mode || '') === 'snoak-list'")&&workerSource.includes('SNOAK_STALE_MS'),'Worker Snoak allow-list/freshness route missing');
 assert(workerSource.includes('cacheTtl:21600')&&workerSource.includes("version:'0.1.13'"),'Snoak Worker cache/version wiring missing');
 
+// v0.7.23 category-first TV Guide.
+assert(appSource.includes("let guideLimit=48,guideCategory=''"),'TV Guide must start with a bounded 48-channel category window');
+assert(appSource.includes('function guideCategories()')&&appSource.includes('data-guide-category')&&appSource.includes('guide-categories'),'Category navigator wiring missing');
+assert(appSource.includes("nativeCatalogQuery({kind:'live',providerIds:nativeEnabledProviderIds(),group:guideCategory,limit:guideLimit"),'Native Guide must query only the selected live category');
+assert(appSource.includes('guideLimit+=48')&&appSource.includes('guideChannelCache')&&appSource.includes('guideChannelRequests'),'Guide category pagination/cache/request coalescing missing');
+assert(appSource.includes('m3uGuideTextCache')&&appSource.includes('10*60*1000')&&appSource.includes('parseXMLTV(text,wanted)'),'Category-aware cached XMLTV loading missing');
+assert(appSource.includes("nativeCatalogCategories('live',{providerIds:nativeEnabledProviderIds(),limit:200})"),'Native Guide category discovery depth missing');
+assert(sqlitePsHotfix.includes('[Math]::Min(200,[int]($Data.limit))'),'Native Windows category endpoint must permit 200 live categories');
+assert(detailCss.includes('.guide-browser{display:grid;grid-template-columns:250px minmax(0,1fr)')&&detailCss.includes('.guide-category.active'),'Category-first Guide desktop layout styling missing');
+
 // v0.7.18 visible progress / long-task reassurance.
 assert(appSource.includes('provider-inline-progress')&&appSource.includes('data-provider-progress-percent')&&appSource.includes('refreshProgress'),'Provider refresh percentage/progress UI missing');
 assert(appSource.includes('task-progress-hud')&&appSource.includes('Still running — Swoop TV has not frozen.')&&appSource.includes('longTaskElapsedLabel'),'Persistent long-task progress HUD/reassurance missing');
 assert(appSource.includes('providerProgressPercent')&&appSource.includes('restoreProgressPercent'),'Provider-connect / restore numeric percentages missing');
 assert(appSource.includes('guide-load-progress')&&appSource.includes('data-guide-load-percent')&&appSource.includes('updateGuideProgress'),'TV Guide progress feedback missing');
 assert(appSource.includes('activity-progress indeterminate')&&detailCss.includes('.activity-progress.indeterminate')&&detailCss.includes('@keyframes swoopProgressShine'),'Indeterminate/moving activity feedback missing for unknown-duration work');
-console.log('Swoop TV v0.7.22 tests passed');
+console.log('Swoop TV v0.7.23 tests passed');

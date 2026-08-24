@@ -1,10 +1,24 @@
 # Swoop TV
 
-**Current build: v0.7.22 — Snoak Daily Discovery**
+**Current build: v0.7.23 — Category-First TV Guide**
 
-Swoop TV now uses a curated set of **Snoak's actively maintained MDBList lists as the primary external discovery layer** for Top 100, Trending, New & Hot and selected genre rails. The app still displays only titles that confidently exist in the user's enabled TV-provider library; Snoak/MDBList determines ranking and candidate order, never playability.
+The TV Guide now uses the provider's **channel categories as the primary navigation** instead of presenting one enormous channel list. Categories stay on the left, and selecting one populates only that category's channel logos and three-hour EPG grid on the right. This substantially reduces initial guide work on very large IPTV libraries.
 
-The bundled Cloudflare Worker advances to **v0.1.13**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable. Redeploy the Worker to enable Snoak-backed discovery.
+### Category-first TV Guide
+
+- A persistent **Categories** rail is shown on the left with provider group names and channel counts.
+- Selecting a category loads only that category's channels into the schedule. **All Channels** remains available, but it is paged rather than loading the entire provider catalogue.
+- The selected category starts with 48 channels and can load another 48 at a time. EPG requests are limited to the channels currently displayed.
+- Native Windows/SQLite mode queries the selected group directly from SQLite, so a 5,000+ channel provider no longer needs to hydrate all live channels just to open the Guide.
+- M3U/XMLTV guide files are cached for ten minutes and re-filtered for each selected category, avoiding repeated XMLTV downloads while still allowing category switching.
+- Existing channel logos, current-program highlighting, Jump to Now, progress feedback and native playback remain unchanged.
+- No Cloudflare Worker redeploy, provider refresh or SQLite rebuild is required for this release.
+
+## Snoak daily discovery
+
+Swoop TV uses a curated set of **Snoak's actively maintained MDBList lists as the primary external discovery layer** for Top 100, Trending, New & Hot and selected genre rails. The app still displays only titles that confidently exist in the user's enabled TV-provider library; Snoak/MDBList determines ranking and candidate order, never playability.
+
+The bundled Cloudflare Worker remains **v0.1.13**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable.
 
 ### Snoak-backed discovery
 

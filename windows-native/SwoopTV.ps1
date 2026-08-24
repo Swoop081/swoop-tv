@@ -241,7 +241,7 @@ SELECT raw_json,logical_key,source_count,source_ids,display_name,provider_added_
 
 function Catalog-Categories($Data) {
   $kind=[string]$Data.kind;if($kind -notin @('movie','series','live')){$kind='movie'}
-  $limit=[Math]::Max(1,[Math]::Min(100,[int]($Data.limit)));if(-not $Data.limit){$limit=40}
+  $limit=[Math]::Max(1,[Math]::Min(200,[int]($Data.limit)));if(-not $Data.limit){$limit=40}
   $where="kind="+(Sql-Literal $kind)+" AND group_name<>''"
   if($Data.providerId -and [string]$Data.providerId -ne 'all'){$where += " AND provider_id="+(Sql-Literal ([string]$Data.providerId))}
   elseif($Data.providerIds){$allowed=@($Data.providerIds|Where-Object{$_});if($allowed.Count){$where += " AND provider_id IN ("+(($allowed|ForEach-Object{Sql-Literal ([string]$_)}) -join ',')+")"}}
@@ -839,7 +839,7 @@ function Handle-Request($Request, [string]$MpvPath) {
     if ($path -eq '/native/status') {
       $playing = $false
       if ($script:MpvProcess) { try { $playing = -not $script:MpvProcess.HasExited } catch {} }
-      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.22'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
+      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.23'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
       return
     }
 
@@ -955,7 +955,7 @@ function Handle-Request($Request, [string]$MpvPath) {
 
     if ([IO.Path]::GetFileName($full).ToLowerInvariant() -eq 'index.html') {
       $html = Get-Content -Path $full -Raw -Encoding UTF8
-      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.22',platform:'windows'};</script>"
+      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.23',platform:'windows'};</script>"
       $html = $html -replace '</head>', ($bootstrap + '</head>')
       Send-Text $stream $html 'text/html; charset=utf-8'
       return
@@ -968,7 +968,7 @@ function Handle-Request($Request, [string]$MpvPath) {
   }
 }
 
-Write-Header 'Swoop TV v0.7.22 — Snoak Daily Discovery'
+Write-Header 'Swoop TV v0.7.23 — Category-First TV Guide'
 Write-Host 'This local bridge keeps IPTV video provider-to-device and launches mpv for playback.'
 Write-Host 'No administrator rights are required.'
 
