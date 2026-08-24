@@ -12,7 +12,7 @@ const ALLOWED_ACTIONS = new Set([
   'get_simple_data_table'
 ]);
 
-const ALLOWED_PARAMS = new Set(['series_id', 'vod_id', 'stream_id', 'epg_limit']);
+const ALLOWED_PARAMS = new Set(['series_id', 'vod_id', 'stream_id', 'limit', 'epg_limit']);
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
@@ -566,11 +566,22 @@ async function handlePost(request, env) {
   const action = String(body?.action || '');
   if (!username || !password) return json(request, {error:'Xtream username and password are required.'}, 400);
   if (username.length > 256 || password.length > 512) return json(request, {error:'Credentials are too long.'}, 400);
-  if (!ALLOWED_ACTIONS.has(action)) return json(request, {error:'That Xtream API action is not allowed by this helper.'}, 400);
 
   let server;
   try { server = normalizeServer(body?.server); }
   catch (error) { return json(request, {error:error.message || 'Invalid Xtream server URL.'}, 400); }
+
+  if (String(body?.mode || '') === 'xmltv') {
+    const qs = new URLSearchParams({username, password});
+    const target = `${server}/xmltv.php?${qs.toString()}`;
+    try {
+      const upstream = await fetch(target,{method:'GET',headers:{'Accept':'application/xml,text/xml,text/plain,*/*','User-Agent':'SwoopTV-Connection-Helper/0.1.16'},redirect:'follow'});
+      const headers=corsHeaders(request);headers['Content-Type']=upstream.headers.get('Content-Type')||'application/xml; charset=utf-8';headers['X-Swoop-Upstream-Status']=String(upstream.status);
+      return new Response(upstream.body,{status:upstream.status,headers});
+    } catch (error) { return json(request,{error:`Could not reach the Xtream XMLTV guide from Cloudflare: ${error.message || error}`},502); }
+  }
+
+  if (!ALLOWED_ACTIONS.has(action)) return json(request, {error:'That Xtream API action is not allowed by this helper.'}, 400);
 
   const qs = new URLSearchParams({username, password});
   if (action) qs.set('action', action);
@@ -603,7 +614,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.15',
+        version:'0.1.16',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
         discoveryConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),

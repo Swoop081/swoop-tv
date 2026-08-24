@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import {parseM3U} from './src/m3u.js';
 import {matchMDBListToCatalog, normalizeMediaTitle, getMDBListOfficialItems, getMDBListStreamingChart} from './src/mdblist.js';
-import {buildXtreamApiUrl, buildXtreamSeriesStreamUrl, testXtream, importXtream, fetchXtreamAssetBlob, fetchXtreamVodInfo, fetchXtreamShortEpg} from './src/xtream.js';
+import {buildXtreamApiUrl, buildXtreamSeriesStreamUrl, testXtream, importXtream, fetchXtreamAssetBlob, fetchXtreamVodInfo, fetchXtreamShortEpg, fetchXtreamSimpleEpg, fetchXtreamLiveCategories, buildXtreamXmltvUrl} from './src/xtream.js';
 import worker from './cloudflare-worker/worker.js';
 import {buildMovieStackIndex, collapseMovieSources, cleanDisplayTitle, rankSources, sourceTraits} from './src/sourceStack.js';
 import {makeProfile, normalizeProfile, profileAllowsMedia, profileGenreAffinity, smartRankRows} from './src/profiles.js';
@@ -186,6 +186,7 @@ assert(imported.counts.live===1&&imported.counts.movie===1&&imported.counts.seri
 assert(progressSections.includes('live')&&progressSections.includes('movie')&&progressSections.includes('series'),'Xtream progress callbacks failed');
 assert(imported.items.find(x=>x.kind==='movie')?.providerAddedAt===1787530200000,'Xtream VOD provider-added timestamp capture failed');
 assert(imported.items.find(x=>x.kind==='series')?.providerAddedAt===1787531200000,'Xtream series provider-added timestamp capture failed');
+assert(imported.items.find(x=>x.kind==='live')?.providerCategoryOrder===0&&imported.items.find(x=>x.kind==='live')?.providerCategoryId==='1','Xtream live provider-category ordering metadata failed');
 
 
 // Detail metadata + EPG helper calls
@@ -202,7 +203,8 @@ assert(vodInfo.info.plot==='Test plot','Xtream VOD detail fetch failed');
 const epgInfo=await fetchXtreamShortEpg({server:'http://tv.example:8080',username:'demo',password:'secret',relayUrl:'https://relay.example.workers.dev',relayToken:token},11,8);
 assert(Array.isArray(epgInfo.epg_listings),'Xtream EPG fetch failed');
 assert(detailActions.some(x=>x.action==='get_vod_info'&&String(x.params?.vod_id)==='22'),'VOD detail action/param failed');
-assert(detailActions.some(x=>x.action==='get_short_epg'&&String(x.params?.stream_id)==='11'),'EPG action/param failed');
+assert(detailActions.some(x=>x.action==='get_short_epg'&&String(x.params?.stream_id)==='11'&&String(x.params?.limit)==='8'),'EPG action/standard limit param failed');
+assert(buildXtreamXmltvUrl('http://tv.example:8080','demo','secret').includes('/xmltv.php?')&&buildXtreamXmltvUrl('http://tv.example:8080','demo','secret').includes('username=demo'),'Xtream XMLTV URL builder failed');
 
 // Connection Helper allowlist supports VOD detail metadata.
 globalThis.fetch=async (url)=>new Response(JSON.stringify({info:{plot:'Worker detail'}}),{status:200,headers:{'content-type':'application/json'}});
@@ -449,7 +451,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0725-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.25 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0726-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.26 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -458,7 +460,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.25'")&&swHotfix.includes('swoop-tv-v0725-shell'),'v0.7.25 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.26'")&&swHotfix.includes('swoop-tv-v0726-shell'),'v0.7.26 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -478,7 +480,7 @@ assert(appSource.includes("String(def.id).startsWith('top20-')?HOME_RANKED_ROW_L
 assert(appSource.includes('limit:HOME_STANDARD_ROW_LIMIT')&&appSource.includes('rowLimit=String(id).startsWith(\'top20-\')?HOME_RANKED_ROW_LIMIT:HOME_STANDARD_ROW_LIMIT'),'Native/web discovery Home row limits must support 100 items');
 assert(appSource.includes('function displayImdbRating')&&appSource.includes('card-imdb-rating')&&!appSource.includes("[item.year,trustedRating?`★ ${trustedRating}`"),'Poster cards must hide year/generic star metadata and expose the IMDb badge');
 const workerSource=fs.readFileSync(new URL('./cloudflare-worker/worker.js',import.meta.url),'utf8');
-assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.15'"),'IMDb viewport rating worker wiring missing');
+assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.16'"),'IMDb viewport rating worker wiring missing');
 assert(appSource.includes('IMDB_RATING_SCHEMA=2')&&appSource.includes('delete meta.imdbRating')&&appSource.includes('delete meta.imdbRatingCheckedAt'),'IMDb rating cache must selectively refresh without clearing artwork metadata');
 assert(appSource.includes('visibleMetadataQueue')&&appSource.includes('hydrateVisibleImdbRatings')&&appSource.includes('data-imdb-item')&&appSource.includes('fetchTitleImdbRating'),'Viewport-driven IMDb rating hydration missing');
 assert(appSource.includes('imdbRatingCheckedAt')&&appSource.includes('30*86400000'),'Long-lived IMDb rating cache missing');
@@ -501,7 +503,7 @@ assert(workerSource.includes('strictSearchMatch')&&workerSource.includes('resolv
 assert(tmdbClientSource.includes('metadataIdentityMatches')&&tmdbClientSource.includes('requestedYear!==resolvedYear'),'Client-side metadata identity guard missing');
 assert(tmdbClientSource.includes("year:item.year || identityYear(item.name || '')"),'Metadata requests must extract a provider year from TV series names when the year field is blank');
 assert(appSource.includes('titleLogoCheckedAt')&&appSource.includes('detailTitleLogoState')&&appSource.includes("classList.toggle('logo-pending'")&&cssSource.includes('.detail-title-slot.logo-pending .detail-title-text'),'Logo-first detail title fallback wiring missing');
-assert(workerSource.includes('US|USA|UK|GB|AU|AUS|CA|CAN|NZ')&&workerSource.includes("version:'0.1.15'"),'Worker TV series suffix cleanup/version missing');
+assert(workerSource.includes('US|USA|UK|GB|AU|AUS|CA|CAN|NZ')&&workerSource.includes("version:'0.1.16'"),'Worker TV series suffix cleanup/version missing');
 
 // v0.7.20 ranked rail stability / strict discovery matching.
 assert(appSource.includes('DISCOVERY_MATCH_SCHEMA=5')&&appSource.includes('if(!invalidateDiscovery&&aux.webDiscovery)'), 'Discovery cache schema must invalidate pre-fix ranked matches, including native aux cache');
@@ -526,7 +528,7 @@ assert(appSource.includes('SNOAK_CURATED_ROWS')&&appSource.includes('fetchSwoopC
 assert(appSource.includes('snoakJustwatch:1.8')&&appSource.includes('snoakTrakt:2.05')&&appSource.includes('snoakLatest:2.0'),'Snoak primary discovery weights missing');
 assert(appSource.includes('DISCOVERY_MATCH_SCHEMA=5'),'Snoak discovery release must invalidate older ranked caches');
 assert(workerSource.includes('SNOAK_LISTS')&&workerSource.includes("'movies-justwatch'")&&workerSource.includes("mode || '') === 'snoak-list'")&&workerSource.includes('SNOAK_STALE_MS'),'Worker Snoak allow-list/freshness route missing');
-assert(workerSource.includes('cacheTtl:21600')&&workerSource.includes("version:'0.1.15'"),'Snoak Worker cache/version wiring missing');
+assert(workerSource.includes('cacheTtl:21600')&&workerSource.includes("version:'0.1.16'"),'Snoak Worker cache/version wiring missing');
 
 // v0.7.23 category-first TV Guide.
 assert(appSource.includes("let guideLimit=48,guideCategory=''"),'TV Guide must start with a bounded 48-channel category window');
@@ -538,10 +540,17 @@ assert(appSource.includes("nativeCatalogCategories('live',{providerIds:nativeEna
 assert(sqlitePsHotfix.includes('[Math]::Min(200,[int]($Data.limit))'),'Native Windows category endpoint must permit 200 live categories');
 assert(detailCss.includes('.guide-browser{display:grid;grid-template-columns:250px minmax(0,1fr)')&&detailCss.includes('.guide-category.active'),'Category-first Guide desktop layout styling missing');
 
+// v0.7.26 provider-order Guide + Xtream EPG repair.
+assert(appSource.includes('ensureGuideProviderCategoryOrder')&&appSource.includes('fetchXtreamLiveCategories')&&appSource.includes('guideProviderCategoryCache'),'Guide category order must come from the provider category API');
+assert(sqlitePsHotfix.includes("json_extract(raw_json,'$.providerCategoryOrder')")&&sqlitePsHotfix.includes('provider_order ASC,first_seen ASC'),'Native category fallback must preserve provider/first-seen order');
+assert(appSource.includes('fetchXtreamSimpleEpg')&&appSource.includes('fetchXtreamXmltvText')&&appSource.includes('xtreamGuideTextCache'),'Guide EPG must use short/simple APIs plus XMLTV fallback');
+assert(workerSource.includes("mode || '') === 'xmltv'")&&workerSource.includes('/xmltv.php?')&&workerSource.includes("'limit', 'epg_limit'")&&workerSource.includes("version:'0.1.16'"),'Worker Xtream EPG/XMLTV repair wiring missing');
+assert(sqlitePsHotfix.includes("'/native/xtream-xmltv'")&&sqlitePsHotfix.includes('Invoke-XtreamXmltv'),'Windows native XMLTV fallback missing');
+
 // v0.7.18 visible progress / long-task reassurance.
 assert(appSource.includes('provider-inline-progress')&&appSource.includes('data-provider-progress-percent')&&appSource.includes('refreshProgress'),'Provider refresh percentage/progress UI missing');
 assert(appSource.includes('task-progress-hud')&&appSource.includes('Still running — Swoop TV has not frozen.')&&appSource.includes('longTaskElapsedLabel'),'Persistent long-task progress HUD/reassurance missing');
 assert(appSource.includes('providerProgressPercent')&&appSource.includes('restoreProgressPercent'),'Provider-connect / restore numeric percentages missing');
 assert(appSource.includes('guide-load-progress')&&appSource.includes('data-guide-load-percent')&&appSource.includes('updateGuideProgress'),'TV Guide progress feedback missing');
 assert(appSource.includes('activity-progress indeterminate')&&detailCss.includes('.activity-progress.indeterminate')&&detailCss.includes('@keyframes swoopProgressShine'),'Indeterminate/moving activity feedback missing for unknown-duration work');
-console.log('Swoop TV v0.7.25 tests passed');
+console.log('Swoop TV v0.7.26 tests passed');

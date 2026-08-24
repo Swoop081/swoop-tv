@@ -123,7 +123,7 @@ export async function fetchPersonCredits({settings={}, personId='', name=''}) {
   if (!res.ok) {
     let detail='';
     try { detail=(await res.json())?.error || ''; } catch {}
-    if(res.status===401||/connection helper token/i.test(detail))throw new Error('Cast browsing needs the bundled Swoop TV Worker v0.1.15 to be deployed.');
+    if(res.status===401||/connection helper token/i.test(detail))throw new Error('Cast browsing needs the bundled Swoop TV Worker v0.1.16 to be deployed.');
     throw new Error(detail || `Swoop TV cast service returned HTTP ${res.status}.`);
   }
   const data=await res.json();

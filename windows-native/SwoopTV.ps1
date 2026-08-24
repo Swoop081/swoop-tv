@@ -245,7 +245,7 @@ function Catalog-Categories($Data) {
   $where="kind="+(Sql-Literal $kind)+" AND group_name<>''"
   if($Data.providerId -and [string]$Data.providerId -ne 'all'){$where += " AND provider_id="+(Sql-Literal ([string]$Data.providerId))}
   elseif($Data.providerIds){$allowed=@($Data.providerIds|Where-Object{$_});if($allowed.Count){$where += " AND provider_id IN ("+(($allowed|ForEach-Object{Sql-Literal ([string]$_)}) -join ',')+")"}}
-  return @{ok=$true;items=(Invoke-SqliteJson "SELECT group_name AS name,COUNT(DISTINCT logical_key) AS count FROM catalog WHERE $where GROUP BY group_name ORDER BY count DESC,name COLLATE NOCASE LIMIT $limit;")}
+  return @{ok=$true;items=(Invoke-SqliteJson "SELECT group_name AS name,COUNT(DISTINCT logical_key) AS count,MIN(COALESCE(CAST(json_extract(raw_json,'$.providerCategoryOrder') AS INTEGER),999999)) AS provider_order,MIN(rowid) AS first_seen FROM catalog WHERE $where GROUP BY group_name ORDER BY provider_order ASC,first_seen ASC,name COLLATE NOCASE LIMIT $limit;")}
 }
 
 function Catalog-Search($Data) {
@@ -521,6 +521,13 @@ function Invoke-Xtream($Data) {
   }
   $url = $server + '/player_api.php?' + ($pairs -join '&')
   $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 35 -Headers @{ 'User-Agent'='SwoopTV/0.5 Windows' }
+  return [string]$response.Content
+}
+
+function Invoke-XtreamXmltv($Data) {
+  $server = Normalize-Server ([string]$Data.server)
+  $url = $server + '/xmltv.php?username=' + (UrlEncode ([string]$Data.username)) + '&password=' + (UrlEncode ([string]$Data.password))
+  $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 120 -Headers @{ 'User-Agent'='SwoopTV/0.5 Windows' }
   return [string]$response.Content
 }
 
@@ -839,7 +846,7 @@ function Handle-Request($Request, [string]$MpvPath) {
     if ($path -eq '/native/status') {
       $playing = $false
       if ($script:MpvProcess) { try { $playing = -not $script:MpvProcess.HasExited } catch {} }
-      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.25'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
+      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.26'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
       return
     }
 
@@ -853,6 +860,11 @@ function Handle-Request($Request, [string]$MpvPath) {
       switch ($path) {
         '/native/xtream' {
           try { Send-Text $stream (Invoke-Xtream $data) 'application/json; charset=utf-8' }
+          catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 502 'Bad Gateway' }
+          return
+        }
+        '/native/xtream-xmltv' {
+          try { Send-Text $stream (Invoke-XtreamXmltv $data) 'application/xml; charset=utf-8' }
           catch { Send-Json $stream @{ ok=$false; error=$_.Exception.Message } 502 'Bad Gateway' }
           return
         }
@@ -955,7 +967,7 @@ function Handle-Request($Request, [string]$MpvPath) {
 
     if ([IO.Path]::GetFileName($full).ToLowerInvariant() -eq 'index.html') {
       $html = Get-Content -Path $full -Raw -Encoding UTF8
-      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.25',platform:'windows'};</script>"
+      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.26',platform:'windows'};</script>"
       $html = $html -replace '</head>', ($bootstrap + '</head>')
       Send-Text $stream $html 'text/html; charset=utf-8'
       return
@@ -968,7 +980,7 @@ function Handle-Request($Request, [string]$MpvPath) {
   }
 }
 
-Write-Header 'Swoop TV v0.7.25 — Provider-Prefix TV Logo Repair'
+Write-Header 'Swoop TV v0.7.26 — Provider-Order Guide + EPG Repair'
 Write-Host 'This local bridge keeps IPTV video provider-to-device and launches mpv for playback.'
 Write-Host 'No administrator rights are required.'
 

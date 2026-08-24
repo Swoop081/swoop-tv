@@ -1,3 +1,15 @@
+## v0.7.26 — Provider-Order Guide + EPG Repair
+
+- TV Guide category navigation now follows the exact order returned by each enabled Xtream provider's `get_live_categories` endpoint. Multi-provider order respects Swoop TV provider priority, deduplicating repeated category names while preserving first occurrence.
+- Existing native catalogues do not need a rebuild for the ordering fix: the Guide fetches provider category order live on entry and caches it for ten minutes. New/refreshed Xtream imports additionally save `providerCategoryId` / `providerCategoryOrder` on live channels so SQLite has a persistent provider-order fallback.
+- Native SQLite category aggregation no longer sorts categories by channel count. It now prefers stored provider category order, then first-seen database order.
+- Fixes Xtream short-EPG compatibility by sending the standard `limit` parameter. v0.7.25 sent `epg_limit`, which some Xtream panels accept poorly or ignore.
+- EPG retrieval now uses three levels: `get_short_epg` → `get_simple_data_table` → authenticated provider `xmltv.php` fallback. The XMLTV fallback is used only when the lightweight APIs return no programme data for the selected category.
+- Xtream XMLTV is cached for ten minutes and filtered to the category's currently loaded channels before rows are updated.
+- Windows bridge v0.7.26 adds `/native/xtream-xmltv`. Cloudflare Worker **v0.1.16** adds a token-protected `mode: xmltv` relay and now permits the standard Xtream `limit` parameter.
+- Category-first 48-channel paging, progress feedback, playback, Snoak discovery, metadata/IMDb behavior, profiles, watched/resume state and source stacking are unchanged.
+- Automated tests and JavaScript syntax checks pass; ZIP integrity is verified.
+
 ## v0.7.25 — Provider-Prefix TV Logo Repair
 
 - Fixes title-logo enrichment for TV-provider names whose service tag is wrapped in punctuation, including the confirmed patterns `-MAX - Lanterns`, `-AMZ - Reacher`, `-A+ - Ted Lasso` and `-NF - Stranger Things`.

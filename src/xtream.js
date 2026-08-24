@@ -165,6 +165,7 @@ export async function importXtream(config, providerId='xtream', onProgress=()=>{
     loadSection('series','get_series_categories','get_series')
   ]);
   const liveCats=liveData.categories, liveStreams=liveData.items;
+  const liveCategoryOrder=new Map((liveCats||[]).map((c,i)=>[String(c.category_id),i]));
   const vodCats=vodData.categories, vodStreams=vodData.items;
   const seriesCats=seriesData.categories, series=seriesData.items;
   const catName = (cats,id)=>cats.find(c=>String(c.category_id)===String(id))?.category_name || 'Uncategorised';
@@ -173,7 +174,7 @@ export async function importXtream(config, providerId='xtream', onProgress=()=>{
     id:`${providerId}:live:${s.stream_id}`, providerId, source:'xtream', kind:'live', name:s.name || 'Untitled channel',
     group:catName(liveCats,s.category_id), logo:normalizeAssetUrl(s.stream_icon, server), tvgId:s.epg_channel_id || '',
     streamUrl:`${server}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${s.stream_id}.${s.container_extension || 'ts'}`,
-    streamId:s.stream_id, epgChannelId:s.epg_channel_id || ''
+    streamId:s.stream_id, epgChannelId:s.epg_channel_id || '', providerCategoryId:String(s.category_id??''), providerCategoryOrder:Number(liveCategoryOrder.get(String(s.category_id))??999999)
   });
   for (const s of vodStreams || []) items.push({
     id:`${providerId}:movie:${s.stream_id}`, providerId, source:'xtream', kind:'movie', name:s.name || 'Untitled movie',
@@ -202,7 +203,62 @@ export async function fetchXtreamVodInfo(config, vodId) {
 }
 
 export async function fetchXtreamShortEpg(config, streamId, limit=12) {
-  return getJson(config, 'get_short_epg', {stream_id:streamId, epg_limit:limit});
+  // Xtream-compatible panels conventionally expect `limit` for get_short_epg.
+  // Older Swoop TV builds sent `epg_limit`, which some panels silently ignored.
+  return getJson(config, 'get_short_epg', {stream_id:streamId, limit});
+}
+
+export async function fetchXtreamSimpleEpg(config, streamId) {
+  return getJson(config, 'get_simple_data_table', {stream_id:streamId});
+}
+
+export async function fetchXtreamLiveCategories(config) {
+  const data=await getJson(config,'get_live_categories');
+  return Array.isArray(data)?data:[];
+}
+
+export function buildXtreamXmltvUrl(server, username, password) {
+  const s=cleanServer(server);
+  const qs=new URLSearchParams({username:String(username||''),password:String(password||'')});
+  return `${s}/xmltv.php?${qs.toString()}`;
+}
+
+async function directTextUrl(url, timeoutMs=90000) {
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    const res=await fetch(url,{signal:controller.signal,cache:'no-store'});
+    const text=await res.text();
+    if(!res.ok)throw new Error(`Xtream XMLTV returned HTTP ${res.status}`);
+    return text;
+  }catch(err){
+    if(err?.name==='AbortError')throw new Error('Xtream XMLTV guide timed out.');
+    throw err;
+  }finally{clearTimeout(timer)}
+}
+
+async function relayXmltv(config, timeoutMs=120000) {
+  const relayUrl=String(config.relayUrl||'').trim();
+  if(!relayUrl)throw new Error('Connection Helper URL is missing.');
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  const headers={'content-type':'application/json'};
+  if(config.relayToken)headers.authorization=`Bearer ${String(config.relayToken)}`;
+  try{
+    const res=await fetch(relayUrl,{method:'POST',headers,signal:controller.signal,cache:'no-store',body:JSON.stringify({mode:'xmltv',server:cleanServer(config.server),username:String(config.username||''),password:String(config.password||'')})});
+    const text=await res.text();
+    if(!res.ok)throw new Error(`Swoop TV Connection Helper XMLTV returned HTTP ${res.status}`);
+    return text;
+  }catch(err){
+    if(err?.name==='AbortError')throw new Error('Swoop TV Connection Helper XMLTV timed out.');
+    throw err;
+  }finally{clearTimeout(timer)}
+}
+
+export async function fetchXtreamXmltvText(config) {
+  if(nativeInfo())return nativeRequest('/native/xtream-xmltv',{server:cleanServer(config.server),username:String(config.username||''),password:String(config.password||'')},{expect:'text',timeoutMs:180000});
+  if(String(config.relayUrl||'').trim())return relayXmltv(config);
+  return directTextUrl(buildXtreamXmltvUrl(config.server,config.username,config.password));
 }
 
 export function buildXtreamSeriesStreamUrl(config, episode) {

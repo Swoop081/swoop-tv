@@ -1,6 +1,17 @@
 # Swoop TV
 
-**Current build: v0.7.25 — Provider-Prefix TV Logo Repair**
+**Current build: v0.7.26 — Provider-Order Guide + EPG Repair**
+
+
+### v0.7.26 — Provider-Order Guide + EPG Repair
+
+- TV Guide categories now follow the Xtream provider's own `get_live_categories` order instead of being alphabetically/count sorted. Swoop TV fetches that order on Guide entry, so an existing catalogue does not need to be rebuilt just to fix category ordering.
+- New live imports also retain each channel's provider category ID/order in SQLite, giving the native catalogue a stable offline fallback that preserves provider ordering after refresh.
+- Fixes Xtream `get_short_epg` requests to use the standard `limit` parameter instead of the non-standard `epg_limit` parameter that some panels silently ignore.
+- If short EPG returns nothing, Swoop TV now tries `get_simple_data_table`, then falls back to the provider's authenticated `xmltv.php` guide for the currently displayed category.
+- Full Xtream XMLTV responses are cached for ten minutes and only parsed for the channels in the selected category; the Guide still avoids loading every channel at once.
+- Windows native bridge adds direct authenticated XMLTV retrieval. Cloudflare Worker v0.1.16 adds the equivalent protected XMLTV relay for browser deployments.
+- No SQLite rebuild is required. A normal provider refresh is optional: it stores provider category-order metadata permanently, but the Guide can already fetch the live order from the provider API.
 
 ### v0.7.25 — Provider-Prefix TV Logo Repair
 
@@ -26,7 +37,7 @@ The TV Guide now uses the provider's **channel categories as the primary navigat
 
 Swoop TV uses a curated set of **Snoak's actively maintained MDBList lists as the primary external discovery layer** for Top 100, Trending, New & Hot and selected genre rails. The app still displays only titles that confidently exist in the user's enabled TV-provider library; Snoak/MDBList determines ranking and candidate order, never playability.
 
-The bundled Cloudflare Worker is **v0.1.15**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable.
+The bundled Cloudflare Worker is **v0.1.16**. It pulls an allow-listed set of Snoak lists through the owner-managed `MDBLIST_API_KEY`, caches them, rejects a source when the MDBList API reports it as more than eight days stale, and falls back to the existing TMDb/official-chart discovery signals or local genre ordering when a curated feed is unavailable.
 
 ### Snoak-backed discovery
 
