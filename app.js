@@ -25,8 +25,10 @@ const NATIVE_HOME_SEARCH={
 async function loadNativeHomeRow(id){
   if(!nativeCatalogMode||nativeHomeRowCache.has(id))return nativeHomeRowCache.get(id)||[];let result=[];
   if(String(id).startsWith('cat:')){const parts=String(id).split(':'),kind=parts[1],group=decodeURIComponent(parts.slice(2).join(':'));result=(await nativeCatalogQuery({kind,providerIds:nativeEnabledProviderIds(),group,limit:HOME_STANDARD_ROW_LIMIT,sort:'recent'})).items||[]}
-  else if(id==='new-movies'||id==='movies')result=(await nativeCatalogQuery({kind:'movie',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'recent'})).items||[];
-  else if(id==='new-shows'||id==='shows')result=(await nativeCatalogQuery({kind:'series',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'recent'})).items||[];
+  else if(id==='new-movies')result=(await nativeCatalogQuery({kind:'movie',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'provider-added'})).items||[];
+  else if(id==='new-shows')result=(await nativeCatalogQuery({kind:'series',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'provider-added'})).items||[];
+  else if(id==='movies')result=(await nativeCatalogQuery({kind:'movie',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'recent'})).items||[];
+  else if(id==='shows')result=(await nativeCatalogQuery({kind:'series',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'recent'})).items||[];
   else if(id==='live-now')result=(await nativeCatalogQuery({kind:'live',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'name'})).items||[];
   else if(id==='top-rated-movies')result=(await nativeCatalogQuery({kind:'movie',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'rating'})).items||[];
   else if(id==='top-rated-shows')result=(await nativeCatalogQuery({kind:'series',providerIds:nativeEnabledProviderIds(),limit:HOME_STANDARD_ROW_LIMIT,sort:'rating'})).items||[];
@@ -97,7 +99,7 @@ if(!Array.isArray(state.settings.homeRows)||!state.settings.homeRows.length)stat
 state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);
 if(Number(state.settings.personalizationSchemaVersion||0)<2){for(const id of ['recommended','recently-watched','recent-live'])if(!state.settings.homeRows.includes(id))state.settings.homeRows.push(id);state.settings.homeRows=normalizeHomeRows(state.settings.homeRows);state.settings.personalizationSchemaVersion=2;}
 if(state.settings.discoverySchemaVersion!==3){state.webDiscovery={};state.settings.discoverySchemaVersion=3;}
-const METADATA_ARTWORK_SCHEMA=3;
+const METADATA_ARTWORK_SCHEMA=4;
 const invalidateMetadataArtwork=Number(state.settings.metadataArtworkSchemaVersion||0)!==METADATA_ARTWORK_SCHEMA;
 if(invalidateMetadataArtwork){state.metadataCache={};state.settings.metadataArtworkSchemaVersion=METADATA_ARTWORK_SCHEMA;}
 const IMDB_RATING_SCHEMA=2;
@@ -362,8 +364,8 @@ const HOME_ROW_DEFS=[
   {id:'most-watched-shows',label:'Most Watched This Week — TV',group:'Live from the web',poster:true,web:true,description:'Weekly viewing activity blended with current popularity'},
   {id:'box-office-movies',label:'Box Office Now',group:'Live from the web',poster:true,web:true,description:'Current theatrical and box-office titles available in your library'},
   {id:'live-now',label:'Live Now',group:'Your provider',poster:false,page:'live'},
-  {id:'new-movies',label:'New & Recent Movies',group:'Your provider',poster:true,page:'movies'},
-  {id:'new-shows',label:'New & Recent TV Shows',group:'Your provider',poster:true,page:'series'},
+  {id:'new-movies',label:'Recently Added Movies',group:'Your provider',poster:true,page:'movies',description:'Newest movie additions reported by your TV provider'},
+  {id:'new-shows',label:'Recently Added TV Shows',group:'Your provider',poster:true,page:'series',description:'Newest TV additions or updates reported by your TV provider'},
   {id:'top-rated-movies',label:'Top Rated Movies',group:'Your provider',poster:true},
   {id:'top-rated-shows',label:'Top Rated TV Shows',group:'Your provider',poster:true},
   {id:'action-movies',label:'Action Movies',group:'Categories',poster:true},
@@ -424,6 +426,11 @@ function selectedHomeRows(){
 }
 function mediaSearchText(item){return `${item?.genre||''} ${item?.group||''} ${item?.name||''}`.toLowerCase()}
 function yearNumber(item){const m=String(item?.year||item?.name||'').match(/(?:19|20)\d{2}/);return m?Number(m[0]):0}
+function providerAddedNumber(item){
+  const direct=Number(item?.providerAddedAt||0);if(Number.isFinite(direct)&&direct>0)return direct;
+  if(Array.isArray(item?.sources)){const sourceMax=Math.max(0,...item.sources.map(x=>Number(x?.providerAddedAt||0)).filter(Number.isFinite));if(sourceMax>0)return sourceMax}
+  const sequence=Number(item?.streamId??item?.seriesId??0);return Number.isFinite(sequence)&&sequence>0?sequence:0;
+}
 function tenPointRating(value){const n=parseFloat(String(value??'').replace(',','.'));return Number.isFinite(n)&&n>0&&n<=10?n.toFixed(1):''}
 function ratingNumber(item){const meta=state.metadataCache?.[item?.id]||{},trusted=tenPointRating(meta.rating)||tenPointRating(item?.rating);return trusted?Number(trusted):0}
 function displayRating(item){const meta=state.metadataCache?.[item?.id]||{};return tenPointRating(meta.rating)}
@@ -482,8 +489,8 @@ function localHomeRowItems(id){
   if(id==='live-now')return live;
   if(id==='movies')return movies;
   if(id==='shows')return shows;
-  if(id==='new-movies')return [...movies].sort((a,b)=>yearNumber(b)-yearNumber(a)||Math.abs(hash(a.id))-Math.abs(hash(b.id)));
-  if(id==='new-shows')return [...shows].sort((a,b)=>yearNumber(b)-yearNumber(a)||Math.abs(hash(a.id))-Math.abs(hash(b.id)));
+  if(id==='new-movies')return [...movies].sort((a,b)=>providerAddedNumber(b)-providerAddedNumber(a)||String(a.name||'').localeCompare(String(b.name||'')));
+  if(id==='new-shows')return [...shows].sort((a,b)=>providerAddedNumber(b)-providerAddedNumber(a)||String(a.name||'').localeCompare(String(b.name||'')));
   if(id==='top-rated-movies')return [...movies].filter(x=>ratingNumber(x)>0).sort((a,b)=>ratingNumber(b)-ratingNumber(a));
   if(id==='top-rated-shows')return [...shows].filter(x=>ratingNumber(x)>0).sort((a,b)=>ratingNumber(b)-ratingNumber(a));
   if(id==='action-movies')return filter(movies,['action']);

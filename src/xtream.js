@@ -129,6 +129,19 @@ async function getJson(config, action='', params={}) {
   return directJson(config, action, params);
 }
 
+
+function providerTimestamp(value='') {
+  const raw=String(value ?? '').trim();
+  if(!raw)return 0;
+  const numeric=Number(raw);
+  if(Number.isFinite(numeric)&&numeric>0){
+    const ms=numeric>1e12?numeric:numeric*1000;
+    return Number.isFinite(ms)&&ms>0?Math.trunc(ms):0;
+  }
+  const parsed=Date.parse(raw);
+  return Number.isFinite(parsed)&&parsed>0?parsed:0;
+}
+
 export async function testXtream(config) {
   const data = await getJson(config);
   if (!data?.user_info) throw new Error('This server did not return an Xtream user profile.');
@@ -164,7 +177,7 @@ export async function importXtream(config, providerId='xtream', onProgress=()=>{
   });
   for (const s of vodStreams || []) items.push({
     id:`${providerId}:movie:${s.stream_id}`, providerId, source:'xtream', kind:'movie', name:s.name || 'Untitled movie',
-    group:catName(vodCats,s.category_id), logo:normalizeAssetUrl(s.stream_icon, server), backdrop:normalizeAssetUrl(Array.isArray(s.backdrop_path)?s.backdrop_path[0]:s.backdrop_path, server), year:s.year || '', rating:s.rating || '',
+    group:catName(vodCats,s.category_id), logo:normalizeAssetUrl(s.stream_icon, server), backdrop:normalizeAssetUrl(Array.isArray(s.backdrop_path)?s.backdrop_path[0]:s.backdrop_path, server), year:s.year || '', rating:s.rating || '', providerAddedAt:providerTimestamp(s.added || s.last_modified || s.created_at || s.timestamp),
     plot:s.plot || s.description || '', genre:s.genre || '', duration:s.duration || '',
     tmdbId:s.tmdb || s.tmdb_id || '', imdbId:s.imdb_id || '',
     streamUrl:`${server}/movie/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${s.stream_id}.${s.container_extension || 'mp4'}`,
@@ -172,7 +185,7 @@ export async function importXtream(config, providerId='xtream', onProgress=()=>{
   });
   for (const s of series || []) items.push({
     id:`${providerId}:series:${s.series_id}`, providerId, source:'xtream', kind:'series', name:s.name || 'Untitled series',
-    group:catName(seriesCats,s.category_id), logo:normalizeAssetUrl(s.cover, server), backdrop:normalizeAssetUrl(Array.isArray(s.backdrop_path)?s.backdrop_path[0]:s.backdrop_path, server), year:s.releaseDate || s.year || '', rating:s.rating || '',
+    group:catName(seriesCats,s.category_id), logo:normalizeAssetUrl(s.cover, server), backdrop:normalizeAssetUrl(Array.isArray(s.backdrop_path)?s.backdrop_path[0]:s.backdrop_path, server), year:s.releaseDate || s.year || '', rating:s.rating || '', providerAddedAt:providerTimestamp(s.added || s.last_modified || s.created_at || s.timestamp),
     plot:s.plot || s.description || '', genre:s.genre || '', duration:s.episode_run_time || '',
     tmdbId:s.tmdb || s.tmdb_id || '', imdbId:s.imdb_id || '', streamUrl:'', seriesId:s.series_id
   });

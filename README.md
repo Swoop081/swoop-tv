@@ -1,8 +1,27 @@
 # Swoop TV
 
-**Current build: v0.7.14 — Detail Navigation + Interaction Stability**
+**Current build: v0.7.16 — Provider Recently Added Rails**
 
-This build stabilizes movie/TV detail navigation and interaction after reviewing a real Windows screen recording. Detail pages now keep a cleaned title visible while title-logo artwork loads, swap artwork without flashing the hero back to black, patch metadata/source results in place instead of rebuilding the whole detail DOM, and preserve the already-rendered browse screen so Back returns instantly to the exact loaded Home position. Background Home discovery/catalog hydration now patches mounted rows instead of repeatedly rebuilding the entire page. The existing IMDb, provider, SQLite and Windows/mpv behavior is preserved.
+This build changes the two provider recency rails so they reflect what your TV provider added most recently, rather than sorting by a title's release year. Xtream movie `added` timestamps and TV `last_modified`/`added` timestamps are retained during provider import and used by both the browser catalogue and the Windows SQLite catalogue. Existing catalogues fall back to provider stream/series sequence until the next provider refresh captures the true timestamps.
+
+
+## Provider recently added rails
+
+- **New & Recent Movies** is renamed **Recently Added Movies** and sorts by the provider's own addition timestamp instead of movie release year.
+- **New & Recent TV Shows** is renamed **Recently Added TV Shows** and sorts by the provider's own `added` / `last_modified` timestamp instead of first-air year.
+- Xtream imports now retain these provider timestamps on catalogue items. For already-indexed libraries, Swoop falls back to numeric provider stream/series sequence so the rails improve immediately; running **Refresh All** once captures the provider timestamps for exact ordering.
+- Native Windows/SQLite queries use a dedicated `provider-added` sort and take the newest timestamp across duplicate movie sources without rebuilding the database schema.
+- This changes only these two Home rails. **All Movies**, **All TV Shows**, web Trending/New & Hot rows, Top 20 rows, source stacking, metadata, watched/resume state and mpv playback are unchanged.
+
+## Strict title-year metadata matching
+
+- Year-qualified TMDb searches are now strict: if the requested provider year has no valid match, Swoop leaves the provider artwork/identity alone instead of retrying the title without a year.
+- Search results must match the cleaned normalized provider title and the exact release/first-air year before artwork or metadata is accepted.
+- Existing TMDb/IMDb IDs are checked against the provider year before they are trusted, protecting against stale IDs left behind by an earlier incorrect enrichment.
+- The browser client performs its own identity check before accepting metadata or IMDb rating results, so an older/misconfigured Worker cannot silently attach a different-year movie.
+- The lightweight IMDb rating route now returns its resolved title/year alongside the IDs/rating, allowing the client to verify the same identity before rendering the gold badge.
+- Metadata cache schema advances once on upgrade to discard ambiguous pre-v0.7.15 matches. Provider credentials, SQLite catalogue, watched/resume data and playback state are untouched.
+- Cloudflare Worker v0.1.10 contains the strict resolver and should be redeployed for full server-side protection.
 
 ## Detail navigation + interaction stability
 

@@ -530,7 +530,7 @@ html{scroll-behavior:smooth}
 :root[data-performance="lean"] .home-priority-row .card{transition:transform .1s ease,box-shadow .1s ease}
 @media(max-width:700px){.home-priority-row{margin-bottom:31px}.profile-avatar-xl.animal-avatar b{font-size:58px!important}.profile-avatar-lg.animal-avatar b{font-size:32px!important}}
 
-/* v0.7.14 — stable detail transitions + faster interaction feedback */
+/* v0.7.14+ — stable detail transitions + faster interaction feedback */
 .detail-title-slot{display:grid;align-items:end;max-width:min(760px,100%);margin:0 0 19px;position:relative}
 .detail-title-slot>*{grid-area:1/1}
 .detail-title-slot .detail-title-text{margin:0!important;opacity:1;transition:opacity .2s ease;align-self:end}

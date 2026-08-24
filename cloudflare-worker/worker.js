@@ -21,7 +21,7 @@ const MDBLIST_BASE = 'https://api.mdblist.com';
 function tmdbHeaders(env) {
   const token=String(env.TMDB_API_TOKEN || '').trim();
   if (!token) throw new Error('TMDb metadata is not configured on the Swoop service.');
-  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.2'};
+  return {'Authorization':`Bearer ${token}`,'Accept':'application/json','User-Agent':'SwoopTV-Metadata/0.4.3'};
 }
 
 function safeYear(value='') { const m=String(value||'').match(/(?:19|20)\d{2}/); return m?m[0]:''; }
@@ -30,6 +30,32 @@ function cleanSearchTitle(value='') {
   s=s.replace(/^\s*(?:TOP|NEW|MOVIES?|FILMS?|VOD|EN|ENG|ENGLISH|4K|UHD|FHD|HD)\s*(?:\||:|\s-\s)\s*/i,'');
   s=s.replace(/\s*[\[(](?:19|20)\d{2}[\])]\s*$/,'');
   return s.trim();
+}
+function normalizedIdentityTitle(value='') {
+  return cleanSearchTitle(value).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+}
+function tmdbMediaTitle(item,type='movie'){return type==='tv'?(item?.name||item?.original_name||''):(item?.title||item?.original_title||'')}
+function tmdbMediaYear(item,type='movie'){return safeYear(type==='tv'?item?.first_air_date:item?.release_date)}
+function exactTitleMatch(requested='',candidate=''){const a=normalizedIdentityTitle(requested),b=normalizedIdentityTitle(candidate);return Boolean(a&&b&&a===b)}
+function exactYearMatch(requested='',candidate=''){const a=safeYear(requested),b=safeYear(candidate);return !a||Boolean(b&&a===b)}
+function strictSearchMatch(results=[],type='movie',title='',year=''){
+  const candidates=Array.isArray(results)?results:[];
+  return candidates.find(item=>exactTitleMatch(title,tmdbMediaTitle(item,type))&&exactYearMatch(year,tmdbMediaYear(item,type)))||null;
+}
+async function resolveTmdbIdentity(env,{type='movie',tmdbId='',imdbId='',title='',year=''}){
+  const requestedYear=safeYear(year),requestedTitle=cleanSearchTitle(title);
+  if(tmdbId){
+    try{const item=await tmdbFetch(`/${type}/${encodeURIComponent(tmdbId)}`,env,{language:'en-AU'});if(item?.id&&exactYearMatch(requestedYear,tmdbMediaYear(item,type)))return {id:String(item.id),item,source:'tmdb-id'}}catch{}
+  }
+  if(imdbId&&/^tt\d+$/i.test(imdbId)){
+    try{const found=await tmdbFetch(`/find/${encodeURIComponent(imdbId)}`,env,{external_source:'imdb_id',language:'en-AU'});const match=(type==='tv'?found.tv_results:found.movie_results)?.find(item=>exactYearMatch(requestedYear,tmdbMediaYear(item,type)))||null;if(match?.id)return {id:String(match.id),item:match,source:'imdb-id'}}catch{}
+  }
+  if(!requestedTitle)return null;
+  const params={query:requestedTitle,language:'en-AU',include_adult:'false'};
+  if(requestedYear)params[type==='tv'?'first_air_date_year':'year']=requestedYear;
+  const found=await tmdbFetch(`/search/${type}`,env,params);
+  const match=strictSearchMatch(found?.results,type,requestedTitle,requestedYear);
+  return match?.id?{id:String(match.id),item:match,source:'title-year'}:null;
 }
 function tmdbImage(path,size='original'){return path?`${TMDB_IMAGE_BASE}/${size}${path}`:''}
 
@@ -128,7 +154,7 @@ async function fetchMdbImdbRating(env,imdbId,type='movie') {
   url.searchParams.set('apikey',key);
   const res=await fetch(url.toString(),{
     method:'POST',
-    headers:{'Accept':'application/json','Content-Type':'application/json','User-Agent':'SwoopTV-Metadata/0.4.2'},
+    headers:{'Accept':'application/json','Content-Type':'application/json','User-Agent':'SwoopTV-Metadata/0.4.3'},
     body:JSON.stringify({ids:[String(imdbId)],provider:'imdb'})
   });
   if(!res.ok)return'';
@@ -141,33 +167,21 @@ async function handleImdbRating(request, env, body) {
   if(!String(env.TMDB_API_TOKEN||'').trim()) return json(request,{error:'Swoop IMDb matching is not configured. Add the TMDB_API_TOKEN secret to the Swoop Worker.'},503);
   if(!String(env.MDBLIST_API_KEY||'').trim()) return json(request,{error:'Swoop IMDb ratings are not configured. Add the MDBLIST_API_KEY secret to the Swoop Worker.'},503);
   const type=String(body?.mediaType||'movie')==='tv'?'tv':'movie';
-  let tmdbId=String(body?.tmdbId||'').trim(),imdbId=String(body?.imdbId||'').trim();
+  const suppliedTmdbId=String(body?.tmdbId||'').trim(),suppliedImdbId=String(body?.imdbId||'').trim();
   const title=cleanSearchTitle(body?.title||''),year=safeYear(body?.year||body?.title||'');
   try{
-    if(!imdbId&&tmdbId){
+    const resolved=await resolveTmdbIdentity(env,{type,tmdbId:suppliedTmdbId,imdbId:suppliedImdbId,title,year});
+    if(!resolved?.id)return json(request,{rating:{tmdbId:'',imdbId:'',imdbRating:'',title,year}},200);
+    const tmdbId=String(resolved.id);
+    let imdbId=suppliedImdbId;
+    if(!imdbId){
       const external=await tmdbFetch(`/${type}/${encodeURIComponent(tmdbId)}/external_ids`,env,{language:'en-AU'});
       imdbId=String(external?.imdb_id||'');
     }
-    if(!tmdbId&&imdbId&&/^tt\d+$/i.test(imdbId)){
-      const found=await tmdbFetch(`/find/${encodeURIComponent(imdbId)}`,env,{external_source:'imdb_id',language:'en-AU'});
-      const match=(type==='tv'?found.tv_results:found.movie_results)?.[0]||null;
-      if(match?.id)tmdbId=String(match.id);
-    }
-    if(!tmdbId&&title){
-      const params={query:title,language:'en-AU',include_adult:'false'};
-      if(year)params[type==='tv'?'first_air_date_year':'year']=year;
-      let found=await tmdbFetch(`/search/${type}`,env,params);
-      if(!found?.results?.length&&year){delete params[type==='tv'?'first_air_date_year':'year'];found=await tmdbFetch(`/search/${type}`,env,params);}
-      const match=found?.results?.[0]||null;
-      if(match?.id)tmdbId=String(match.id);
-    }
-    if(!imdbId&&tmdbId){
-      const external=await tmdbFetch(`/${type}/${encodeURIComponent(tmdbId)}/external_ids`,env,{language:'en-AU'});
-      imdbId=String(external?.imdb_id||'');
-    }
-    if(!tmdbId&&!imdbId)return json(request,{rating:{tmdbId:'',imdbId:'',imdbRating:''}},200);
     const imdbRating=imdbId?await fetchMdbImdbRating(env,imdbId,type):'';
-    return new Response(JSON.stringify({rating:{tmdbId,imdbId,imdbRating}}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=86400'}});
+    const resolvedTitle=tmdbMediaTitle(resolved.item,type)||title;
+    const resolvedYear=tmdbMediaYear(resolved.item,type)||year;
+    return new Response(JSON.stringify({rating:{tmdbId,imdbId,imdbRating,title:resolvedTitle,year:resolvedYear}}),{status:200,headers:{...corsHeaders(request),'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=86400'}});
   }catch(error){return json(request,{error:error.message||'Could not load IMDb rating.'},502)}
 }
 
@@ -177,27 +191,15 @@ async function handleMetadata(request, env, body) {
   const tmdbId=String(body?.tmdbId||'').trim(),imdbId=String(body?.imdbId||'').trim();
   const title=cleanSearchTitle(body?.title||''),year=safeYear(body?.year||body?.title||'');
   try{
-    let match=null;
-    if(tmdbId){ match={id:tmdbId}; }
-    else if(imdbId&&/^tt\d+$/i.test(imdbId)){
-      const found=await tmdbFetch(`/find/${encodeURIComponent(imdbId)}`,env,{external_source:'imdb_id',language:'en-AU'});
-      match=(type==='tv'?found.tv_results:found.movie_results)?.[0]||null;
-    }
-    if(!match&&title){
-      const params={query:title,language:'en-AU',include_adult:'false'};
-      if(year)params[type==='tv'?'first_air_date_year':'year']=year;
-      let found=await tmdbFetch(`/search/${type}`,env,params);
-      if(!found?.results?.length&&year){delete params[type==='tv'?'first_air_date_year':'year'];found=await tmdbFetch(`/search/${type}`,env,params);}
-      match=found?.results?.[0]||null;
-    }
-    if(!match?.id)return json(request,{metadata:null},200);
-    // Fetch full details plus TMDb's complete artwork set in one request. Search
-    // results alone may omit a backdrop even when the title has many backdrops.
-    const item=await tmdbFetch(`/${type}/${encodeURIComponent(match.id)}`,env,{
+    const resolved=await resolveTmdbIdentity(env,{type,tmdbId,imdbId,title,year});
+    if(!resolved?.id)return json(request,{metadata:null},200);
+    const item=await tmdbFetch(`/${type}/${encodeURIComponent(resolved.id)}`,env,{
       language:'en-AU',
       append_to_response:type==='tv'?'images,credits,videos,recommendations,content_ratings,external_ids':'images,credits,videos,recommendations,release_dates,external_ids',
       include_image_language:'en,null'
     });
+    if(!exactYearMatch(year,tmdbMediaYear(item,type)))return json(request,{metadata:null},200);
+    if(resolved.source==='title-year'&&!exactTitleMatch(title,tmdbMediaTitle(item,type)))return json(request,{metadata:null},200);
     const resolvedImdbId=String(item?.external_ids?.imdb_id||imdbId||'');
     let imdbRating='';
     if(resolvedImdbId&&String(env.MDBLIST_API_KEY||'').trim()){try{imdbRating=await fetchMdbImdbRating(env,resolvedImdbId,type)}catch{}}
@@ -456,7 +458,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.9',
+        version:'0.1.10',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
         discoveryConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),

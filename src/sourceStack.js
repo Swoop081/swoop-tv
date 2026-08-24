@@ -186,8 +186,8 @@ export function buildMovieStackIndex(catalog=[], providerPriority={}) {
       const traits=sourceTraits(x);
       return {...x,_sourceLabel:sourceDescription(x,i),_sourceTag:traits.tag,_qualityLabel:traits.quality,_hdrLabel:traits.hdr,_codecLabel:traits.codec,_audioLabel:traits.audio,_sourceScore:traits.score};
     });
-    const primary=sources[0],clean=cleanDisplayTitle(primary),year=releaseYear(primary);
-    const stack={...primary,id:stackIdFromKey(group.key),name:clean,year:primary.year||String(year||''),sources,sourceCount:sources.length,_stacked:true,_stackConfidence:group.confidence,_primarySourceId:primary.id,_recommendedSourceId:primary.id};
+    const primary=sources[0],clean=cleanDisplayTitle(primary),year=releaseYear(primary),providerAddedAt=Math.max(0,...sources.map(x=>Number(x.providerAddedAt||0)).filter(Number.isFinite));
+    const stack={...primary,id:stackIdFromKey(group.key),name:clean,year:primary.year||String(year||''),providerAddedAt:providerAddedAt||Number(primary.providerAddedAt||0),sources,sourceCount:sources.length,_stacked:true,_stackConfidence:group.confidence,_primarySourceId:primary.id,_recommendedSourceId:primary.id};
     stacked.push(stack);byStackId.set(stack.id,stack);for(const source of sources)bySourceId.set(source.id,stack);
   }
   return {stacked,bySourceId,byStackId};

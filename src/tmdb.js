@@ -15,6 +15,26 @@ function cleanMetadataTitle(value='') {
     .replace(/\s+/g,' ').trim() || String(value||'').trim();
 }
 
+
+function identityYear(value='') {
+  const m=String(value||'').match(/(?:19|20)\d{2}/);
+  return m?m[0]:'';
+}
+
+function normalizedIdentityTitle(value='') {
+  return cleanMetadataTitle(value).normalize('NFKD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+}
+
+export function metadataIdentityMatches(item={}, resolved={}) {
+  if(!resolved||typeof resolved!=='object')return false;
+  const requestedYear=identityYear(item.year||item.name||''),resolvedYear=identityYear(resolved.year||'');
+  if(requestedYear&&(!resolvedYear||requestedYear!==resolvedYear))return false;
+  const requestedTitle=normalizedIdentityTitle(item.name||''),resolvedTitle=normalizedIdentityTitle(resolved.title||'');
+  const hasTrustedId=Boolean(item.tmdbId||item.imdbId);
+  if(!hasTrustedId&&requestedTitle&&resolvedTitle&&requestedTitle!==resolvedTitle)return false;
+  return true;
+}
+
 export function metadataServiceUrl(settings={}) {
   return String(settings?.metadataServiceUrl || DEFAULT_METADATA_SERVICE).trim().replace(/\/+$/, '');
 }
@@ -43,7 +63,8 @@ export async function fetchTitleMetadata({settings={}, item}) {
     throw new Error(detail || `Swoop artwork service returned HTTP ${res.status}.`);
   }
   const data = await res.json();
-  return data?.metadata || null;
+  const metadata=data?.metadata || null;
+  return metadata&&metadataIdentityMatches(item,metadata)?metadata:null;
 }
 
 export async function fetchTitleImdbRating({settings={}, item}) {
@@ -70,5 +91,11 @@ export async function fetchTitleImdbRating({settings={}, item}) {
     throw new Error(detail || `Swoop IMDb rating service returned HTTP ${res.status}.`);
   }
   const data=await res.json();
-  return data?.rating || null;
+  const rating=data?.rating || null;
+  if(rating&&metadataIdentityMatches(item,rating))return rating;
+  // Older workers did not return resolved title/year on the lightweight route.
+  // Fall back to the full metadata path, which can be identity-checked client-side,
+  // rather than ever displaying a rating from an ambiguous title match.
+  const metadata=await fetchTitleMetadata({settings,item}).catch(()=>null);
+  return metadata?{tmdbId:metadata.tmdbId||'',imdbId:metadata.imdbId||'',imdbRating:metadata.imdbRating||'',title:metadata.title||'',year:metadata.year||''}:null;
 }

@@ -8,7 +8,7 @@ import {makeProfile, normalizeProfile, profileAllowsMedia, profileGenreAffinity,
 import {buildLiveStackIndex, selectLiveSource} from './src/liveStack.js';
 import {SWOOP_THEMES, themeById} from './src/themes.js';
 import {prepareNativeCatalogItems} from './src/nativeCatalog.js';
-import {fetchTitleImdbRating} from './src/tmdb.js';
+import {fetchTitleMetadata, fetchTitleImdbRating, metadataIdentityMatches} from './src/tmdb.js';
 
 function assert(condition, message){if(!condition) throw new Error(message)}
 
@@ -157,15 +157,17 @@ globalThis.fetch=async (url,options={})=>{
     get_live_categories:[{category_id:'1',category_name:'Sports'}],
     get_live_streams:[{stream_id:11,name:'Arena',category_id:'1',container_extension:'ts'}],
     get_vod_categories:[{category_id:'2',category_name:'Movies'}],
-    get_vod_streams:[{stream_id:22,name:'Signal Run',category_id:'2',container_extension:'mp4'}],
+    get_vod_streams:[{stream_id:22,name:'Signal Run',category_id:'2',container_extension:'mp4',added:'1787530200'}],
     get_series_categories:[{category_id:'3',category_name:'Series'}],
-    get_series:[{series_id:33,name:'Night Shift',category_id:'3'}]
+    get_series:[{series_id:33,name:'Night Shift',category_id:'3',last_modified:'1787531200'}]
   }[action]||{};
   return new Response(JSON.stringify(payload),{status:200,headers:{'content-type':'application/json'}});
 };
 const imported=await importXtream({server:'http://tv.example:8080',username:'demo',password:'secret',relayUrl:'https://relay.example.workers.dev',relayToken:token},'progress-test',info=>progressSections.push(info.section));
 assert(imported.counts.live===1&&imported.counts.movie===1&&imported.counts.series===1,'Xtream import counts failed');
 assert(progressSections.includes('live')&&progressSections.includes('movie')&&progressSections.includes('series'),'Xtream progress callbacks failed');
+assert(imported.items.find(x=>x.kind==='movie')?.providerAddedAt===1787530200000,'Xtream VOD provider-added timestamp capture failed');
+assert(imported.items.find(x=>x.kind==='series')?.providerAddedAt===1787531200000,'Xtream series provider-added timestamp capture failed');
 
 
 // Detail metadata + EPG helper calls
@@ -237,9 +239,43 @@ const imdbRatingJson=await imdbRatingRes.json();
 assert(imdbRatingJson.rating?.tmdbId==='77'&&imdbRatingJson.rating?.imdbId==='tt1234567'&&imdbRatingJson.rating?.imdbRating==='8.4','Worker lightweight IMDb rating mapping failed');
 
 let clientRatingBody=null;
-globalThis.fetch=async (url,options={})=>{clientRatingBody=JSON.parse(options.body||'{}');return new Response(JSON.stringify({rating:{tmdbId:'77',imdbId:'tt1234567',imdbRating:'8.4'}}),{status:200,headers:{'content-type':'application/json'}});};
+globalThis.fetch=async (url,options={})=>{clientRatingBody=JSON.parse(options.body||'{}');return new Response(JSON.stringify({rating:{tmdbId:'77',imdbId:'tt1234567',imdbRating:'8.4',title:'Michael',year:'2026'}}),{status:200,headers:{'content-type':'application/json'}});};
 const clientRating=await fetchTitleImdbRating({settings:{metadataServiceUrl:'https://metadata.example.workers.dev'},item:{id:'m77',kind:'movie',name:'Michael',year:'2026'}});
 assert(clientRatingBody?.mode==='imdb-rating'&&clientRating?.imdbRating==='8.4','Client lightweight IMDb rating request failed');
+
+assert(metadataIdentityMatches({kind:'movie',name:'Odyssey (2025)',year:'2025'},{title:'Odyssey',year:'2025'})===true,'Exact title/year identity should match');
+assert(metadataIdentityMatches({kind:'movie',name:'Odyssey (2025)',year:'2025'},{title:'The Odyssey',year:'2026'})===false,'Different-year metadata must never attach to a provider title');
+
+// v0.7.15 strict title-year guard: never fall back from an explicit provider year
+// to a different release just because the title is similar.
+let odysseySearchCalls=0,odysseyUnfilteredCalls=0;
+globalThis.fetch=async (url,options={})=>{
+  const u=String(url);
+  if(u.includes('api.themoviedb.org/3/search/movie')){
+    odysseySearchCalls++;
+    const parsed=new URL(u);
+    if(!parsed.searchParams.get('year'))odysseyUnfilteredCalls++;
+    return new Response(JSON.stringify({results:parsed.searchParams.get('year')==='2025'?[]:[{id:999,title:'The Odyssey',release_date:'2026-07-17'}]}),{status:200,headers:{'content-type':'application/json'}});
+  }
+  throw new Error(`Unexpected strict-match URL ${u}`);
+};
+const odysseyReq=new Request('https://relay.example.workers.dev/',{method:'POST',headers:{'content-type':'application/json','origin':'http://127.0.0.1:38673'},body:JSON.stringify({mode:'metadata',mediaType:'movie',title:'Odyssey',year:'2025'})});
+const odysseyRes=await worker.fetch(odysseyReq,{TMDB_API_TOKEN:'tmdb-test-token',SWOOP_PROXY_TOKEN:token});
+const odysseyJson=await odysseyRes.json();
+assert(odysseyJson.metadata===null,'Explicit 2025 provider title must not inherit The Odyssey (2026) metadata');
+assert(odysseySearchCalls===1&&odysseyUnfilteredCalls===0,'Worker must not retry a year-qualified miss as an unfiltered title search');
+
+let clientFallbackCalls=0;
+globalThis.fetch=async (url,options={})=>{
+  clientFallbackCalls++;
+  const body=JSON.parse(options.body||'{}');
+  if(body.mode==='imdb-rating')return new Response(JSON.stringify({rating:{tmdbId:'999',imdbId:'tt9999999',imdbRating:'8.5',title:'The Odyssey',year:'2026'}}),{status:200,headers:{'content-type':'application/json'}});
+  if(body.mode==='metadata')return new Response(JSON.stringify({metadata:{tmdbId:'999',imdbId:'tt9999999',imdbRating:'8.5',title:'The Odyssey',year:'2026',poster:'https://image.tmdb.org/t/p/w500/wrong.jpg'}}),{status:200,headers:{'content-type':'application/json'}});
+  throw new Error('Unexpected client identity request');
+};
+const rejectedMetadata=await fetchTitleMetadata({settings:{metadataServiceUrl:'https://metadata.example.workers.dev'},item:{id:'ody-2025',kind:'movie',name:'Odyssey',year:'2025'}});
+const rejectedRating=await fetchTitleImdbRating({settings:{metadataServiceUrl:'https://metadata.example.workers.dev'},item:{id:'ody-2025',kind:'movie',name:'Odyssey',year:'2025'}});
+assert(rejectedMetadata===null&&rejectedRating===null&&clientFallbackCalls>=3,'Client must reject wrong-year artwork and IMDb ratings even when an older worker returns them');
 
 // v0.7.2 blended Swoop discovery service: TMDb + owner-managed MDBList signals.
 globalThis.fetch=async (url,options={})=>{
@@ -349,7 +385,7 @@ assert(appSource.includes('replaceProviderCatalog')&&appSource.includes('enabled
   assert(appSource.includes('activateNativeCatalogIfAvailable')&&appSource.includes('migrateCatalogToNative')&&appSource.includes('nativePageCache'),'Native catalogue activation/paged UI integration missing');
   assert(appSource.includes('nativeCatalogSearch')&&appSource.includes('nativeCatalogMatchPayload')&&appSource.includes('hydrateNativeProfileItems'),'Native FTS/discovery/profile hydration integration missing');
   assert(storageSource.includes('retireBrowserCatalog')&&storageSource.includes('nativeCatalog:true'),'Browser bulk catalogue retirement after SQLite migration missing');
-  assert(swSource.includes('swoop-tv-v0714-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.14 PWA cache/native module wiring missing');
+  assert(swSource.includes('swoop-tv-v0716-shell')&&swSource.includes('./src/nativeCatalog.js'),'v0.7.16 PWA cache/native module wiring missing');
   assert(sqlitePs.includes("'--cache-secs=15'")&&sqlitePs.includes("'--demuxer-readahead-secs=20'")&&!sqlitePs.includes("'--profile=low-latency'"),'Native catalogue work must not change proven mpv playback profile');
 }
 
@@ -358,7 +394,7 @@ assert(appSource.includes("nativeItemCache.set(String(alias),item)")&&appSource.
 const sqlitePsHotfix=fs.readFileSync(new URL('./windows-native/SwoopTV.ps1',import.meta.url),'utf8');
 const swHotfix=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(sqlitePsHotfix.includes("GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key)")&&sqlitePsHotfix.includes("_nativeSourceIds"),'SQLite logical source-ID propagation missing');
-assert(sqlitePsHotfix.includes("version='0.7.14'")&&swHotfix.includes('swoop-tv-v0714-shell'),'v0.7.14 version/cache wiring missing');
+assert(sqlitePsHotfix.includes("version='0.7.16'")&&swHotfix.includes('swoop-tv-v0716-shell'),'v0.7.16 version/cache wiring missing');
 assert(appSource.includes('Mark as Watched')&&appSource.includes('Mark as Unwatched')&&appSource.includes('toggleWatched'),'Watched/unwatched controls missing');
 assert(appSource.includes("const PINNED_HOME_ROWS=['continue','top20-movies','top20-shows']"),'Pinned Home row order missing');
 assert(appSource.includes('card-watched')&&appSource.includes('completed:true'),'Watched card/completion state missing');
@@ -377,7 +413,7 @@ assert(appSource.includes("String(def.id).startsWith('top20-')?HOME_TOP20_LIMIT:
 assert(appSource.includes('limit:HOME_STANDARD_ROW_LIMIT')&&appSource.includes('rowLimit=String(id).startsWith(\'top20-\')?HOME_TOP20_LIMIT:HOME_STANDARD_ROW_LIMIT'),'Native/web discovery Home row limits must support 100 items');
 assert(appSource.includes('function displayImdbRating')&&appSource.includes('card-imdb-rating')&&!appSource.includes("[item.year,trustedRating?`★ ${trustedRating}`"),'Poster cards must hide year/generic star metadata and expose the IMDb badge');
 const workerSource=fs.readFileSync(new URL('./cloudflare-worker/worker.js',import.meta.url),'utf8');
-assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.9'"),'IMDb viewport rating worker wiring missing');
+assert(workerSource.includes('fetchMdbImdbRating')&&workerSource.includes('handleImdbRating')&&workerSource.includes('/rating/${mediaType}/imdb')&&workerSource.includes("mode || '') === 'imdb-rating'")&&workerSource.includes("version:'0.1.10'"),'IMDb viewport rating worker wiring missing');
 assert(appSource.includes('IMDB_RATING_SCHEMA=2')&&appSource.includes('delete meta.imdbRating')&&appSource.includes('delete meta.imdbRatingCheckedAt'),'IMDb rating cache must selectively refresh without clearing artwork metadata');
 assert(appSource.includes('visibleMetadataQueue')&&appSource.includes('hydrateVisibleImdbRatings')&&appSource.includes('data-imdb-item')&&appSource.includes('fetchTitleImdbRating'),'Viewport-driven IMDb rating hydration missing');
 assert(appSource.includes('imdbRatingCheckedAt')&&appSource.includes('30*86400000'),'Long-lived IMDb rating cache missing');
@@ -389,4 +425,11 @@ const detailCss=fs.readFileSync(new URL('./styles.css',import.meta.url),'utf8');
 assert(detailCss.includes('.detail-title-slot:has(.detail-title-logo.loaded) .detail-title-text')&&detailCss.includes('.detail-backdrop-retiring'),'Stable title-logo/backdrop crossfade CSS missing');
 const tmdbClientSource=fs.readFileSync(new URL('./src/tmdb.js',import.meta.url),'utf8');
 assert(tmdbClientSource.includes('cleanMetadataTitle')&&tmdbClientSource.includes("'amz'")&&tmdbClientSource.includes("'netflix'"),'Metadata client must strip common provider prefixes before TMDb matching');
-console.log('Swoop TV v0.7.14 tests passed');
+
+assert(appSource.includes("label:'Recently Added Movies'")&&appSource.includes("label:'Recently Added TV Shows'")&&appSource.includes("sort:'provider-added'"),'Provider recently-added Home rails missing');
+assert(appSource.includes('function providerAddedNumber')&&appSource.includes('providerAddedNumber(b)-providerAddedNumber(a)'),'Browser provider-added sort/fallback missing');
+assert(sqlitePsHotfix.includes("'provider-added'")&&sqlitePsHotfix.includes("json_extract(raw_json,'$.providerAddedAt')")&&sqlitePsHotfix.includes('provider_sequence DESC'),'Native SQLite provider-added sort missing');
+assert(appSource.includes('METADATA_ARTWORK_SCHEMA=4'),'v0.7.15 must invalidate legacy ambiguous metadata cache once');
+assert(workerSource.includes('strictSearchMatch')&&workerSource.includes('resolveTmdbIdentity')&&!workerSource.includes("delete params[type==='tv'?'first_air_date_year':'year']"),'Strict title-year TMDb fallback guard missing');
+assert(tmdbClientSource.includes('metadataIdentityMatches')&&tmdbClientSource.includes('requestedYear!==resolvedYear'),'Client-side metadata identity guard missing');
+console.log('Swoop TV v0.7.16 tests passed');

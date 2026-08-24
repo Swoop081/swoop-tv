@@ -220,16 +220,18 @@ function Catalog-Query($Data) {
   if($Data.group){$where.Add("group_name="+(Sql-Literal ([string]$Data.group)))}
   $whereSql=$where -join ' AND '
   $sort=[string]$Data.sort
-  $order= switch($sort){'year'{'year DESC, display_name COLLATE NOCASE'} 'rating'{'rating DESC, display_name COLLATE NOCASE'} 'recent'{'year DESC, rating DESC, display_name COLLATE NOCASE'} default {'display_name COLLATE NOCASE'}}
+  $order= switch($sort){'year'{'year DESC, display_name COLLATE NOCASE'} 'rating'{'rating DESC, display_name COLLATE NOCASE'} 'provider-added'{'provider_added_at DESC, provider_sequence DESC, display_name COLLATE NOCASE'} 'recent'{'year DESC, rating DESC, display_name COLLATE NOCASE'} default {'display_name COLLATE NOCASE'}}
   $sql=@"
 WITH filtered AS (SELECT * FROM catalog WHERE $whereSql),
 ranked AS (
  SELECT *, ROW_NUMBER() OVER(PARTITION BY logical_key ORDER BY source_score DESC,name COLLATE NOCASE) AS rn,
  COUNT(*) OVER(PARTITION BY logical_key) AS source_count,
- GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key) AS source_ids
+ GROUP_CONCAT(item_id,'|') OVER(PARTITION BY logical_key) AS source_ids,
+ MAX(COALESCE(CAST(json_extract(raw_json,'$.providerAddedAt') AS INTEGER),0)) OVER(PARTITION BY logical_key) AS provider_added_at,
+ MAX(COALESCE(CAST(json_extract(raw_json,'$.streamId') AS INTEGER),CAST(json_extract(raw_json,'$.seriesId') AS INTEGER),0)) OVER(PARTITION BY logical_key) AS provider_sequence
  FROM filtered
 )
-SELECT raw_json,logical_key,source_count,source_ids,display_name FROM ranked WHERE rn=1 ORDER BY $order LIMIT $limit OFFSET $offset;
+SELECT raw_json,logical_key,source_count,source_ids,display_name,provider_added_at,provider_sequence FROM ranked WHERE rn=1 ORDER BY $order LIMIT $limit OFFSET $offset;
 "@
   $rows=Invoke-SqliteJson $sql
   $countRows=Invoke-SqliteJson "SELECT COUNT(DISTINCT logical_key) AS total FROM catalog WHERE $whereSql;"
@@ -837,7 +839,7 @@ function Handle-Request($Request, [string]$MpvPath) {
     if ($path -eq '/native/status') {
       $playing = $false
       if ($script:MpvProcess) { try { $playing = -not $script:MpvProcess.HasExited } catch {} }
-      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.14'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
+      Send-Json $stream @{ ok=$true; service='Swoop TV Windows Bridge'; version='0.7.16'; platform='windows'; mpvReady=(Test-Path $MpvPath); playing=$playing }
       return
     }
 
@@ -953,7 +955,7 @@ function Handle-Request($Request, [string]$MpvPath) {
 
     if ([IO.Path]::GetFileName($full).ToLowerInvariant() -eq 'index.html') {
       $html = Get-Content -Path $full -Raw -Encoding UTF8
-      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.14',platform:'windows'};</script>"
+      $bootstrap = "<script>window.__SWOOP_NATIVE__={token:'$SessionToken',version:'0.7.16',platform:'windows'};</script>"
       $html = $html -replace '</head>', ($bootstrap + '</head>')
       Send-Text $stream $html 'text/html; charset=utf-8'
       return
@@ -966,7 +968,7 @@ function Handle-Request($Request, [string]$MpvPath) {
   }
 }
 
-Write-Header 'Swoop TV v0.7.14 — Detail Navigation + Interaction Stability'
+Write-Header 'Swoop TV v0.7.16 — Provider Recently Added Rails'
 Write-Host 'This local bridge keeps IPTV video provider-to-device and launches mpv for playback.'
 Write-Host 'No administrator rights are required.'
 

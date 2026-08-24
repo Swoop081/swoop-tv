@@ -1,5 +1,25 @@
 # Swoop TV Release Notes
 
+## v0.7.16 — Provider Recently Added Rails
+
+- Changes the two provider recency rows from release-year sorting to provider-addition sorting.
+- Renames **New & Recent Movies** to **Recently Added Movies** and **New & Recent TV Shows** to **Recently Added TV Shows** so the labels describe the source of recency accurately.
+- Xtream movie imports retain the provider `added` timestamp; series imports retain `added` / `last_modified` timestamps when supplied by the provider.
+- Adds a dedicated Windows SQLite `provider-added` sort. Duplicate movie stacks use the newest provider timestamp across their sources, while older indexed rows fall back to provider stream/series sequence until refreshed.
+- Existing users can use the rows immediately. For exact timestamp ordering on a catalogue imported before v0.7.16, run **Refresh All** once so Swoop captures the provider's addition timestamps. No SQLite rebuild is required.
+- Only the two provider recency Home rows change. v0.7.15 strict title/year matching, IMDb hydration, 100-item rails, source stacking, watched/resume state and Windows/mpv playback remain preserved.
+
+## v0.7.15 — Strict Title-Year Metadata Matching
+
+- Fixes false TMDb/IMDb enrichment where a provider title could inherit artwork and ratings from a different release with a similar name, such as `Odyssey (2025)` being decorated as `The Odyssey (2026)`.
+- Removes the old year-qualified-search fallback that retried a title without its year when TMDb returned no same-year result. If an explicit provider year cannot be matched, Swoop now keeps the provider identity/artwork rather than guessing.
+- Adds strict normalized-title + exact-year validation for title-search matches.
+- Validates supplied/cached TMDb and IMDb IDs against the provider year before trusting them, preventing stale IDs from earlier false matches from continuing to contaminate metadata.
+- Adds a client-side identity guard for both full metadata and lightweight IMDb-rating responses. Wrong-year artwork, title logos, metadata and IMDb scores are rejected even if an older Worker returns them.
+- Cloudflare Worker v0.1.10 now returns the resolved title/year from the lightweight IMDb route so the app can verify identity before rendering the badge.
+- Performs a one-time metadata-cache schema refresh on upgrade to remove ambiguous metadata cached by earlier builds. This does **not** refresh/rebuild the provider catalogue or SQLite database.
+- Existing v0.7.14 detail-navigation stability, v0.7.13 viewport IMDb hydration, 100-item Home rails, source stacking, watched/resume state and Windows/mpv playback remain unchanged.
+
 ## v0.7.14 — Detail Navigation + Interaction Stability
 
 - Fixes the title-detail transition captured in the Windows screen recording: raw provider names such as `EN - 2073 (2024)` / `AMZ - ...` no longer flash as the large title before metadata settles. Detail presentation uses the cleaned title immediately while full raw source names remain available in Smart Source Selection.
