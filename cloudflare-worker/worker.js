@@ -392,7 +392,7 @@ async function fetchSnoakList(env,key){
   const cfg=SNOAK_LISTS[key];if(!cfg)throw new Error('Unknown Swoop TV curated list.');
   const [info,payload]=await Promise.all([
     mdbFetch(`/lists/snoak/${encodeURIComponent(cfg.slug)}`,env).catch(()=>null),
-    mdbFetch(`/lists/snoak/${encodeURIComponent(cfg.slug)}/items`,env,{extended:'ids_only'})
+    mdbFetch(`/lists/snoak/${encodeURIComponent(cfg.slug)}/items`,env,{limit:1000})
   ]);
   const sourceUpdatedAt=parseListUpdatedAt(info),stale=Boolean(sourceUpdatedAt&&Date.now()-sourceUpdatedAt>SNOAK_STALE_MS);
   return {key,slug:cfg.slug,mediaType:cfg.mediaType,sourceUpdatedAt,stale,items:stale?[]:compactDiscoveryMdb(payload)};
@@ -660,7 +660,7 @@ export default {
       return json(request, {
         ok:true,
         service:'Swoop TV Xtream Connection Helper',
-        version:'0.1.21',
+        version:'0.1.22',
         configured:String(env.SWOOP_PROXY_TOKEN || '').length >= 16,
         metadataConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
         discoveryConfigured:Boolean(String(env.TMDB_API_TOKEN || '').trim()),
