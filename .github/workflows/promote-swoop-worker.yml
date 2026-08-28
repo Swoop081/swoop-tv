@@ -1,0 +1,84 @@
+name: Promote Swoop TV Worker v0.1.22
+
+on:
+  push:
+    paths:
+      - '.github/workflows/promote-swoop-worker.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  promote-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Patch Snoak list payload contract
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const path='cloudflare-worker/worker.js';
+          let s=fs.readFileSync(path,'utf8');
+          const from="mdbFetch(`/lists/snoak/${encodeURIComponent(cfg.slug)}/items`,env,{extended:'ids_only'})";
+          const to="mdbFetch(`/lists/snoak/${encodeURIComponent(cfg.slug)}/items`,env,{limit:1000})";
+          if(!s.includes(from) && !s.includes(to)) throw new Error('Expected Snoak list fetch anchor not found');
+          if(s.includes(from)) s=s.replace(from,to);
+          s=s.replaceAll("'0.1.21'","'0.1.22'").replaceAll('"0.1.21"','"0.1.22"');
+          fs.writeFileSync(path,s);
+          NODE
+          node --check cloudflare-worker/worker.js
+
+      - name: Commit Worker source repair
+        run: |
+          if git diff --quiet -- cloudflare-worker/worker.js; then
+            echo 'Worker source already contains the v0.1.22 repair.'
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add cloudflare-worker/worker.js
+            git commit -m 'Fix Snoak curated list payloads in Worker v0.1.22 [skip ci]'
+            git push origin HEAD:main
+          fi
+
+      - name: Require Cloudflare deployment credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo '::error::Cloudflare deployment secrets are not configured in this GitHub repository.'
+            exit 2
+          fi
+
+      - name: Deploy existing swoop-tv-connection Worker
+        working-directory: cloudflare-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy worker.js --name swoop-tv-connection --compatibility-date 2026-08-01
+
+      - name: Verify live Worker and Snoak Top 100 payloads
+        run: |
+          node <<'NODE'
+          const base='https://swoop-tv-connection.justinbelot8.workers.dev';
+          const root=await fetch(base).then(r=>r.json());
+          if(root.version!=='0.1.22') throw new Error(`Live Worker version is ${root.version||'unknown'}, expected 0.1.22`);
+          for(const key of ['movies-trakt','shows-trakt']){
+            const res=await fetch(base,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode:'snoak-list',listKey:key})});
+            const body=await res.json();
+            const count=Array.isArray(body?.items)?body.items.length:0;
+            console.log(`${key}: HTTP ${res.status}, ${count} items`);
+            if(!res.ok||count<100) throw new Error(`${key} live payload incomplete: HTTP ${res.status}, ${count} items, ${body?.error||''}`);
+          }
+          console.log('Live Swoop TV Worker v0.1.22 verified with 100+ movie and TV curated items.');
+          NODE
