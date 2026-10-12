@@ -459,8 +459,26 @@ h2{margin:16px 0 9px}
  .home-feature-copy>p{font-size:13px;line-height:1.4;-webkit-line-clamp:2;margin:7px 0 14px}
  .home-buttons{gap:8px}
 }
+/* Compact sports match cards on all three league schedules. */
+.nba-slate{gap:10px}
+.nba-game{padding:13px 15px}
+.nba-game-top{min-height:24px}
+.nba-matchup{margin:11px 0 8px;gap:8px}
+.nba-team-logo{width:58px;height:58px;margin:0 auto 5px}
+.nba-matchup small{font-size:12px;line-height:1.25}
+.nba-matchup strong{font-size:clamp(23px,3.5vw,36px)}
+.nba-game-bottom{min-height:0;justify-content:flex-end}
+.nba-game-bottom:empty{display:none}
+.nba-game-bottom button{padding:8px 12px}
+@media(max-width:780px){
+ .nba-game{padding:12px 14px}
+ .nba-matchup{margin:9px 0 7px}
+ .nba-team-logo{width:53px;height:53px;margin-bottom:4px}
+ .nba-matchup strong{font-size:30px}
+ .nba-game-bottom button{font-size:11px;padding:8px 11px}
+}
 </style></head>
-<body><header><div class="brand">Swoop<b>TV</b> <span class="status">v0.8.21</span></div><nav id="topnav"></nav><span class="status">INTERACTIVE DEMO</span></header><main class="wrap" id="app"><div style="max-width:440px;margin:8vh auto;padding:26px;background:#192435;border-radius:22px"><h2>Connect your TV service</h2><p class="muted">Enter your Xtream Codes login details.</p><form id="xtreamform"><p><input required id="server" type="url" placeholder="Server URL" style="width:100%;padding:12px"></p><p><input required id="username" placeholder="Username" style="width:100%;padding:12px"></p><p><input required id="password" type="password" placeholder="Password" style="width:100%;padding:12px"></p><button class="action" type="submit">Connect</button></form><p id="connectionstatus" role="status"></p></div></main><div class="bottom" id="bottomnav"></div>
+<body><header><div class="brand">Swoop<b>TV</b> <span class="status">v0.8.22</span></div><nav id="topnav"></nav><span class="status">INTERACTIVE DEMO</span></header><main class="wrap" id="app"><div style="max-width:440px;margin:8vh auto;padding:26px;background:#192435;border-radius:22px"><h2>Connect your TV service</h2><p class="muted">Enter your Xtream Codes login details.</p><form id="xtreamform"><p><input required id="server" type="url" placeholder="Server URL" style="width:100%;padding:12px"></p><p><input required id="username" placeholder="Username" style="width:100%;padding:12px"></p><p><input required id="password" type="password" placeholder="Password" style="width:100%;padding:12px"></p><button class="action" type="submit">Connect</button></form><p id="connectionstatus" role="status"></p></div></main><div class="bottom" id="bottomnav"></div>
 <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.js"></script>
 <script>
 const groups={"🟢 Kayo Sports 🟢":["Kayo Main Event","Kayo Cricket","Kayo Football","Kayo Racing","Kayo Sports 05","Kayo Sports 06","Kayo Sports 07","Kayo Sports 08"],"🔴 Premium Entertainment 🔴":["HBO","HBO West","HBO 2","HBO Signature","HBO Zone","HBO Comedy","Star Wars","Game of Thrones","Harry Potter","Lord of the Rings"],"🌎 World Sports 🌎":["NBA 01","NBA 02","NBA 03","NBA 04","NBA 05","NBA 06","NBA 07","NBA 08"],"🎟️ (PPV) Live Sport Today 🎟️":["PPV EVENT 01","PPV EVENT 02","PPV EVENT 03"],"🟠 Sitcoms 🟠":["Seinfeld","Friends","The Office","Parks and Recreation"],"🔵 Teen & Adult Animation 🔵":["The Simpsons","South Park","Family Guy","Rick and Morty","Bob's Burgers","Futurama","American Dad","King of the Hill","BoJack Horseman","Archer"],"🎵 Music Videos 🎵":["Pop Hits","Rock Classics","Music 80s"]};
