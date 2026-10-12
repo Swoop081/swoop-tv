@@ -13,6 +13,111 @@ def year(value):
     match=re.search(r"\b(?:19|20)\d{2}\b",str(value or ""))
     return match.group(0) if match else ""
 def key(name,yr=""):return norm(re.sub(r"\b(?:19|20)\d{2}\b","",name or "")),str(yr or year(name))
+
+def refresh_mdblist(updated,available,indices,record,identity):
+    api_key=os.getenv("SWOOP_MDBLIST_API_KEY","").strip()
+    if not api_key:
+        print("MDBList: SWOOP_MDBLIST_API_KEY not configured; keeping existing curated lists.")
+        return
+    presets=[("movie","Trending Movies","snoak","trending-movies"),("series","Trending TV Shows","snoak","trakt-s-trending-shows")]
+    for t,name,user,slug in presets:
+        try:
+            rows=[]
+            for offset in range(0,2000,100):
+                url="https://api.mdblist.com/lists/"+user+"/"+slug+"/items?"+urllib.parse.urlencode({"apikey":api_key,"limit":100,"offset":offset})
+                data=request(url)
+                batch=data if isinstance(data,list) else data.get("items",data.get("movies",[])+data.get("shows",[]))
+                if not isinstance(batch,list):raise ValueError("Unexpected MDBList items")
+                rows.extend(batch)
+                if len(batch)<100:break
+            if not rows:raise ValueError("MDBList returned no titles")
+            prior=next((g for g in updated if g.get("type")==t and g.get("name","").lower()==name.lower()),None)
+            previous={key(e.get("name"),e.get("year")):e for e in (prior or {}).get("entries",[])}
+            by_tmdb,by_name=indices[t]
+            entries=[];seen=set()
+            for row in rows:
+                v=row.get("movie") or row.get("show") or row
+                title=v.get("title") or v.get("name") or row.get("title") or row.get("name")
+                if not title:continue
+                yr=str(v.get("year") or v.get("release_year") or row.get("year") or "")
+                tmdb=(v.get("ids") or {}).get("tmdb") or v.get("tmdb_id") or v.get("tmdbid") or row.get("tmdb_id")
+                candidates=by_tmdb.get(str(tmdb),[]) if tmdb else []
+                if not candidates:candidates=by_name.get(key(title,yr),[])
+                if not candidates:continue
+                k=key(title,yr)
+                if k in seen:continue
+                seen.add(k)
+                e=record(candidates[0],t);e["name"]=title;e["year"]=yr
+                e["streams"]=[{"id":identity(x,t),"ext":x.get("container_extension") or "mp4","name":x.get("name") or ""} for x in candidates]
+                prior_entry=previous.get(k)
+                if prior_entry:e["metadata"]={**e["metadata"],**(prior_entry.get("metadata") or {})}
+                if tmdb:e["metadata"]["tmdbId"]=tmdb
+                entries.append(e)
+            if not entries:raise ValueError("No provider matches; preserving previous "+name)
+            group={"id":prior["id"] if prior else "mdblist-"+("movies" if t=="movie" else "shows"),"name":name,"type":t,"entries":entries}
+            updated[:]=[g for g in updated if not(g.get("type")==t and g.get("name","").lower()==name.lower())]
+            updated.append(group)
+            print("MDBList",name,":",len(entries),"available titles of",len(rows))
+        except Exception as exc:
+            print("MDBList",name,"failed; preserving prior collection:",type(exc).__name__,str(exc).split("?")[0],file=sys.stderr)
+
+def enrich_tmdb(updated):
+    token=os.getenv("SWOOP_TMDB_READ_TOKEN","").strip()
+    if not token:
+        print("TMDb: SWOOP_TMDB_READ_TOKEN not configured; preserving existing metadata.")
+        return
+    headers={"Authorization":"Bearer "+token}
+    cache={}
+    remaining=int(os.getenv("SWOOP_TMDB_MAX_PER_RUN","180"))
+    total=0
+    for g in updated:
+        t=g.get("type")
+        if t not in ("movie","series"):continue
+        for e in g.get("entries",[]):
+            m=e.setdefault("metadata",{})
+            if m.get("cast") and m.get("poster") and m.get("tmdbId"):continue
+            ident=(t,key(e.get("name"),e.get("year")))
+            if ident in cache:
+                e["metadata"]={**m,**cache[ident]}
+                continue
+            if remaining<=0:continue
+            remaining-=1
+            endpoint="movie" if t=="movie" else "tv"
+            tmdb=m.get("tmdbId")
+            try:
+                if not tmdb:
+                    query=urllib.parse.urlencode({"query":e.get("name",""),"language":"en-US"})
+                    found=request("https://api.themoviedb.org/3/search/"+endpoint+"?"+query,headers)
+                    results=found.get("results",[])
+                    yr=str(e.get("year") or "")
+                    matched=next((x for x in results if yr and str(x.get("release_date") or x.get("first_air_date") or "").startswith(yr)),None)
+                    chosen=matched or (results[0] if results else None)
+                    if not chosen:continue
+                    tmdb=chosen["id"]
+                details=request("https://api.themoviedb.org/3/"+endpoint+"/"+str(tmdb)+"?append_to_response=credits,images&language=en-US",headers)
+                cast=[{"id":p.get("id"),"name":p.get("name")} for p in details.get("credits",{}).get("cast",[])[:35] if p.get("name")]
+                images=details.get("images") or {}
+                logos=images.get("logos") or []
+                logo=next((x for x in logos if x.get("iso_639_1")=="en"),logos[0] if logos else None)
+                enriched={"tmdbId":tmdb,"cast":cast,"poster":"https://image.tmdb.org/t/p/w500"+details["poster_path"] if details.get("poster_path") else m.get("poster",""),"backdrop":"https://image.tmdb.org/t/p/w1280"+details["backdrop_path"] if details.get("backdrop_path") else m.get("backdrop",""),"overview":details.get("overview") or m.get("overview","")}
+                if logo and logo.get("file_path"):enriched["logo"]="https://image.tmdb.org/t/p/w500"+logo["file_path"]
+                e["metadata"]={**m,**enriched};cache[ident]=enriched;total+=1
+            except Exception as exc:
+                print("TMDb enrichment skipped",t,str(e.get("name",""))[:70],type(exc).__name__,file=sys.stderr)
+    # Propagate newly enriched cast and artwork to all rails, including Asian Series.
+    known={}
+    for g in updated:
+        if g.get("type") not in ("movie","series"):continue
+        for e in g.get("entries",[]):
+            m=e.get("metadata") or {}
+            if m.get("cast"):known[(g["type"],key(e.get("name"),e.get("year")))]=m
+    for g in updated:
+        if g.get("type") not in ("movie","series"):continue
+        for e in g.get("entries",[]):
+            m=known.get((g["type"],key(e.get("name"),e.get("year"))))
+            if m:e["metadata"]={**e.get("metadata",{}),**m}
+    print("TMDb enriched",total,"titles this run; remaining budget",remaining)
+
 def main():
     base=os.getenv("SWOOP_XTREAM_URL","").rstrip("/")
     user=os.getenv("SWOOP_XTREAM_USER","")
@@ -108,6 +213,8 @@ def main():
         for e in g.get("entries",[]):
             prior=known.get((g["type"],key(e.get("name"),e.get("year"))))
             if prior:e["metadata"]={**e.get("metadata",{}),**prior}
+    refresh_mdblist(updated,available,indices,record,identity)
+    enrich_tmdb(updated)
     # Do not write provider credentials, raw playlist URLs, or user information.
     result={"format":"swooptv-curated-v1","version":2,"generatedAt":datetime.datetime.now(datetime.timezone.utc).isoformat(),"categories":updated}
     if not any(g.get("entries") for g in updated if g.get("type")=="movie"):raise RuntimeError("No movies survived reconciliation")
