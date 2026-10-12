@@ -16,6 +16,8 @@ def title_key(value):
     name=str(value or "")
     name=re.sub(r"^(?:(?:[a-z]{2,5}\s*[:|]\s*)|(?:netflix|disney\+?|amazon|prime|apple\s*tv|hbo|max|hulu|nf|dsnp|4k|8k|uhd|hdr|dv|multi|eng|en)\s*[:|._ -]+)+","",name,flags=re.I)
     name=re.sub(r"\b(?:19|20)\d{2}\b|\b(?:1080p|2160p|720p|4k|hdr|dolby vision|multi[- ]?subs?|season\s*\d+|s\d{1,2}\s*e\d{1,3}|complete)\b"," ",name,flags=re.I)
+    name=re.sub(r"\\b(?:s(?:eason)?\\s*0?[1-9][0-9]?|series\\s*0?[1-9][0-9]?|(?:dubbed|subbed|dual audio|english dubbed))\\b"," ",name,flags=re.I)
+    name=re.sub(r"\\s*\\[[^]]*(?:1080|2160|4k|sub|dub|netflix)[^]]*\\]"," ",name,flags=re.I)
     return norm(name)
 def key(name,yr=""):
     return title_key(name),str(yr or year(name))
@@ -40,6 +42,19 @@ def lookup(t,title,yr,tmdb,indices):
             sid=str(x.get("series_id" if t=="series" else "stream_id"))
             matches[sid]=x
     return list(matches.values())
+
+def match_diagnostics(t,rows,indices):
+    # Print a bounded sample for auditing without exposing provider credentials.
+    by_tmdb,by_name,by_title=indices[t]
+    misses=[]
+    for row in rows:
+        v=row.get("movie") or row.get("show") or row
+        title=v.get("title") or v.get("name") or row.get("title") or row.get("name")
+        if not title:continue
+        yr=str(v.get("year") or v.get("release_year") or row.get("year") or "")
+        tmdb=(v.get("ids") or {}).get("tmdb") or v.get("tmdb_id") or v.get("tmdbid") or row.get("tmdb_id")
+        if not lookup(t,title,yr,tmdb,indices):misses.append(str(title)+" ("+yr+")")
+    print("MDBList unmatched",t,":",len(misses),"sample:",json.dumps(misses[:30],ensure_ascii=False))
 
 def refresh_mdblist(updated,available,indices,record,identity):
     api_key=os.getenv("SWOOP_MDBLIST_API_KEY","").strip()
@@ -83,6 +98,7 @@ def refresh_mdblist(updated,available,indices,record,identity):
             updated[:]=[g for g in updated if not(g.get("type")==t and g.get("name","").lower()==name.lower())]
             updated.append(group)
             print("MDBList",name,":",len(entries),"available titles of",len(rows))
+            match_diagnostics(t,rows,indices)
         except Exception as exc:
             print("MDBList",name,"failed; preserving prior collection:",type(exc).__name__,str(exc).split("?")[0],file=sys.stderr)
 
@@ -95,12 +111,12 @@ def enrich_tmdb(updated):
     cache={}
     remaining=int(os.getenv("SWOOP_TMDB_MAX_PER_RUN","180"))
     total=0
-    for g in updated:
+    for g in sorted(updated,key=lambda g: 0 if g.get("name")=="Trending TV Shows" else 1 if g.get("name")=="Trending Movies" else 2):
         t=g.get("type")
         if t not in ("movie","series"):continue
         for e in g.get("entries",[]):
             m=e.setdefault("metadata",{})
-            if m.get("cast") and m.get("poster") and m.get("tmdbId"):continue
+            if m.get("cast") and m.get("poster") and m.get("tmdbId") and m.get("backdrop"):continue
             ident=(t,key(e.get("name"),e.get("year")))
             if ident in cache:
                 e["metadata"]={**m,**cache[ident]}
