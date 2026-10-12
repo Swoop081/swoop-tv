@@ -134,6 +134,50 @@ def refresh_mdblist(updated,available,indices,record,identity):
         except Exception as exc:
             print("MDBList",name,"failed; preserving prior collection:",type(exc).__name__,str(exc).split("?")[0],file=sys.stderr)
 
+def enrich_episode_metadata(updated):
+    token=os.getenv("SWOOP_TMDB_READ_TOKEN","").strip()
+    if not token:return
+    headers={"Authorization":"Bearer "+token}
+    limit=int(os.getenv("SWOOP_TMDB_EPISODE_SHOWS_PER_RUN","25"))
+    count=0
+    cache={}
+    for group in sorted(updated,key=lambda g:0 if g.get("name")=="Trending TV Shows" else 1):
+        if group.get("type")!="series":continue
+        for entry in group.get("entries",[]):
+            metadata=entry.setdefault("metadata",{})
+            tmdb=metadata.get("tmdbId")
+            if not tmdb:continue
+            identity=str(tmdb)
+            if identity in cache:
+                if cache[identity]:metadata["episodes"]=cache[identity]
+                continue
+            if metadata.get("episodes"):
+                cache[identity]=metadata["episodes"]
+                continue
+            if count>=limit:continue
+            count+=1
+            try:
+                details=request("https://api.themoviedb.org/3/tv/"+urllib.parse.quote(identity,safe="")+"?language=en-US",headers)
+                records=[]
+                for season in (details.get("seasons") or []):
+                    number=season.get("season_number")
+                    if number is None or number<1:continue
+                    data=request("https://api.themoviedb.org/3/tv/"+urllib.parse.quote(identity,safe="")+"/season/"+str(number)+"?language=en-US",headers)
+                    for ep in data.get("episodes",[]):
+                        still=ep.get("still_path")
+                        records.append({"season":str(number),"episode":ep.get("episode_number"),"overview":ep.get("overview") or "","still":"https://image.tmdb.org/t/p/w300"+still if still else ""})
+                if records:
+                    metadata["episodes"]=records
+                    cache[identity]=records
+            except Exception as exc:
+                print("TMDb episodes skipped",identity,type(exc).__name__,file=sys.stderr)
+    for group in updated:
+        if group.get("type")!="series":continue
+        for entry in group.get("entries",[]):
+            metadata=entry.get("metadata") or {}
+            if not metadata.get("episodes") and str(metadata.get("tmdbId")) in cache and cache[str(metadata.get("tmdbId"))]:
+                metadata["episodes"]=cache[str(metadata.get("tmdbId"))]
+
 def enrich_tmdb(updated):
     token=os.getenv("SWOOP_TMDB_READ_TOKEN","").strip()
     if not token:
@@ -409,6 +453,7 @@ def main():
         if group.get("type") in ("movie","series"):
             group["entries"]=consolidate(group.get("entries",[]))
     enrich_tmdb(updated)
+    enrich_episode_metadata(updated)
     # Do not write provider credentials, raw playlist URLs, or user information.
     result={"format":"swooptv-curated-v1","version":2,"generatedAt":datetime.datetime.now(datetime.timezone.utc).isoformat(),"categories":updated}
     if not any(g.get("entries") for g in updated if g.get("type")=="movie"):raise RuntimeError("No movies survived reconciliation")
