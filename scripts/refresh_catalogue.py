@@ -12,6 +12,22 @@ def norm(value):
 def year(value):
     m=re.search(r"\b(?:19|20)\d{2}\b",str(value or ""))
     return m.group() if m else ""
+def legacy_title_key(value):
+    name=str(value or "")
+    name=re.sub(r"^(?:(?:[a-z]{2,5}\s*[:|]\s*)|(?:netflix|disney\+?|amazon|prime|apple\s*tv|hbo|max|hulu|nf|dsnp|4k|8k|uhd|hdr|dv|multi|eng|en)\s*[:|._ -]+)+","",name,flags=re.I)
+    name=re.sub(r"\b(?:19|20)\d{2}\b|\b(?:1080p|2160p|720p|4k|hdr|dolby vision|multi[- ]?subs?|season\s*\d+|s\d{1,2}\s*e\d{1,3}|complete)\b"," ",name,flags=re.I)
+    name=re.sub(r"\\b(?:s(?:eason)?\\s*0?[1-9][0-9]?|series\\s*0?[1-9][0-9]?|(?:dubbed|subbed|dual audio|english dubbed))\\b"," ",name,flags=re.I)
+    name=re.sub(r"\\s*\\[[^]]*(?:1080|2160|4k|sub|dub|netflix)[^]]*\\]"," ",name,flags=re.I)
+    return norm(name)
+def legacy_key(name,yr=""):
+    return legacy_title_key(name),str(yr or year(name))
+def legacy_variants(name):
+    values={legacy_title_key(name)}
+    for sep in (" | "," : "," - "):
+        parts=str(name or "").split(sep)
+        if len(parts)>1:values.add(legacy_title_key(parts[-1]))
+    return {v for v in values if len(v)>2}
+
 def title_key(value):
     return norm(value)
 
@@ -32,7 +48,7 @@ def title_in_listing(title,listing):
     if not target or not source:return False
     if target==source:return True
     words=target.split()
-    if len(words)<2 or len(target)<8:return False
+    if len(target)<4:return False
     return (" "+target+" ") in (" "+source+" ")
 
 def lookup(t,title,yr,tmdb,indices):
@@ -46,6 +62,15 @@ def lookup(t,title,yr,tmdb,indices):
         provider_year=year(x.get("name"))
         if yr and provider_year and provider_year!=str(yr):continue
         if not title_in_listing(title,x.get("name")):continue
+        sid=str(x.get("series_id" if t=="series" else "stream_id"))
+        matches[sid]=x
+    if matches:return list(matches.values())
+    # Conservative compatibility fallback: existing provider naming conventions
+    # must not disappear when the new full-title matcher cannot resolve them.
+    for x in indices[t][3]:
+        provider_year=year(x.get("name"))
+        if yr and provider_year and provider_year!=str(yr):continue
+        if legacy_title_key(x.get("name")) not in legacy_variants(title):continue
         sid=str(x.get("series_id" if t=="series" else "stream_id"))
         matches[sid]=x
     return list(matches.values())
