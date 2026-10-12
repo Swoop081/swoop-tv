@@ -255,8 +255,28 @@ def main():
         if g.get("id") in ("recently-added","asian-series","new-movies-netflix","new-series-netflix"):continue
         entries=[r for e in g.get("entries",[]) if (r:=reconcile(e,g["type"]))]
         updated.append({**g,"entries":entries})
+    def consolidate(entries):
+        """Merge alternate provider versions into one title with selectable sources."""
+        merged={}
+        for e in entries:
+            m=e.get("metadata") or {}
+            tmdb=str(m.get("tmdbId") or "").strip()
+            title=title_key(e.get("name"))
+            yr=str(e.get("year") or year(e.get("name")) or "")
+            ident=("tmdb",tmdb) if tmdb else ("title",title,yr)
+            if not title and not tmdb:continue
+            if ident not in merged:
+                merged[ident]={**e,"streams":list(e.get("streams") or [])}
+            else:
+                target=merged[ident]
+                ids={str(st.get("id")) for st in target["streams"]}
+                target["streams"].extend(st for st in e.get("streams",[]) if str(st.get("id")) not in ids)
+                for k,v in m.items():
+                    if not (target.get("metadata") or {}).get(k) and v not in (None,"",[]):target.setdefault("metadata",{})[k]=v
+                target["added"]=max(int(target.get("added") or 0),int(e.get("added") or 0))
+        return list(merged.values())
     def recent(t):
-        rows=sorted(available[t].values(),key=lambda x:(int(x.get("added") or x.get("last_modified") or 0),int(identity(x,t))),reverse=True)[:200]
+        rows=sorted(available[t].values(),key=lambda x:(int(x.get("added") or x.get("last_modified") or 0),int(identity(x,t))),reverse=True)
         previous=next((g.get("entries",[]) for g in groups if g.get("type")==t and g.get("id")=="recently-added"),[])
         old_by_id={str(s.get("id")):e for e in previous for s in e.get("streams",[])}
         entries=[]
@@ -264,7 +284,7 @@ def main():
             e=record(x,t);prior=old_by_id.get(identity(x,t))
             if prior:e["metadata"]={**e["metadata"],**(prior.get("metadata") or {})}
             entries.append(e)
-        return {"id":"recently-added","name":"Recently Added","type":t,"entries":entries}
+        return {"id":"recently-added","name":"Recently Added","type":t,"entries":consolidate(entries)[:200]}
     updated.extend([recent("movie"),recent("series")])
     # Automatically collect Netflix movie categories; use provider-added timestamps.
     netflix_names=[
@@ -360,6 +380,10 @@ def main():
             if sid not in {st["id"] for st in e["streams"]}:e["streams"].append(record(x,"series")["streams"][0])
     updated.append({"id":"asian-series","name":"Asian Series","type":"series","entries":list(asian_entries.values())})
     print("Asian Series:",len(asian_entries),"titles from",len(asian),"provider sources across",len(asian_ids),"categories")
+    # Consolidate every collection, including manually curated and dynamic rails.
+    for group in updated:
+        if group.get("type") in ("movie","series"):
+            group["entries"]=consolidate(group.get("entries",[]))
     # Share TMDb metadata across rails, without allowing empty fields to erase cast/artwork.
     known={}
     for g in updated:
