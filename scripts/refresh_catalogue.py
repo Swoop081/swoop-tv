@@ -215,7 +215,7 @@ def main():
         if not isinstance(result,list):raise RuntimeError("Unexpected provider response for "+action)
         return result
     # Fetch all data before touching the published catalogue. Fail closed.
-    vod=api("get_vod_streams");series=api("get_series");cats=api("get_series_categories")
+    vod=api("get_vod_streams");series=api("get_series");cats=api("get_series_categories");movie_cats=api("get_vod_categories")
     if not vod or not series:raise RuntimeError("Provider returned empty movie or series catalogue; preserving published file.")
     print("Provider snapshot:",len(vod),"movies,",len(series),"series")
     old=json.loads(OUT.read_text()) if OUT.exists() and OUT.stat().st_size else {"format":"swooptv-curated-v1","version":2,"categories":[]}
@@ -252,7 +252,7 @@ def main():
     for g in groups:
         if g.get("type") not in ("movie","series"):
             updated.append(g);continue
-        if g.get("id") in ("recently-added","asian-series"):continue
+        if g.get("id") in ("recently-added","asian-series","new-movies-netflix"):continue
         entries=[r for e in g.get("entries",[]) if (r:=reconcile(e,g["type"]))]
         updated.append({**g,"entries":entries})
     def recent(t):
@@ -266,6 +266,36 @@ def main():
             entries.append(e)
         return {"id":"recently-added","name":"Recently Added","type":t,"entries":entries}
     updated.extend([recent("movie"),recent("series")])
+    # Automatically collect Netflix movie categories; use provider-added timestamps.
+    netflix_names=[
+        "NETFLIX DOCU-MOVIES","NETFLIX HEVC","NETFLIX KIDS",
+        "NETFLIX KIDS 4K 3840P DOLBY VISION","NETFLIX MOVIES",
+        "NETFLIX MOVIES 4K 3840P DOLBY VISION",
+        "NETFLIX MOVIES DOLBY AUDIO","NETFLIX MUSIC",
+        "NETFLIX STAND-UP COMEDY"
+    ]
+    netflix_ids={str(c.get("category_id")) for c in movie_cats if norm(c.get("category_name")) in {norm(n) for n in netflix_names}}
+    if not netflix_ids:raise RuntimeError("Netflix movie provider categories not found; preserving published catalogue.")
+    netflix_rows=[x for x in vod if str(x.get("category_id")) in netflix_ids or any(str(i) in netflix_ids for i in x.get("category_ids",[]) or [])]
+    prior_netflix=next((g.get("entries",[]) for g in groups if g.get("type")=="movie" and g.get("id")=="new-movies-netflix"),[])
+    if not netflix_rows and prior_netflix:raise RuntimeError("Netflix movie categories unexpectedly empty; preserving catalogue.")
+    old_netflix={str(st.get("id")):e for e in prior_netflix for st in e.get("streams",[])}
+    netflix_entries={}
+    for x in sorted(netflix_rows,key=lambda x:(int(x.get("added") or x.get("last_modified") or 0),identity(x,"movie")),reverse=True):
+        sid=identity(x,"movie");tmdb=str(x.get("tmdb_id") or "")
+        title=title_key(x.get("name"));yr=year(x.get("name"))
+        ident=("tmdb",tmdb) if tmdb else ("title",title,yr)
+        e=netflix_entries.get(ident)
+        if e is None:
+            e=record(x,"movie")
+            previous=old_netflix.get(sid)
+            if previous:
+                e["metadata"]={**e["metadata"],**{k:v for k,v in (previous.get("metadata") or {}).items() if v not in (None,"",[])}}
+            netflix_entries[ident]=e
+        elif sid not in {st["id"] for st in e["streams"]}:
+            e["streams"].append(record(x,"movie")["streams"][0])
+    updated.append({"id":"new-movies-netflix","name":"New Movies on Netflix","type":"movie","entries":list(netflix_entries.values())})
+    print("New Movies on Netflix:",len(netflix_entries),"titles from",len(netflix_rows),"provider streams across",len(netflix_ids),"categories")
     wanted={norm(n) for n in ["asia series (multi-subs)","disney+ asia series","disney+ asia series 4k 3840p dolby vision","netflix asia"]}
     asian_ids={str(c.get("category_id")) for c in cats if norm(c.get("category_name")) in wanted}
     asian=[x for x in series if str(x.get("category_id")) in asian_ids or any(str(i) in asian_ids for i in x.get("category_ids",[]) or [])]
