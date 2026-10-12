@@ -1,7 +1,7 @@
 {
   "format": "swooptv-curated-v1",
   "version": 2,
-  "generatedAt": "2026-10-12T09:18:04.475Z",
+  "generatedAt": "2026-10-12T09:24:19.323Z",
   "categories": [
     {
       "id": "group-1791785041794",
@@ -49504,6 +49504,57 @@
               "providerName": "IR - Avatar: Seven Havens (2026) (US) آواتار: هفت پناهگاه"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/3t6Yes1JJxr4e9Sk6Wl6WpAuY5d.png",
+            "tmdbId": 284833,
+            "poster": "https://image.tmdb.org/t/p/w500/u62d0BPqsdv2TUDifcMmoePbHPL.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/t2KFGH07Al4XuIZLHRlF1Hj9IJB.jpg",
+            "overview": "In a world shattered by a devastating cataclysm, a young Earthbender discovers she's the new Avatar after Korra. But in this dangerous era, that title marks her as humanity's destroyer, not its savior. Hunted by both human and spirit enemies, she and her long-lost twin must uncover their mysterious origins and save the Seven Havens before civilization's last strongholds collapse.",
+            "rating": 8.886,
+            "releaseDate": "2026-10-09",
+            "genres": [
+              "Animation",
+              "Action & Adventure",
+              "Sci-Fi & Fantasy",
+              "Family"
+            ],
+            "runtime": null,
+            "cast": [
+              {
+                "name": "Saheli Khan",
+                "character": "Pavi (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/v7KEBCh275MWmT0j5fxm4fslosD.jpg"
+              },
+              {
+                "name": "Aishwarya 'Aishu' Devan",
+                "character": "Nisha (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/eRDnTa8yKo0G79j7Z48jeNODRuj.jpg"
+              },
+              {
+                "name": "Major Curda",
+                "character": "Jae (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/oHkyajLazp64ttgStLcJTY4wTvU.jpg"
+              },
+              {
+                "name": "Akshay Khanna",
+                "character": "Karthik (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/L2JWyOTwPRLHBLV7xUmDOcRHU3.jpg"
+              },
+              {
+                "name": "Sakina Jaffrey",
+                "character": "Agam (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/9U6vixMcwkj8aEffy64UqsklHd.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Book One: Survival",
+                "episodeCount": 13,
+                "poster": "https://image.tmdb.org/t/p/w342/efgXMFiHUQ0SjQqW1YJ0wEshevn.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49518,6 +49569,46 @@
               "providerName": "IR - The Apothecary Diaries (2023) (JP) خاطرات یک داروساز"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/6JpmIe9cJcbG6hecyN6ml8AG6RC.png",
+            "tmdbId": 220542,
+            "poster": "https://image.tmdb.org/t/p/w500/sJZcy8QsOPuRPiCfoCWVB3r9Ohg.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/gffVOVZ2Y9cmVIZ26Gt9ByMGCYH.jpg",
+            "overview": "Maomao lived a peaceful life with her apothecary father. Until one day, she's sold as a lowly servant to the emperor's palace. But she wasn't meant for a compliant life among royalty. So when imperial heirs fall ill, she decides to step in and find a cure! This catches the eye of Jinshi, a handsome palace official who promotes her. Now, she's making a name for herself solving medical mysteries!",
+            "rating": 8.7,
+            "releaseDate": "2023-10-22",
+            "genres": [
+              "Animation",
+              "Drama",
+              "Mystery"
+            ],
+            "runtime": 23,
+            "cast": [
+              {
+                "name": "Aoi Yuuki",
+                "character": "Maomao (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/a5Mkd66GV1l3c9bZZtnvjUf33T2.jpg"
+              },
+              {
+                "name": "Takeo Otsuka",
+                "character": "Jinshi (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/wqeAMR0HOGUPBXz0TCNxDR51cQy.jpg"
+              },
+              {
+                "name": "Katsuyuki Konishi",
+                "character": "Gaoshun (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/nYM5cH6U7cp4x9dIzW0enmEKmeV.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Season 1",
+                "episodeCount": 60,
+                "poster": "https://image.tmdb.org/t/p/w342/7qx7OwBZcI0dRWc8DrbtxY5IrlV.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49532,6 +49623,59 @@
               "providerName": "IR - Cupertino (2026) (US) کوپرتینو"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/rWpDBJIePBvmMD2GQk0BHRw8xgr.png",
+            "tmdbId": 303630,
+            "poster": "https://image.tmdb.org/t/p/w500/70AhJpOqU2oKyQF2paJA764CSje.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/f9BMWxAWzFqXtqayrAyNbDFg9cK.jpg",
+            "overview": "A scrappy lawyer takes on a powerful tech giant in a high-stakes legal battle, navigating the cutthroat world of Silicon Valley while fighting for justice and the little guy's rights.",
+            "rating": 6.273,
+            "releaseDate": "2026-10-08",
+            "genres": [
+              "Drama"
+            ],
+            "runtime": null,
+            "cast": [
+              {
+                "name": "Mike Colter",
+                "character": "Michael Price",
+                "profile": "https://image.tmdb.org/t/p/w185/9LG9AzoY2ak6M2kwhKlGkLOUUot.jpg"
+              },
+              {
+                "name": "Rachel Keller",
+                "character": "Olivia Siffre",
+                "profile": "https://image.tmdb.org/t/p/w185/7WPsuYzygjtLbbG97GQksQNi1eG.jpg"
+              },
+              {
+                "name": "Ella Stiller",
+                "character": "Christy Palladino",
+                "profile": "https://image.tmdb.org/t/p/w185/zrVtDBIeheeWuc82k6UcxSstXj4.jpg"
+              },
+              {
+                "name": "Nik Dodani",
+                "character": "Vikram Malhotra",
+                "profile": "https://image.tmdb.org/t/p/w185/9bCiUBAuInJi4MMpt7rL1kzKt72.jpg"
+              },
+              {
+                "name": "Busy Philipps",
+                "character": "Natalia Boutella",
+                "profile": "https://image.tmdb.org/t/p/w185/7yvrZFL9gM4mqRITD5rrVU0mcmM.jpg"
+              },
+              {
+                "name": "Renée Elise Goldsberry",
+                "character": "Nichole E. Ferebee",
+                "profile": "https://image.tmdb.org/t/p/w185/xlcw1r2ieUlaDLK6CIs5MQ9HIgK.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Season 1",
+                "episodeCount": 7,
+                "poster": "https://image.tmdb.org/t/p/w342/70AhJpOqU2oKyQF2paJA764CSje.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49546,6 +49690,70 @@
               "providerName": "GR - Eternally Yours (2026) (US)"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/mmc57JGMWOht0UEetErNFCTRfRN.svg",
+            "tmdbId": 313630,
+            "poster": "https://image.tmdb.org/t/p/w500/gMKJJtwOnTkhkbdQabyo7OKTosb.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/1bmsSexBYKUlkst0TgHZCdf4EvH.jpg",
+            "overview": "Charles and Liz are a charming, married 500-year-old vampire couple whose relationship has survived centuries because, as vampires, divorce isn’t exactly an option. Together, they navigate modern society and their daughter dating a human.",
+            "rating": 10,
+            "releaseDate": "2026-10-08",
+            "genres": [
+              "Comedy",
+              "Sci-Fi & Fantasy"
+            ],
+            "runtime": null,
+            "cast": [
+              {
+                "name": "Ed Weeks",
+                "character": "Charles",
+                "profile": "https://image.tmdb.org/t/p/w185/axfAQF3mzQyzqKK5bAppfao312o.jpg"
+              },
+              {
+                "name": "Allegra Edwards",
+                "character": "Liz",
+                "profile": "https://image.tmdb.org/t/p/w185/nF3UoejILNYNmjsyCJKu1mgka5W.jpg"
+              },
+              {
+                "name": "Jaren Lewison",
+                "character": "Max",
+                "profile": "https://image.tmdb.org/t/p/w185/qMeAcqLHin1jL39GoRgtUt5acJn.jpg"
+              },
+              {
+                "name": "Helen J. Shen",
+                "character": "Emma",
+                "profile": "https://image.tmdb.org/t/p/w185/78gjC8UOesWs56pzlQgZllwTW8R.jpg"
+              },
+              {
+                "name": "Parker Young",
+                "character": "Jesse",
+                "profile": "https://image.tmdb.org/t/p/w185/wrBquz08tLT4GpG30JBOvfTVy93.jpg"
+              },
+              {
+                "name": "Rose Abdoo",
+                "character": "Phyllis",
+                "profile": "https://image.tmdb.org/t/p/w185/6gl2EerGV1p4LS2smamymwgU6jH.jpg"
+              },
+              {
+                "name": "Tristan Michael Brown",
+                "character": "Mort",
+                "profile": "https://image.tmdb.org/t/p/w185/cihxhqvpf6kewU1LF6HqpVsjD5J.jpg"
+              },
+              {
+                "name": "Shylo Molina",
+                "character": "Henry",
+                "profile": "https://image.tmdb.org/t/p/w185/rIhBsRY6c7B4ClLOJbc4qEWter1.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Season 1",
+                "episodeCount": 4,
+                "poster": "https://image.tmdb.org/t/p/w342/gMKJJtwOnTkhkbdQabyo7OKTosb.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49560,6 +49768,60 @@
               "providerName": "GR - NCIS: New York (2026) (US)"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/1wcyS3C3JLbN9sipMhrDkWndoKd.png",
+            "tmdbId": 319800,
+            "poster": "https://image.tmdb.org/t/p/w500/ifmi1Rr9v2qckSsxhNiQIVLE51p.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/wLL8oRsz9XGFQpnCpgi8S0Pj6sO.jpg",
+            "overview": "Special Agent Sam Hanna returns to his hometown of New York City to the NCIS field office and partners with a roguish agent, Nick Schaeffer, to help lead a new team as they are tasked with high-stakes missions to defend one of the most vital cities and ports in the world.",
+            "rating": 7.7,
+            "releaseDate": "2026-10-06",
+            "genres": [
+              "Crime",
+              "Drama"
+            ],
+            "runtime": null,
+            "cast": [
+              {
+                "name": "LL Cool J",
+                "character": "Sam Hanna",
+                "profile": "https://image.tmdb.org/t/p/w185/dpOHjasRJz7rk9CVutd6L9WnWTc.jpg"
+              },
+              {
+                "name": "Scott Caan",
+                "character": "Nick Schaeffer",
+                "profile": "https://image.tmdb.org/t/p/w185/hX5X4K7BfzOOGcxiNQ24EpPZrfC.jpg"
+              },
+              {
+                "name": "Jennifer Beals",
+                "character": "Robyn Wells",
+                "profile": "https://image.tmdb.org/t/p/w185/tu1CjyjoUoV7rGPyvwvH9b0MlbW.jpg"
+              },
+              {
+                "name": "Jacqueline Byers",
+                "character": "Addison 'Addy' Ross",
+                "profile": "https://image.tmdb.org/t/p/w185/vgj4zlU5sqJ1EzRgUP3ikRwK4lW.jpg"
+              },
+              {
+                "name": "Devin Druid",
+                "character": "Sean Sullivan",
+                "profile": "https://image.tmdb.org/t/p/w185/nX5sYqPUNEpLTy2N3ndzKlCwnlD.jpg"
+              },
+              {
+                "name": "Shane Harper",
+                "character": "Wyatt Sellers",
+                "profile": "https://image.tmdb.org/t/p/w185/4hZDzXBDeUbs8bxYevJEmXNVhyE.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Season 1",
+                "episodeCount": 3,
+                "poster": "https://image.tmdb.org/t/p/w342/ifmi1Rr9v2qckSsxhNiQIVLE51p.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49580,6 +49842,81 @@
               "providerName": "IR - Doctor X: Mafia in White (2026) (KR) دکتر ایکس: عصر مافیای سفید"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/sU3HlqW8J1rtLigitz2rBiTLTUC.png",
+            "tmdbId": 293610,
+            "poster": "https://image.tmdb.org/t/p/w500/nDDVzQfv95PGwj9nV2fJvUrkcvU.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/mDYIV71RL3mkaW8IfSGNthuVB7l.jpg",
+            "overview": "In a hospital dominated by ego and corruption, an enigmatic but brilliant surgeon arrives — taking on seemingly impossible cases amid fierce opposition.",
+            "rating": 8.5,
+            "releaseDate": "2026-10-09",
+            "genres": [
+              "Mystery",
+              "Drama",
+              "Crime"
+            ],
+            "runtime": null,
+            "cast": [
+              {
+                "name": "Kim Ji-won",
+                "character": "Gye Su-jeong",
+                "profile": "https://image.tmdb.org/t/p/w185/lX7W1j9kg4jV6XNn5XEE3rKsd3x.jpg"
+              },
+              {
+                "name": "Lee Jung-eun",
+                "character": "Jeong Hee-sook",
+                "profile": "https://image.tmdb.org/t/p/w185/4r3K47UpSmzZ5t9cyTRRqRl9rdz.jpg"
+              },
+              {
+                "name": "Son Hyun-joo",
+                "character": "Bu Seung-gwon",
+                "profile": "https://image.tmdb.org/t/p/w185/pOpqydpiDrXvd9ynZEt8GQl6yJD.jpg"
+              },
+              {
+                "name": "Kim Woo-seok",
+                "character": "Park Tae-Kyeong",
+                "profile": "https://image.tmdb.org/t/p/w185/pjuqZJRCw5BgAZf5CtjXNAmOAmd.jpg"
+              },
+              {
+                "name": "Lee Jin-hee",
+                "character": "Jo Won-jin",
+                "profile": "https://image.tmdb.org/t/p/w185/ejdN4VmStDyyhi7sN5Nox5VVh5x.jpg"
+              },
+              {
+                "name": "Kim Young-min",
+                "character": "Do Yoon-sik",
+                "profile": "https://image.tmdb.org/t/p/w185/xXbY65ATWU0VGd59Ry16o3mnxps.jpg"
+              },
+              {
+                "name": "Lee Sung-wook",
+                "character": "Bae Heung-gon",
+                "profile": "https://image.tmdb.org/t/p/w185/erpOUfjadjH2duXd6XWDsa2kNfw.jpg"
+              },
+              {
+                "name": "Kwon Seung-woo",
+                "character": "Ma Seong-gyoo",
+                "profile": "https://image.tmdb.org/t/p/w185/9XwjdLbetDegQdolJA91Wykkqdy.jpg"
+              },
+              {
+                "name": "Heo Joon-seok",
+                "character": "Kim Seong-jin",
+                "profile": "https://image.tmdb.org/t/p/w185/7UFyGXrKPDeAICdUUcmJaApyy9h.jpg"
+              },
+              {
+                "name": "Kim Young-ah",
+                "character": "Lee Seon-ae",
+                "profile": "https://image.tmdb.org/t/p/w185/g21Pa5GKMHL99wYSFQqhJX9lMUl.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Season 1",
+                "episodeCount": 12,
+                "poster": "https://image.tmdb.org/t/p/w342/u0DrgmScTheIyCVEaeDKQ3sagLu.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49594,6 +49931,81 @@
               "providerName": "IR - Romelia War Chronicle (2026) (JP) تاریخچهٔ جنگی رُمِلیا"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/hXWCx0n6cYBMcjngZ8M2iZXLwmZ.png",
+            "tmdbId": 305313,
+            "poster": "https://image.tmdb.org/t/p/w500/xOhx5KpSAlrEbqsu9TaCdmdIb72.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/l4npGR3d7No2Msr8OptVTek6G41.jpg",
+            "overview": "Victory over the Demon King should have been Romelia’s triumph. Instead, her fiance, Prince Henri, breaks off their engagement and sends her home in disgrace to a province in ruins. With no aid in sight, Romelia vows to raise an army, rebuild the ruined towns, and restore a struggling kingdom as new conflicts arise. The war may be over, but her story’s just begun.",
+            "rating": 9.5,
+            "releaseDate": "2026-10-05",
+            "genres": [
+              "Animation",
+              "Action & Adventure",
+              "Sci-Fi & Fantasy"
+            ],
+            "runtime": null,
+            "cast": [
+              {
+                "name": "Yuna Nemoto",
+                "character": "Romelia von Graham (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/pz6bTCv25jHsVhM371Y4B7dZ0d9.jpg"
+              },
+              {
+                "name": "Jin Ogasawara",
+                "character": "Al (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/eMgZZKKUrchA3uXt5B4ffaN8fIl.jpg"
+              },
+              {
+                "name": "Tomohiro Ono",
+                "character": "Ray (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/mugRR8yLYJ0k3UBXQNlXacn4byL.jpg"
+              },
+              {
+                "name": "Yuya Hirose",
+                "character": "Henri Lleus Lionel (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/jRe7ICqrCsaEWVD8jAmJdc7XwnQ.jpg"
+              },
+              {
+                "name": "Sayaka Senbongi",
+                "character": "Elizabeth (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/yLRKX9DPDGgTRKBQRFTUh3pvbU0.jpg"
+              },
+              {
+                "name": "Mariya Ise",
+                "character": "Ekaterina (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/uMHWTKGolzzjXCiv20F0n8h2Pqu.jpg"
+              },
+              {
+                "name": "Asaka",
+                "character": "Ryoki (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/sUTaloXXmNdPJPSCBgpKDxmtmKV.jpg"
+              },
+              {
+                "name": "Shoya Chiba",
+                "character": "Gran (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/pF2urY77wuCYd9Fxh7dTirFYKSF.jpg"
+              },
+              {
+                "name": "Gakuto Kajiwara",
+                "character": "Ragn (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/kUer38jXf7vTD2TGGxJMZVYL5Te.jpg"
+              },
+              {
+                "name": "Shun Horie",
+                "character": "Kyle (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/1OFi5ofRX0B2ldTPF8ThzLI2wKa.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Season 1",
+                "episodeCount": 24,
+                "poster": "https://image.tmdb.org/t/p/w342/xOhx5KpSAlrEbqsu9TaCdmdIb72.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49608,6 +50020,100 @@
               "providerName": "IR - That Time I Got Reincarnated as a Slime (2018) (JP) وقتی که به عنوان اسلایم تناسخ پیدا کردم"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/nBd0dWeSmD08NsoBTkSLlHDZg4l.png",
+            "tmdbId": 82684,
+            "poster": "https://image.tmdb.org/t/p/w500/pzujcdPAoH361NObVrtbA7zACE7.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/eJOy7YWAHgOS3V477sdTsq4v9jp.jpg",
+            "overview": "Corporate worker Mikami Satoru is stabbed by a random killer, and is reborn to an alternate world. But he turns out to be reborn a slime! Thrown into this new world with the name Rimuru, he begins his quest to create a world that’s welcoming to all races.",
+            "rating": 8.429,
+            "releaseDate": "2018-10-02",
+            "genres": [
+              "Action & Adventure",
+              "Animation",
+              "Sci-Fi & Fantasy",
+              "Comedy"
+            ],
+            "runtime": 24,
+            "cast": [
+              {
+                "name": "Miho Okasaki",
+                "character": "Rimuru (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/cTkMJzOdsXL8o5q5AhP9eT0sXDK.jpg"
+              },
+              {
+                "name": "Tomoaki Maeno",
+                "character": "Veldora (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/w3lEuXSbEyzzNyO3YnxsF6wm2N5.jpg"
+              },
+              {
+                "name": "Takuya Eguchi",
+                "character": "Souei (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/hPPhUp0mM65Lc87Q8WXUEmGQAXx.jpg"
+              },
+              {
+                "name": "Hochu Otsuka",
+                "character": "Hakurou (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/3RHQcrsWnAFK6AifSis1lMq08cR.jpg"
+              },
+              {
+                "name": "Asuna Tomari",
+                "character": "Gobta (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/1UrGvjjGi5p0GvVugjbzGutU6vu.jpg"
+              },
+              {
+                "name": "Chikahiro Kobayashi",
+                "character": "Ranga (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/dD0xdWLQubyRKAnI3rWpeV35XxD.jpg"
+              },
+              {
+                "name": "Jun Fukushima",
+                "character": "Gabiru (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/xo2A4cr8TnhC9rLFxSQvhwCbIOw.jpg"
+              },
+              {
+                "name": "Rie Tanaka",
+                "character": "Trainie (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/wBWsjzwpFovyHDv027zU0oZyWHd.jpg"
+              },
+              {
+                "name": "Rina Hidaka",
+                "character": "Milim (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/7JupZGvqcq4dRxiTKpPxzg8NUS4.jpg"
+              },
+              {
+                "name": "Anzu Haruno",
+                "character": "Rimiris (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/bNm7W2AQbLRZs3lwsDbArSIjQMX.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Season 1",
+                "episodeCount": 24,
+                "poster": "https://image.tmdb.org/t/p/w342/bQlHgqXFpZ1xpiiBEzncSpXYIwF.jpg"
+              },
+              {
+                "number": 2,
+                "name": "Season 2",
+                "episodeCount": 24,
+                "poster": "https://image.tmdb.org/t/p/w342/v6tZuRm81zUWGgODfxFvS6sW0Vm.jpg"
+              },
+              {
+                "number": 3,
+                "name": "Season 3",
+                "episodeCount": 24,
+                "poster": "https://image.tmdb.org/t/p/w342/p1t65WL9w6ZUB3axHmlP5V9t5gA.jpg"
+              },
+              {
+                "number": 4,
+                "name": "Season 4",
+                "episodeCount": 24,
+                "poster": "https://image.tmdb.org/t/p/w342/94MjsZUyxubodMPJdWOVkcJ0bdU.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49658,6 +50164,90 @@
               "providerName": "FR -Fauda (2015) (IL)"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/8tsp3Rme4fwlTTS9sdJXYPPZDNm.png",
+            "tmdbId": 69557,
+            "poster": "https://image.tmdb.org/t/p/w500/bc6XIKP1TrnugYMzIIUz9YCL8VM.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/l7BDJsD2zRYHvu3G7qV1v7q5hoF.jpg",
+            "overview": "A top Israeli agent comes out of retirement to hunt for a Palestinian militant he thought he'd killed, setting a chaotic chain of events into motion.",
+            "rating": 7.383,
+            "releaseDate": "2015-02-15",
+            "genres": [
+              "Drama",
+              "Action & Adventure",
+              "War & Politics"
+            ],
+            "runtime": 43,
+            "cast": [
+              {
+                "name": "Lior Raz",
+                "character": "Doron Kavillio",
+                "profile": "https://image.tmdb.org/t/p/w185/6uHFnt0iZtcdTOXAXThqfQhuG5T.jpg"
+              },
+              {
+                "name": "Netta Garti",
+                "character": "Gali Kavillio",
+                "profile": "https://image.tmdb.org/t/p/w185/yAwo4zSpCzMhYiPGxkJBYhnzjRV.jpg"
+              },
+              {
+                "name": "Doron Ben-David",
+                "character": "Hertzel 'Steve' Pinto",
+                "profile": "https://image.tmdb.org/t/p/w185/bSrRVAKtmu6hOsvvsOTZsqlBZVx.jpg"
+              },
+              {
+                "name": "Rona-Lee Shimon",
+                "character": "Nurit",
+                "profile": "https://image.tmdb.org/t/p/w185/tsbVNfgRukCyPEVog2bIhcOSJWx.jpg"
+              },
+              {
+                "name": "Itzik Cohen",
+                "character": "Gabi \"Captain Eyov\"",
+                "profile": "https://image.tmdb.org/t/p/w185/tfjZLOyLAqbzn0X45mlDrka5YhQ.jpg"
+              },
+              {
+                "name": "Yaakov Zada-Daniel",
+                "character": "Eli",
+                "profile": "https://image.tmdb.org/t/p/w185/l24AkJpluGie5xI5SJnAji0W3xU.jpg"
+              },
+              {
+                "name": "Dan Kadosh",
+                "character": "European Terrorist",
+                "profile": "https://image.tmdb.org/t/p/w185/sR0MITHu14ckO1Txlm7Ht2n5V6A.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Season 1",
+                "episodeCount": 12,
+                "poster": "https://image.tmdb.org/t/p/w342/6C7NHFp0dEGSQQtscff8rfXy2Fc.jpg"
+              },
+              {
+                "number": 2,
+                "name": "Season 2",
+                "episodeCount": 12,
+                "poster": "https://image.tmdb.org/t/p/w342/bRkylTpmZ5tz1zcOkwmKb6SIzJB.jpg"
+              },
+              {
+                "number": 3,
+                "name": "Season 3",
+                "episodeCount": 12,
+                "poster": "https://image.tmdb.org/t/p/w342/ozHjjSCFWMAueCGZKNlzLP8a2IA.jpg"
+              },
+              {
+                "number": 4,
+                "name": "Season 4",
+                "episodeCount": 12,
+                "poster": "https://image.tmdb.org/t/p/w342/vozllqaHYpeDgY24YmVhphqKhvj.jpg"
+              },
+              {
+                "number": 5,
+                "name": "Season 5",
+                "episodeCount": 11,
+                "poster": "https://image.tmdb.org/t/p/w342/hnby6CtCK0EfxXcAdLojEhI0G2a.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49672,6 +50262,81 @@
               "providerName": "IR - The Vermilion Mask (2026) (JP) ماسک ارغوانی"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/mzzv48m0o3nvgMyNpbi8J4Ri6IC.png",
+            "tmdbId": 295420,
+            "poster": "https://image.tmdb.org/t/p/w500/jIQ8cnTs7sCMzEfBviyyD4eXMiY.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/1D501rl5PwXNyL0hPrZMajnbpu1.jpg",
+            "overview": "Apprentice mask maker Peru should have known the perils of The Masks. Possessed by the Mask of the Warrior God, he unintentionally kills his friends and his master, the legendary Gaston Roux. Wracked with guilt, Peru vows to destroy every mask his master created before tragedy strikes again. As his mission takes him around the world, Peru makes friends, battles enemies, and reckons with his sins.",
+            "rating": 10,
+            "releaseDate": "2026-10-10",
+            "genres": [
+              "Animation",
+              "Action & Adventure",
+              "Sci-Fi & Fantasy"
+            ],
+            "runtime": 24,
+            "cast": [
+              {
+                "name": "Taihi Kimura",
+                "character": "Peru d'Arrest (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/sE3h0G6BxS77N8opXqBBDZxXsqE.jpg"
+              },
+              {
+                "name": "Yuuki Yamamoto",
+                "character": "Sonarue Maywood (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/1oNfLikO4DoafwNMeeUcXYrtKnL.jpg"
+              },
+              {
+                "name": "Kazuki Ura",
+                "character": "Mok Sharib (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/7eUgENWREmWSMnLPUFCQhvUSpdI.jpg"
+              },
+              {
+                "name": "Takanori Hoshino",
+                "character": "Gouon (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/ypoZIKRueZs3Fo8zxxe65O7Qwt.jpg"
+              },
+              {
+                "name": "Wataru Komada",
+                "character": "Totoque (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/qcUXzl6RRRhEFHiRtg4ATOhbXDl.jpg"
+              },
+              {
+                "name": "Junya Enoki",
+                "character": "Zent (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/vBnNL3Jqy0zkS3ZgsXZmvDM9Dfz.jpg"
+              },
+              {
+                "name": "Kazuhiko Inoue",
+                "character": "Gaston (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/3BpYtYRiLAmTNbCm2LXlXnkMRit.jpg"
+              },
+              {
+                "name": "Akio Otsuka",
+                "character": "Mask of the Warrior God (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/uH9oiqOOgrsz2zNnouVZ1qPzDyb.jpg"
+              },
+              {
+                "name": "Kenji Nojima",
+                "character": "Hien (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/nRSPVjDkdpnrQabnK5mENH118zN.jpg"
+              },
+              {
+                "name": "Aoi Koga",
+                "character": "Lasgarl (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/uVpwheVV4aPROyY1toYv3v5HSPD.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Season 1",
+                "episodeCount": 12,
+                "poster": "https://image.tmdb.org/t/p/w342/q81xketqbqrxOrpBm7OzZrcopPf.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49686,6 +50351,65 @@
               "providerName": "IR - Firefly Wedding (2026) (JP) ازدواج شاد من"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/jF0Y73x1pWq6noava9Cp900i8Tm.png",
+            "tmdbId": 320909,
+            "poster": "https://image.tmdb.org/t/p/w500/954dt0dTqoUhIW0EvMFZ0KvVQmk.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/3zmB6PLnjf7rNNC2lnvinQtlJMx.jpg",
+            "overview": "Satoko Kirigaya has everything a noblewoman could want—except time. With her life running out, she’s determined to marry well and make her father proud. But when a ruthless assassin kidnaps her, she makes a desperate offer: “Marry me, and we’ll have it all.” Shinpei Goto accepts, only to become dangerously obsessed. Now Satoko must choose between duty and a love that could consume them both.",
+            "rating": 10,
+            "releaseDate": "2026-10-09",
+            "genres": [
+              "Animation",
+              "Drama"
+            ],
+            "runtime": 23,
+            "cast": [
+              {
+                "name": "Lynn",
+                "character": "Satoko Kirigaya (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/eJ2NqgzpnzNbT6Nt9EpDfzqNeZM.jpg"
+              },
+              {
+                "name": "Koki Uchiyama",
+                "character": "Shinpei Goto (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/sllSm3iZZWVLTBrDZQRtWrZUfEj.jpg"
+              },
+              {
+                "name": "Kent Ito",
+                "character": "Kotaro Ogawa (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/oX9zpjSNyPzbivui2HoMUziDmGh.jpg"
+              },
+              {
+                "name": "Kenjiro Tsuda",
+                "character": "Mitsueda (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/yFpSPNHqYN4rdRiVpVaYmqXMkmi.jpg"
+              },
+              {
+                "name": "Kazuhiro Yamaji",
+                "character": "Jubei Kirigaya (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/fgGTdhTiWViGmjl2kABHWzLIpZ0.jpg"
+              },
+              {
+                "name": "Haruhi Nanao",
+                "character": "Rie Kirigaya (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/1zdcXGwU3WRaiE281hjRuqfqeXg.jpg"
+              },
+              {
+                "name": "Hika Tsukishiro",
+                "character": "Miwako Kirigaya (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/iJU59ru8Rv9sIHd5kMznFDZktZr.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Season 1",
+                "episodeCount": 12,
+                "poster": "https://image.tmdb.org/t/p/w342/Auw2NxgGThu6XAO2pyRoipMIDHG.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49700,6 +50424,81 @@
               "providerName": "IR - Overgeared (2026) (JP) تا دندان مسلح"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/ki2DwqPbI2LcWeOQrq7dtaDIHFB.png",
+            "tmdbId": 324502,
+            "poster": "https://image.tmdb.org/t/p/w500/94GLmulA9qVGsuo9kLpVKi01E2Z.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/745xqHbiUWwO51TM60MXRCR4Onm.jpg",
+            "overview": "Escape everyday life in SATISFY, a VR game where players earn real-world fame and fortune. One player, Grid, can't seem to catch a break in the game or in real life. That all changes when a challenging quest leads him to becoming the heir to a legendary blacksmith. His stats are reset to zero, but he's leveling up and crafting some seriously god-tier goods.",
+            "rating": 7,
+            "releaseDate": "2026-10-02",
+            "genres": [
+              "Animation",
+              "Sci-Fi & Fantasy",
+              "Action & Adventure"
+            ],
+            "runtime": null,
+            "cast": [
+              {
+                "name": "Tatsumaru Tachibana",
+                "character": "Shin Youngwoo / Grid (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/eShhW1W22SQuUwRaONnpzEZ5w6E.jpg"
+              },
+              {
+                "name": "Asami Seto",
+                "character": "Yura (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/iKKCPgKrNd4pJ0iBOC1SBZy2Y4Y.jpg"
+              },
+              {
+                "name": "Saya Fukuzumi",
+                "character": "Euphemia (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/zlSTVQsai4DcvHimLo8r4dg8DhG.jpg"
+              },
+              {
+                "name": "Shuntaro Takayama",
+                "character": "Huroi (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/eAMybCcZcukliA30Qb0UNR7ZQnh.jpg"
+              },
+              {
+                "name": "Riho Sugiyama",
+                "character": "Jishuka (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/rPVn4cInZVECBWhoHozERc8XTTj.jpg"
+              },
+              {
+                "name": "Masaaki Mizunaka",
+                "character": "Toban (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/cHb2pr4juxk8A3VTuDxgPWHM6WF.jpg"
+              },
+              {
+                "name": "Ko Bonkobara",
+                "character": "Regas (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/ArR2Pkddx548PV71sZ1mBJ2RXd1.jpg"
+              },
+              {
+                "name": "Masaya Fukunishi",
+                "character": "Vantner (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/8paIbTobS6266x57pIhJCq3mBJh.jpg"
+              },
+              {
+                "name": "Kohei Amasaki",
+                "character": "Pon (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/tnN5jLiLjcDa7qn88uLb1iAfivL.jpg"
+              },
+              {
+                "name": "Shunichi Toki",
+                "character": "Faker (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/3hauO9r1NEzgXxk8d2ed1p5dnxM.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Season 1",
+                "episodeCount": 12,
+                "poster": "https://image.tmdb.org/t/p/w342/94GLmulA9qVGsuo9kLpVKi01E2Z.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49720,6 +50519,195 @@
               "providerName": "SC - Pokémon (1997) (JP)"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/xvERvRImZQOj83WPj1y3nxPxMDv.png",
+            "tmdbId": 60572,
+            "poster": "https://image.tmdb.org/t/p/w500/lP4zwr0F7hWTbAFltfoFTc2AxRG.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/yYpQV25I7XB6S0POJOScPjxYWV5.jpg",
+            "overview": "Join Ash accompanied by his partner Pikachu, as he travels through many regions, meets new friends and faces new challenges on his quest to become a Pokémon Master.",
+            "rating": 7.989,
+            "releaseDate": "1997-04-01",
+            "genres": [
+              "Animation",
+              "Action & Adventure",
+              "Sci-Fi & Fantasy"
+            ],
+            "runtime": null,
+            "cast": [
+              {
+                "name": "Rica Matsumoto",
+                "character": "Satoshi (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/8kGjV2Ke6MVaR2UGtO9YpFkvuTu.jpg"
+              },
+              {
+                "name": "Ikue Otani",
+                "character": "Pikachu (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/my8LBLQ4MsK4hRz1PAATIqtieaI.jpg"
+              },
+              {
+                "name": "Daiki Yamashita",
+                "character": "Gou (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/rQNdJdZewk7VGP16ZNbpfJ9ZeMd.jpg"
+              },
+              {
+                "name": "Kenyu Horiuchi",
+                "character": "Narrator (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/qIsrjSbtdhmmUdd3xvpDHNWRuJp.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Indigo League",
+                "episodeCount": 82,
+                "poster": "https://image.tmdb.org/t/p/w342/eGQ5eJMQR20TZsWMFxiXPKR1M2c.jpg"
+              },
+              {
+                "number": 2,
+                "name": "Adventures in the Orange Islands",
+                "episodeCount": 36,
+                "poster": "https://image.tmdb.org/t/p/w342/evvGDN8QQkHEFDItfHyKakx41Uw.jpg"
+              },
+              {
+                "number": 3,
+                "name": "The Johto Journeys",
+                "episodeCount": 41,
+                "poster": "https://image.tmdb.org/t/p/w342/q5SITwWnAclZUqWntAb6vCguYGw.jpg"
+              },
+              {
+                "number": 4,
+                "name": "Johto League Champions",
+                "episodeCount": 52,
+                "poster": "https://image.tmdb.org/t/p/w342/8gK8sesvgLbDWVdYA4nDHhjE9Rf.jpg"
+              },
+              {
+                "number": 5,
+                "name": "Master Quest",
+                "episodeCount": 65,
+                "poster": "https://image.tmdb.org/t/p/w342/4wSl5c3XegGMsvCJR8BWPyHmJIo.jpg"
+              },
+              {
+                "number": 6,
+                "name": "Advanced",
+                "episodeCount": 40,
+                "poster": "https://image.tmdb.org/t/p/w342/xpchg8jaKasRyWOePWw6f8zryxo.jpg"
+              },
+              {
+                "number": 7,
+                "name": "Advanced Challenge",
+                "episodeCount": 52,
+                "poster": "https://image.tmdb.org/t/p/w342/sAwAIiGSkGOL1Azq84pY8BktCws.jpg"
+              },
+              {
+                "number": 8,
+                "name": "Advanced Battle",
+                "episodeCount": 53,
+                "poster": "https://image.tmdb.org/t/p/w342/xVIHgY5bkE0kM8rmTeUME9MglJn.jpg"
+              },
+              {
+                "number": 9,
+                "name": "Battle Frontier",
+                "episodeCount": 46,
+                "poster": "https://image.tmdb.org/t/p/w342/emH5uPBgJhEzDvkOkMYxnylaPm9.jpg"
+              },
+              {
+                "number": 10,
+                "name": "Diamond and Pearl",
+                "episodeCount": 52,
+                "poster": "https://image.tmdb.org/t/p/w342/w0s4qYeIM3ylt4mdD1fI5693zTW.jpg"
+              },
+              {
+                "number": 11,
+                "name": "Diamond and Pearl: Battle Dimension",
+                "episodeCount": 52,
+                "poster": "https://image.tmdb.org/t/p/w342/uu3w3UTwSXvf5MXwiHKEWzw4oa.jpg"
+              },
+              {
+                "number": 12,
+                "name": "Diamond and Pearl: Galactic Battles",
+                "episodeCount": 53,
+                "poster": "https://image.tmdb.org/t/p/w342/d4HfiaIXNsrdGrSALYA1G3uUIZR.jpg"
+              },
+              {
+                "number": 13,
+                "name": "Diamond and Pearl: Sinnoh League Victors",
+                "episodeCount": 34,
+                "poster": "https://image.tmdb.org/t/p/w342/l5GEKuCEV27tKdZV42GWJT4i7m4.jpg"
+              },
+              {
+                "number": 14,
+                "name": "Black & White",
+                "episodeCount": 48,
+                "poster": "https://image.tmdb.org/t/p/w342/xU3wZY32o104FPfabra8LTjDEZ3.jpg"
+              },
+              {
+                "number": 15,
+                "name": "Black & White: Rival Destinies",
+                "episodeCount": 49,
+                "poster": "https://image.tmdb.org/t/p/w342/87N3UhDUIBSm2WtmqbJuPMzUDNx.jpg"
+              },
+              {
+                "number": 16,
+                "name": "Black & White: Adventures in Unova",
+                "episodeCount": 45,
+                "poster": "https://image.tmdb.org/t/p/w342/bv9PugS3yIDIScxUR8Ye2DyrpM0.jpg"
+              },
+              {
+                "number": 17,
+                "name": "XY",
+                "episodeCount": 48,
+                "poster": "https://image.tmdb.org/t/p/w342/rLGQTEL8bcrZEkl30S3Z9uoca4u.jpg"
+              },
+              {
+                "number": 18,
+                "name": "XY: Kalos Quest",
+                "episodeCount": 45,
+                "poster": "https://image.tmdb.org/t/p/w342/2dvv8EyCfgjUiHnC90YgeZle3zW.jpg"
+              },
+              {
+                "number": 19,
+                "name": "XYZ",
+                "episodeCount": 49,
+                "poster": "https://image.tmdb.org/t/p/w342/cx06NhIZHD3naq3bpXpqKZx2J1A.jpg"
+              },
+              {
+                "number": 20,
+                "name": "Sun & Moon",
+                "episodeCount": 43,
+                "poster": "https://image.tmdb.org/t/p/w342/3PEL4ghrbS8LiZB4gwCWKc10d9V.jpg"
+              },
+              {
+                "number": 21,
+                "name": "Sun & Moon: Ultra Adventures",
+                "episodeCount": 49,
+                "poster": "https://image.tmdb.org/t/p/w342/fhAUZODeJy3tK0gUnw6a9JbR0iM.jpg"
+              },
+              {
+                "number": 22,
+                "name": "Sun & Moon: Ultra Legends",
+                "episodeCount": 54,
+                "poster": "https://image.tmdb.org/t/p/w342/t5Td9peUDyAwX2wpPwr7ZafZzky.jpg"
+              },
+              {
+                "number": 23,
+                "name": "Journeys",
+                "episodeCount": 48,
+                "poster": "https://image.tmdb.org/t/p/w342/r073zmLxA4yzdi1dwbfyh1i3UwJ.jpg"
+              },
+              {
+                "number": 24,
+                "name": "Master Journeys",
+                "episodeCount": 42,
+                "poster": "https://image.tmdb.org/t/p/w342/wrZARmey5XeSj35rK5hF8rYg8e8.jpg"
+              },
+              {
+                "number": 25,
+                "name": "Ultimate Journeys",
+                "episodeCount": 57,
+                "poster": "https://image.tmdb.org/t/p/w342/37y710szLWAye9z5jLyOMnNkxVi.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49740,6 +50728,35 @@
               "providerName": "IR - Get Jiro (2026) (US) گت جیرو"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/qQWJIQ2nY10pabBOWBqg6siCbkZ.png",
+            "tmdbId": 231801,
+            "poster": "https://image.tmdb.org/t/p/w500/li3TH09EF6JyHPVoTvub4nPOfwU.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/xe6wbOPKuSMOze4rl48NFWy8PNe.jpg",
+            "overview": "In a post-apocalyptic, near-future Los Angeles where culinary culture reigns supreme, the world's most powerful figures are chefs, and food is both currency and a demarcation of class, the mysterious sushi chef Jiro sets out on a quest for vengeance.",
+            "rating": 8.2,
+            "releaseDate": "2026-10-04",
+            "genres": [
+              "Animation",
+              "Action & Adventure"
+            ],
+            "runtime": null,
+            "cast": [
+              {
+                "name": "Brian Tee",
+                "character": "Jiro (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/ieqbktfBwcHkeikMfNDW94Yffzp.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Season 1",
+                "episodeCount": 10,
+                "poster": "https://image.tmdb.org/t/p/w342/li3TH09EF6JyHPVoTvub4nPOfwU.jpg"
+              }
+            ]
+          },
           "logo": null
         },
         {
@@ -49754,6 +50771,62 @@
               "providerName": "IR - Frieren: Beyond Journey's End (2023) (JP) فریرن: آنسوی پایان سفر"
             }
           ],
+          "metadata": {
+            "logo": "https://image.tmdb.org/t/p/w500/yQuc8JcBxRWXfRHrNUSM47gCXOo.png",
+            "tmdbId": 209867,
+            "poster": "https://image.tmdb.org/t/p/w500/dqZENchTd7lp5zht7BdlqM7RBhD.jpg",
+            "backdrop": "https://image.tmdb.org/t/p/w1280/rBOnrVlck7BIlGeWVlzYiZeg4l2.jpg",
+            "overview": "After the party of heroes defeated the Demon King, they restored peace to the land and returned to lives of solitude. Generations pass, and the elven mage Frieren comes face to face with humanity's mortality. She takes on a new apprentice and promises to fulfill old friends' dying wishes. Can an elven mind make peace with the nature of life and death? Frieren embarks on her quest to find out.",
+            "rating": 8.8,
+            "releaseDate": "2023-09-29",
+            "genres": [
+              "Animation",
+              "Action & Adventure",
+              "Drama",
+              "Sci-Fi & Fantasy"
+            ],
+            "runtime": 25,
+            "cast": [
+              {
+                "name": "Atsumi Tanezaki",
+                "character": "Frieren (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/6tM8GU7QvrdUCvR4kxqVUZivtvO.jpg"
+              },
+              {
+                "name": "Kana Ichinose",
+                "character": "Fern (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/hBJx5tpLA2vkXqfkPZosGjW4e8C.jpg"
+              },
+              {
+                "name": "Chiaki Kobayashi",
+                "character": "Stark (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/o0XZFXc50z28ICUpvfZ1QcTL2Yt.jpg"
+              },
+              {
+                "name": "Nobuhiko Okamoto",
+                "character": "Himmel (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/7s1K2yQVF5iIWILaOfG7QrMZkXA.jpg"
+              },
+              {
+                "name": "Hiroki Touchi",
+                "character": "Heiter (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/bU2vogWmnTWiQEwUADWlnBqAPhJ.jpg"
+              },
+              {
+                "name": "Yoji Ueda",
+                "character": "Eisen (voice)",
+                "profile": "https://image.tmdb.org/t/p/w185/fHvIfE0Q7ab0DFlkNVFcXvTKX9y.jpg"
+              }
+            ],
+            "seasons": [
+              {
+                "number": 1,
+                "name": "Season 1",
+                "episodeCount": 38,
+                "poster": "https://image.tmdb.org/t/p/w342/yHsxHEugPPlOPqFZrPGvurltPjm.jpg"
+              }
+            ]
+          },
           "logo": null
         }
       ]
