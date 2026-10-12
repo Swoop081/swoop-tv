@@ -1,0 +1,33 @@
+name: Refresh SwoopTV catalogue
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: swooptv-catalogue-refresh
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Refresh provider availability and dynamic collections
+        env:
+          SWOOP_XTREAM_URL: ${{ secrets.SWOOP_XTREAM_URL }}
+          SWOOP_XTREAM_USER: ${{ secrets.SWOOP_XTREAM_USER }}
+          SWOOP_XTREAM_PASSWORD: ${{ secrets.SWOOP_XTREAM_PASSWORD }}
+        run: python3 scripts/refresh_catalogue.py
+      - name: Publish only changed catalogue
+        run: |
+          git add swooptv-curated.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name "swooptv-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Refresh provider catalogue and dynamic collections"
+          git push
