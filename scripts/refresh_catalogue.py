@@ -252,7 +252,7 @@ def main():
     for g in groups:
         if g.get("type") not in ("movie","series"):
             updated.append(g);continue
-        if g.get("id") in ("recently-added","asian-series","new-movies-netflix"):continue
+        if g.get("id") in ("recently-added","asian-series","new-movies-netflix","new-series-netflix"):continue
         entries=[r for e in g.get("entries",[]) if (r:=reconcile(e,g["type"]))]
         updated.append({**g,"entries":entries})
     def recent(t):
@@ -296,6 +296,37 @@ def main():
             e["streams"].append(record(x,"movie")["streams"][0])
     updated.append({"id":"new-movies-netflix","name":"New Movies on Netflix","type":"movie","entries":list(netflix_entries.values())})
     print("New Movies on Netflix:",len(netflix_entries),"titles from",len(netflix_rows),"provider streams across",len(netflix_ids),"categories")
+    # Netflix series discovery excludes Anime and Asia (Asia stays in its own rail).
+    netflix_series_names=[
+        "NETFLIX SERIES","NETFLIX ADULT-SWIM","NETFLIX DOCU-SERIES",
+        "NETFLIX KIDS","NETFLIX KIDS 4K 3840P DOLBY VISION",
+        "NETFLIX PODCAST","NETFLIX REALITY",
+        "NETFLIX SERIES 4K 3840P DOLBY VISION",
+        "NETFLIX SERIES DOLBY AUDIO","NETFLIX STAND-UP COMEDY"
+    ]
+    netflix_series_wanted={norm(n) for n in netflix_series_names}
+    netflix_series_ids={str(c.get("category_id")) for c in cats if norm(c.get("category_name")) in netflix_series_wanted}
+    if not netflix_series_ids:raise RuntimeError("Netflix series provider categories not found; preserving published catalogue.")
+    netflix_series_rows=[x for x in series if str(x.get("category_id")) in netflix_series_ids or any(str(i) in netflix_series_ids for i in x.get("category_ids",[]) or [])]
+    prior_series=next((g.get("entries",[]) for g in groups if g.get("type")=="series" and g.get("id")=="new-series-netflix"),[])
+    if not netflix_series_rows and prior_series:raise RuntimeError("Netflix series provider categories unexpectedly empty; preserving catalogue.")
+    old_series={str(st.get("id")):e for e in prior_series for st in e.get("streams",[])}
+    netflix_series_entries={}
+    for x in sorted(netflix_series_rows,key=lambda x:(int(x.get("added") or x.get("last_modified") or 0),identity(x,"series")),reverse=True):
+        sid=identity(x,"series");tmdb=str(x.get("tmdb_id") or "")
+        title=title_key(x.get("name"));yr=year(x.get("name"))
+        ident=("tmdb",tmdb) if tmdb else ("title",title,yr)
+        e=netflix_series_entries.get(ident)
+        if e is None:
+            e=record(x,"series")
+            previous=old_series.get(sid)
+            if previous:
+                e["metadata"]={**e["metadata"],**{k:v for k,v in (previous.get("metadata") or {}).items() if v not in (None,"",[])}}
+            netflix_series_entries[ident]=e
+        elif sid not in {st["id"] for st in e["streams"]}:
+            e["streams"].append(record(x,"series")["streams"][0])
+    updated.append({"id":"new-series-netflix","name":"New Series on Netflix","type":"series","entries":list(netflix_series_entries.values())})
+    print("New Series on Netflix:",len(netflix_series_entries),"titles from",len(netflix_series_rows),"provider sources across",len(netflix_series_ids),"categories")
     wanted={norm(n) for n in ["asia series (multi-subs)","disney+ asia series","disney+ asia series 4k 3840p dolby vision","netflix asia"]}
     asian_ids={str(c.get("category_id")) for c in cats if norm(c.get("category_name")) in wanted}
     asian=[x for x in series if str(x.get("category_id")) in asian_ids or any(str(i) in asian_ids for i in x.get("category_ids",[]) or [])]
