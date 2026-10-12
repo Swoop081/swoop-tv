@@ -270,33 +270,55 @@ def main():
     asian_ids={str(c.get("category_id")) for c in cats if norm(c.get("category_name")) in wanted}
     asian=[x for x in series if str(x.get("category_id")) in asian_ids or any(str(i) in asian_ids for i in x.get("category_ids",[]) or [])]
     prior=next((g.get("entries",[]) for g in groups if g.get("type")=="series" and g.get("id")=="asian-series"),[])
+    if not asian and prior:raise RuntimeError("Asian categories disappeared unexpectedly; preserving catalogue.")
+    if not asian_ids:raise RuntimeError("Asian provider categories not found; preserving published catalogue.")
     prior_by_id={str(st.get("id")):e for e in prior for st in e.get("streams",[])}
-    prior_by_title={key(e.get("name"),e.get("year")):e for e in prior}
+    prior_by_tmdb={str((e.get("metadata") or {}).get("tmdbId")):e for e in prior if (e.get("metadata") or {}).get("tmdbId")}
+    prior_by_title={title_key(e.get("name")):e for e in prior}
     asian_entries={}
     for x in sorted(asian,key=lambda x:int(x.get("added") or 0),reverse=True):
-        ident="tmdb:"+str(x["tmdb_id"]) if x.get("tmdb_id") else "title:"+str(key(x.get("name")))
+        sid=identity(x,"series")
+        tmdb=str(x.get("tmdb_id") or "")
+        previous=prior_by_id.get(sid) or (prior_by_tmdb.get(tmdb) if tmdb else None) or prior_by_title.get(title_key(x.get("name")))
+        # Group stable provider IDs first, then verified TMDb identities, then full titles.
+        title=title_key(previous.get("name") if previous else x.get("name"))
+        ident=("tmdb:"+tmdb if tmdb else "title:"+title)
+        if previous:
+            for k,v in asian_entries.items():
+                if any(st.get("id")==sid for st in v["streams"]) or (v.get("metadata") or {}).get("tmdbId") and str(v["metadata"]["tmdbId"])==str((previous.get("metadata") or {}).get("tmdbId")):
+                    ident=k;break
         if ident not in asian_entries:
             e=record(x,"series")
-            previous=prior_by_id.get(identity(x,"series")) or prior_by_title.get(key(x.get("name")))
-            if previous:e["metadata"]={**e["metadata"],**(previous.get("metadata") or {})}
+            if previous:
+                e["name"]=previous.get("name") or e["name"]
+                e["year"]=previous.get("year") or e["year"]
+                e["metadata"]={**e["metadata"],**{k:v for k,v in (previous.get("metadata") or {}).items() if v not in (None,"",[])}}
             asian_entries[ident]=e
         else:
             e=asian_entries[ident]
-            if identity(x,"series") not in [s["id"] for s in e["streams"]]:e["streams"].append(record(x,"series")["streams"][0])
-    if not asian and prior:raise RuntimeError("Asian categories disappeared unexpectedly; preserving catalogue.")
+            if sid not in {st["id"] for st in e["streams"]}:e["streams"].append(record(x,"series")["streams"][0])
     updated.append({"id":"asian-series","name":"Asian Series","type":"series","entries":list(asian_entries.values())})
-    # Reuse enriched metadata across rails; one title enriched once.
+    print("Asian Series:",len(asian_entries),"titles from",len(asian),"provider sources across",len(asian_ids),"categories")
+    # Share TMDb metadata across rails, without allowing empty fields to erase cast/artwork.
     known={}
     for g in updated:
-        if g.get("type") not in ("movie","series"):continue
+        t=g.get("type")
+        if t not in ("movie","series"):continue
         for e in g.get("entries",[]):
             m=e.get("metadata") or {}
-            if m.get("cast") or m.get("logo"):known[(g["type"],key(e.get("name"),e.get("year")))]=m
+            if not (m.get("cast") or m.get("logo")):continue
+            identities=[("title",t,title_key(e.get("name")),str(e.get("year") or ""))]
+            if m.get("tmdbId"):identities.append(("tmdb",t,str(m["tmdbId"])))
+            for ident in identities:
+                if ident not in known or len(m.get("cast") or [])>len(known[ident].get("cast") or []):known[ident]=m
     for g in updated:
-        if g.get("type") not in ("movie","series"):continue
+        t=g.get("type")
+        if t not in ("movie","series"):continue
         for e in g.get("entries",[]):
-            prior=known.get((g["type"],key(e.get("name"),e.get("year"))))
-            if prior:e["metadata"]={**e.get("metadata",{}),**prior}
+            m=e.get("metadata") or {}
+            inherited=known.get(("tmdb",t,str(m.get("tmdbId")))) if m.get("tmdbId") else None
+            inherited=inherited or known.get(("title",t,title_key(e.get("name")),str(e.get("year") or "")))
+            if inherited:e["metadata"]={**m,**{k:v for k,v in inherited.items() if v not in (None,"",[])}}
     refresh_mdblist(updated,available,indices,record,identity)
     enrich_tmdb(updated)
     # Do not write provider credentials, raw playlist URLs, or user information.
