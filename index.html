@@ -269,6 +269,63 @@ h2{margin:16px 0 9px}
  .bottom{padding:7px 4px max(9px,env(safe-area-inset-bottom));background:#101014f7}
 }
 
+
+/* Mobile density correction: controls, whitespace and typography, not poster size */
+@media(max-width:780px){
+ header{height:43px;padding:0 10px}
+ .brand{font-size:21px;letter-spacing:-.7px}
+ header .status,header .muted{font-size:10px}
+ .wrap{padding:4px 10px 70px}
+ .home-cinema,.vod-browse{margin:-4px -10px 0}
+ .vod-heading{padding:6px 12px 2px;gap:9px}
+ .vod-heading h1{font-size:19px;margin:3px 0}
+ .vod-heading span{font-size:11px}
+ .vod-searchbar{padding:4px 12px 7px;gap:6px}
+ .vod-searchbar input,.vod-searchbar select{font-size:12px;padding:6px 9px;height:34px;border-radius:4px}
+ .vod-searchbar select{max-width:40%}
+ .home-feature{min-height:205px;padding:12px}
+ .home-feature h1{font-size:24px;margin:4px 0}
+ .home-feature p{font-size:12px;margin:5px 0 8px;line-height:1.3}
+ .home-buttons{gap:6px}
+ .home-buttons button,.home-feature .action,.vod-feature .action,.vod-feature button,.action,.pill{font-size:12px;padding:7px 11px;border-radius:4px;min-height:0}
+ .vod-feature{height:185px;padding:11px 12px}
+ .vod-feature h2{font-size:21px;margin:4px 0}
+ .vod-feature p{font-size:11px;line-height:1.3;margin:5px 0 7px}
+ .vod-feature .eyebrow,.home-feature .eyebrow{font-size:9px;letter-spacing:1px}
+ .vod-section-title{padding:2px 12px 0}
+ .vod-section-title h2{font-size:15px;margin:7px 0 5px}
+ .vod-rail{padding:0 12px 6px;gap:7px}
+ .vod-rail .vod-poster{flex-basis:clamp(130px,39vw,180px);width:clamp(130px,39vw,180px)}
+ .home-rail{padding:0 12px 5px}
+ .home-rail-title h2{font-size:15px;margin:8px 0 5px}
+ .home-rail-title button{font-size:11px;padding:3px}
+ .home-poster-rail{gap:7px;padding-bottom:3px}
+ .home-poster{width:clamp(125px,37vw,170px);min-width:clamp(125px,37vw,170px)}
+ .home-live-entry{padding:7px 9px;min-height:34px;gap:7px;font-size:11px}
+ .home-live-entry span:nth-last-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .home-live-entry strong{white-space:nowrap}
+ .bottom{padding:5px 2px max(7px,env(safe-area-inset-bottom));gap:0}
+ .bottom button{font-size:10px;padding:5px 3px}
+ .live-title h1{font-size:19px;margin:5px 0}
+ .live-upper{gap:6px;margin-bottom:7px}
+ .live-info-actions{gap:5px;margin:5px 0}
+ .live-info-actions button,.guide-controls button{padding:5px 7px;font-size:11px}
+ .guide-controls{margin-bottom:4px}
+ .guide-category{padding:5px 9px}
+ .guide-line{height:50px}
+ .guide-program{padding:5px}
+ .vod-detail-body h1{font-size:24px;margin:0 0 8px}
+ .vod-actions{margin:8px 0}
+ .vod-actions button{padding:7px 10px;font-size:12px}
+ .vod-detail .vod-episodes{margin-top:9px}
+ .episode-list{gap:4px}
+ .episode-item{padding:6px;min-height:0}
+}
+@media(min-width:781px){
+ .home-buttons button,.vod-feature .action,.vod-actions button{padding:8px 13px;font-size:13px}
+ .vod-rail .vod-poster{flex-basis:clamp(145px,17vw,205px);width:clamp(145px,17vw,205px)}
+}
+
 </style></head>
 <body><header><div class="brand">Swoop<b>TV</b> <span class="status">v0.8.10</span></div><nav id="topnav"></nav><span class="status">INTERACTIVE DEMO</span></header><main class="wrap" id="app"><div style="max-width:440px;margin:8vh auto;padding:26px;background:#192435;border-radius:22px"><h2>Connect your TV service</h2><p class="muted">Enter your Xtream Codes login details.</p><form id="xtreamform"><p><input required id="server" type="url" placeholder="Server URL" style="width:100%;padding:12px"></p><p><input required id="username" placeholder="Username" style="width:100%;padding:12px"></p><p><input required id="password" type="password" placeholder="Password" style="width:100%;padding:12px"></p><button class="action" type="submit">Connect</button></form><p id="connectionstatus" role="status"></p></div></main><div class="bottom" id="bottomnav"></div>
 <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.js"></script>
