@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """SwoopTV catalogue sync. Secrets are read from the environment, never exported."""
-import os,json,re,time,urllib.request,urllib.parse,datetime,sys
+import os,json,re,time,urllib.request,urllib.parse,urllib.error,datetime,sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/"swooptv-curated.json"
@@ -111,9 +111,21 @@ def enrich_tmdb(updated):
                     yr=str(e.get("year") or "")
                     matched=next((x for x in results if yr and str(x.get("release_date") or x.get("first_air_date") or "").startswith(yr)),None)
                     chosen=matched or (results[0] if results else None)
-                    if not chosen:continue
+                    if not chosen:
+                        remaining-=1
+                        continue
                     tmdb=chosen["id"]
-                details=request("https://api.themoviedb.org/3/"+endpoint+"/"+str(tmdb)+"?append_to_response=credits,images&language=en-US",headers)
+                try:
+                    details=request("https://api.themoviedb.org/3/"+endpoint+"/"+str(tmdb)+"?append_to_response=credits,images&language=en-US",headers)
+                except urllib.error.HTTPError as err:
+                    if err.code not in (400,404) or not m.get("tmdbId"):raise
+                    # Provider TMDb IDs can be stale or belong to a different media type.
+                    query=urllib.parse.urlencode({"query":e.get("name",""),"language":"en-US"})
+                    candidates=request("https://api.themoviedb.org/3/search/"+endpoint+"?"+query,headers).get("results",[])
+                    chosen=next((v for v in candidates if str(v.get("release_date") or v.get("first_air_date") or "").startswith(str(e.get("year"))) and e.get("year")),None) or (candidates[0] if candidates else None)
+                    if not chosen:raise
+                    tmdb=chosen["id"]
+                    details=request("https://api.themoviedb.org/3/"+endpoint+"/"+str(tmdb)+"?append_to_response=credits,images&language=en-US",headers)
                 cast=[{"id":p.get("id"),"name":p.get("name")} for p in details.get("credits",{}).get("cast",[])[:35] if p.get("name")]
                 images=details.get("images") or {}
                 logos=images.get("logos") or []
