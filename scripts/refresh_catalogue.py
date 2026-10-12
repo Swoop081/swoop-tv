@@ -148,7 +148,7 @@ def enrich_tmdb(updated):
         if t not in ("movie","series"):continue
         for e in g.get("entries",[]):
             m=e.setdefault("metadata",{})
-            if m.get("cast") and m.get("poster") and m.get("tmdbId") and m.get("backdrop"):continue
+            if m.get("cast") and any(p.get("profile") for p in m.get("cast",[]) if isinstance(p,dict)) and m.get("poster") and m.get("tmdbId") and m.get("backdrop"):continue
             ident=(t,key(e.get("name"),e.get("year")))
             if ident in cache:
                 e["metadata"]={**m,**cache[ident]}
@@ -179,7 +179,7 @@ def enrich_tmdb(updated):
                     if not chosen:raise
                     tmdb=chosen["id"]
                     details=request("https://api.themoviedb.org/3/"+endpoint+"/"+str(tmdb)+"?append_to_response=credits,images&language=en-US",headers)
-                cast=[{"id":p.get("id"),"name":p.get("name")} for p in details.get("credits",{}).get("cast",[])[:35] if p.get("name")]
+                cast=[{"id":p.get("id"),"name":p.get("name"),"character":p.get("character",""),"profile":"https://image.tmdb.org/t/p/w185"+p["profile_path"] if p.get("profile_path") else ""} for p in details.get("credits",{}).get("cast",[])[:35] if p.get("name")]
                 images=details.get("images") or {}
                 logos=images.get("logos") or []
                 logo=next((x for x in logos if x.get("iso_639_1")=="en"),logos[0] if logos else None)
