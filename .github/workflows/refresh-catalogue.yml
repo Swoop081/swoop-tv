@@ -11,7 +11,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,6 +22,8 @@ jobs:
           SWOOP_XTREAM_URL: ${{ secrets.SWOOP_XTREAM_URL }}
           SWOOP_XTREAM_USER: ${{ secrets.SWOOP_XTREAM_USER }}
           SWOOP_XTREAM_PASSWORD: ${{ secrets.SWOOP_XTREAM_PASSWORD }}
+          SWOOP_MDBLIST_API_KEY: ${{ secrets.SWOOP_MDBLIST_API_KEY }}
+          SWOOP_TMDB_READ_TOKEN: ${{ secrets.SWOOP_TMDB_READ_TOKEN }}
         run: python3 scripts/refresh_catalogue.py
       - name: Publish only changed catalogue
         run: |
