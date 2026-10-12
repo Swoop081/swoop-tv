@@ -405,6 +405,9 @@ def main():
             inherited=inherited or known.get(("title",t,title_key(e.get("name")),str(e.get("year") or "")))
             if inherited:e["metadata"]={**m,**{k:v for k,v in inherited.items() if v not in (None,"",[])}}
     refresh_mdblist(updated,available,indices,record,identity)
+    for group in updated:
+        if group.get("type") in ("movie","series"):
+            group["entries"]=consolidate(group.get("entries",[]))
     enrich_tmdb(updated)
     # Do not write provider credentials, raw playlist URLs, or user information.
     result={"format":"swooptv-curated-v1","version":2,"generatedAt":datetime.datetime.now(datetime.timezone.utc).isoformat(),"categories":updated}
