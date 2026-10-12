@@ -253,9 +253,9 @@ function updateFeatured(type){const el=document.querySelector('.vod-feature[data
 setInterval(()=>{if(!connected||vodSelected||document.hidden||!["Movies","Series"].includes(page)||vodSearch||curatedGroup!=="all")return;const type=page==="Movies"?"movie":"series",items=featuredEntries(type);if(items.length<2)return;featuredPositions[type]=(featuredPositions[type]+1)%items.length;updateFeatured(type)},7000);
 function recentlyAddedEntries(type){
  const provider=type==="movie"?xtream.vod:xtream.series,idKey=type==="movie"?"stream_id":"series_id";
- const published=curatedGroups(type).find(g=>g.id==="recently-added");if(published?.entries?.length)return published.entries;return provider.filter(x=>x&&x[idKey]&&Number(x.added)>0).sort((a,b)=>Number(b.added)-Number(a.added)).slice(0,200).map(x=>({
+ const published=curatedGroups(type).find(g=>g.id==="recently-added");if(published?.entries?.length)return published.entries;const candidates=provider.filter(x=>x&&x[idKey]);const timestamp=x=>Number(x.added||x.last_modified||x.date_added||0);const dated=candidates.some(x=>timestamp(x)>0);return candidates.sort((a,b)=>dated?(timestamp(b)-timestamp(a)||Number(b[idKey])-Number(a[idKey])):Number(b[idKey])-Number(a[idKey])).slice(0,200).map(x=>({
  name:String(x.name||x.title||"Untitled"),streams:[{id:String(x[idKey]),ext:x.container_extension||"mp4"}],
- metadata:{poster:x.stream_icon||x.cover||x.cover_big||"",backdrop:"",overview:x.plot||x.info?.plot||""},providerAdded:Number(x.added)
+ metadata:{poster:x.stream_icon||x.cover||x.cover_big||"",backdrop:"",overview:x.plot||x.info?.plot||""},providerAdded:timestamp(x)
  }));
 }
 function visibleCuratedEntries(type,gs){
