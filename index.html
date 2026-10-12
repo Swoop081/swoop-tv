@@ -477,8 +477,31 @@ h2{margin:16px 0 9px}
  .nba-matchup strong{font-size:30px}
  .nba-game-bottom button{font-size:11px;padding:8px 11px}
 }
+/* Sports cards v2: content-sized layout, not stretched score panels. */
+.nba-slate{align-items:start!important;grid-auto-rows:max-content!important}
+.nba-slate>.nba-game,.nba-slate>.nba-feature{
+ display:flex!important;flex-direction:column!important;justify-content:flex-start!important;
+ align-self:start!important;height:auto!important;min-height:0!important;
+ padding:12px 14px!important;
+}
+.nba-slate .nba-game-top{position:relative!important;min-height:22px!important;margin:0 0 8px!important}
+.nba-slate .nba-game-top .nba-state{top:0!important;left:50%!important;transform:translateX(-50%)!important}
+.nba-slate .nba-matchup,.nba-slate .nba-feature .nba-matchup{
+ margin:14px 0 8px!important;padding:0!important;min-height:0!important;align-items:center!important;
+}
+.nba-slate .nba-matchup>div{gap:2px!important;justify-content:flex-start!important}
+.nba-slate .nba-team-logo,.nba-slate .nba-feature .nba-team-logo{width:62px!important;height:62px!important;margin:0 auto 3px!important}
+.nba-slate .nba-matchup small{margin:2px 0 0!important;line-height:1.2!important}
+.nba-slate .nba-game-bottom{margin:4px 0 0!important;padding:0!important;min-height:0!important;justify-content:flex-end!important}
+.nba-slate .nba-game-bottom .action{margin:0!important;padding:7px 11px!important}
+.nba-slate .nba-game-bottom:empty{display:none!important}
+@media(max-width:780px){
+ .nba-slate>.nba-game,.nba-slate>.nba-feature{padding:11px 12px!important}
+ .nba-slate .nba-matchup,.nba-slate .nba-feature .nba-matchup{margin:12px 0 7px!important}
+ .nba-slate .nba-team-logo,.nba-slate .nba-feature .nba-team-logo{width:56px!important;height:56px!important}
+}
 </style></head>
-<body><header><div class="brand">Swoop<b>TV</b> <span class="status">v0.8.22</span></div><nav id="topnav"></nav><span class="status">INTERACTIVE DEMO</span></header><main class="wrap" id="app"><div style="max-width:440px;margin:8vh auto;padding:26px;background:#192435;border-radius:22px"><h2>Connect your TV service</h2><p class="muted">Enter your Xtream Codes login details.</p><form id="xtreamform"><p><input required id="server" type="url" placeholder="Server URL" style="width:100%;padding:12px"></p><p><input required id="username" placeholder="Username" style="width:100%;padding:12px"></p><p><input required id="password" type="password" placeholder="Password" style="width:100%;padding:12px"></p><button class="action" type="submit">Connect</button></form><p id="connectionstatus" role="status"></p></div></main><div class="bottom" id="bottomnav"></div>
+<body><header><div class="brand">Swoop<b>TV</b> <span class="status">v0.8.23</span></div><nav id="topnav"></nav><span class="status">INTERACTIVE DEMO</span></header><main class="wrap" id="app"><div style="max-width:440px;margin:8vh auto;padding:26px;background:#192435;border-radius:22px"><h2>Connect your TV service</h2><p class="muted">Enter your Xtream Codes login details.</p><form id="xtreamform"><p><input required id="server" type="url" placeholder="Server URL" style="width:100%;padding:12px"></p><p><input required id="username" placeholder="Username" style="width:100%;padding:12px"></p><p><input required id="password" type="password" placeholder="Password" style="width:100%;padding:12px"></p><button class="action" type="submit">Connect</button></form><p id="connectionstatus" role="status"></p></div></main><div class="bottom" id="bottomnav"></div>
 <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.js"></script>
 <script>
 const groups={"🟢 Kayo Sports 🟢":["Kayo Main Event","Kayo Cricket","Kayo Football","Kayo Racing","Kayo Sports 05","Kayo Sports 06","Kayo Sports 07","Kayo Sports 08"],"🔴 Premium Entertainment 🔴":["HBO","HBO West","HBO 2","HBO Signature","HBO Zone","HBO Comedy","Star Wars","Game of Thrones","Harry Potter","Lord of the Rings"],"🌎 World Sports 🌎":["NBA 01","NBA 02","NBA 03","NBA 04","NBA 05","NBA 06","NBA 07","NBA 08"],"🎟️ (PPV) Live Sport Today 🎟️":["PPV EVENT 01","PPV EVENT 02","PPV EVENT 03"],"🟠 Sitcoms 🟠":["Seinfeld","Friends","The Office","Parks and Recreation"],"🔵 Teen & Adult Animation 🔵":["The Simpsons","South Park","Family Guy","Rick and Morty","Bob's Burgers","Futurama","American Dad","King of the Hill","BoJack Horseman","Archer"],"🎵 Music Videos 🎵":["Pop Hits","Rock Classics","Music 80s"]};
