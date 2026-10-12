@@ -25,28 +25,33 @@ jobs:
           SWOOP_MDBLIST_API_KEY: ${{ secrets.SWOOP_MDBLIST_API_KEY }}
           SWOOP_TMDB_READ_TOKEN: ${{ secrets.SWOOP_TMDB_READ_TOKEN }}
         run: python3 scripts/refresh_catalogue.py
-      - name: Publish only changed catalogue
+      - name: Publish refreshed catalogue safely
+        env:
+          SWOOP_XTREAM_URL: ${{ secrets.SWOOP_XTREAM_URL }}
+          SWOOP_XTREAM_USER: ${{ secrets.SWOOP_XTREAM_USER }}
+          SWOOP_XTREAM_PASSWORD: ${{ secrets.SWOOP_XTREAM_PASSWORD }}
+          SWOOP_MDBLIST_API_KEY: ${{ secrets.SWOOP_MDBLIST_API_KEY }}
+          SWOOP_TMDB_READ_TOKEN: ${{ secrets.SWOOP_TMDB_READ_TOKEN }}
         run: |
-          git add swooptv-curated.json
-          if git diff --cached --quiet; then exit 0; fi
           git config user.name "swooptv-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Refresh provider catalogue and dynamic collections"
-          # Other SwoopTV commits may land while the provider is being fetched.
-          # Replay this catalogue-only commit on top of the latest main.
-          # Never force-push or overwrite concurrent website changes.
+          # Never rebase a generated JSON snapshot onto a concurrently edited JSON.
+          # Recompute against the latest main whenever it advances.
           for attempt in 1 2 3 4 5; do
             git fetch origin main
-            if ! git rebase origin/main; then
-              git rebase --abort || true
-              echo "::error::Catalogue changed concurrently and could not be rebased safely."
-              exit 1
+            git reset --hard origin/main
+            python3 scripts/refresh_catalogue.py
+            git add swooptv-curated.json
+            if git diff --cached --quiet; then
+              echo "Catalogue is already up to date."
+              exit 0
             fi
+            git commit -m "Refresh provider catalogue and dynamic collections"
             if git push origin HEAD:main; then
               exit 0
             fi
-            echo "Main advanced during push; retrying ($attempt/5)."
+            echo "Main advanced while publishing; regenerate from latest main ($attempt/5)."
             sleep 3
           done
-          echo "::error::Unable to publish after 5 attempts."
+          echo "::error::Could not publish after five fresh attempts."
           exit 1
