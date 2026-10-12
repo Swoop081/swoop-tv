@@ -1,7 +1,7 @@
 {
   "format": "swooptv-curated-v1",
   "version": 2,
-  "generatedAt": "2026-10-12T10:59:07.791Z",
+  "generatedAt": "2026-10-12T11:27:50.455Z",
   "categories": [
     {
       "id": "group-1791785041794",
@@ -224,6 +224,2302 @@
           ],
           "logo": "assets/channel-logos/fox-sports-unknown.svg",
           "epgChannelId": "HBOLatino.us"
+        },
+        {
+          "name": "US: A&E HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325830",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1877.jpg?33312",
+              "epgChannelId": "AandE.us",
+              "language": "Unverified",
+              "name": "US: A&E HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1877.jpg?33312",
+          "epgChannelId": "AandE.us"
+        },
+        {
+          "name": "US: AMC HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325778",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6164.png?84800",
+              "epgChannelId": "AMC.us",
+              "language": "Unverified",
+              "name": "US: AMC HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6164.png?84800",
+          "epgChannelId": "AMC.us"
+        },
+        {
+          "name": "US: AMC PLUS",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325934",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1114.png?6385",
+              "epgChannelId": "AMC.us",
+              "language": "Unverified",
+              "name": "US: AMC PLUS"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1114.png?6385",
+          "epgChannelId": "AMC.us"
+        },
+        {
+          "name": "US: ANIMAL PLANET HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325780",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/626.png?14808",
+              "epgChannelId": "animalplanet.us",
+              "language": "Unverified",
+              "name": "US: ANIMAL PLANET HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/626.png?14808",
+          "epgChannelId": "animalplanet.us"
+        },
+        {
+          "name": "US: ANIMAL PLANET WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325844",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/626.png?93518",
+              "epgChannelId": "animalplanet.us",
+              "language": "Unverified",
+              "name": "US: ANIMAL PLANET WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/626.png?93518",
+          "epgChannelId": "animalplanet.us"
+        },
+        {
+          "name": "US: ANTENNA TV",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325933",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/12454.jpg?13787",
+              "epgChannelId": "AntennaTV.us",
+              "language": "Unverified",
+              "name": "US: ANTENNA TV"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/12454.jpg?13787",
+          "epgChannelId": "AntennaTV.us"
+        },
+        {
+          "name": "US: ASPIRE HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325845",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3317.jpg?45592",
+              "epgChannelId": "AspireTV.us",
+              "language": "Unverified",
+              "name": "US: ASPIRE HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3317.jpg?45592",
+          "epgChannelId": "AspireTV.us"
+        },
+        {
+          "name": "US: AWE HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325913",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8443.jpg?63479",
+              "epgChannelId": "AWealthofEntertainment.us",
+              "language": "Unverified",
+              "name": "US: AWE HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8443.jpg?63479",
+          "epgChannelId": "AWealthofEntertainment.us"
+        },
+        {
+          "name": "US: BBC AMERICA HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325827",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/192.png?52355",
+              "epgChannelId": "BBCAmerica.us",
+              "language": "Unverified",
+              "name": "US: BBC AMERICA HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/192.png?52355",
+          "epgChannelId": "BBCAmerica.us"
+        },
+        {
+          "name": "US: BET GOSPEL",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325847",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8291.jpg?93571",
+              "epgChannelId": "BETGospel.us",
+              "language": "Unverified",
+              "name": "US: BET GOSPEL"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8291.jpg?93571",
+          "epgChannelId": "BETGospel.us"
+        },
+        {
+          "name": "US: BET HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325826",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8291.jpg?2640",
+              "epgChannelId": "BET.us",
+              "language": "Unverified",
+              "name": "US: BET HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8291.jpg?2640",
+          "epgChannelId": "BET.us"
+        },
+        {
+          "name": "US: BET HER HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325849",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8291.jpg?93571",
+              "epgChannelId": "BetHer.us",
+              "language": "Unverified",
+              "name": "US: BET HER HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8291.jpg?93571",
+          "epgChannelId": "BetHer.us"
+        },
+        {
+          "name": "US: BET JAMS HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325848",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8291.jpg?93571",
+              "epgChannelId": "BETjams.us",
+              "language": "Unverified",
+              "name": "US: BET JAMS HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8291.jpg?93571",
+          "epgChannelId": "BETjams.us"
+        },
+        {
+          "name": "US: BET SOUL",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325850",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8291.jpg?93571",
+              "epgChannelId": "BETSoul.us",
+              "language": "Unverified",
+              "name": "US: BET SOUL"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8291.jpg?93571",
+          "epgChannelId": "BETSoul.us"
+        },
+        {
+          "name": "US: BLAZE TV",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "436664",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/11264.jpg?88095",
+              "epgChannelId": "BlazeTV.us",
+              "language": "Unverified",
+              "name": "US: BLAZE TV"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/11264.jpg?88095",
+          "epgChannelId": "BlazeTV.us"
+        },
+        {
+          "name": "US: AXS TV HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325843",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1901.jpg?42221",
+              "epgChannelId": "AXSTV.us",
+              "language": "Unverified",
+              "name": "US: AXS TV HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1901.jpg?42221",
+          "epgChannelId": "AXSTV.us"
+        },
+        {
+          "name": "US: BOUNCE XL",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325938",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2280.jpg?28409",
+              "epgChannelId": "PlutoBounceXL.us",
+              "language": "Unverified",
+              "name": "US: BOUNCE XL"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2280.jpg?28409",
+          "epgChannelId": "PlutoBounceXL.us"
+        },
+        {
+          "name": "US: BOUNCE TV HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325851",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2280.jpg?28409",
+              "epgChannelId": "BounceTV.us",
+              "language": "Unverified",
+              "name": "US: BOUNCE TV HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2280.jpg?28409",
+          "epgChannelId": "BounceTV.us"
+        },
+        {
+          "name": "US: BRAVO HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325779",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8297.jpg?30928",
+              "epgChannelId": "Bravo.us",
+              "language": "Unverified",
+              "name": "US: BRAVO HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8297.jpg?30928",
+          "epgChannelId": "Bravo.us"
+        },
+        {
+          "name": "US: BRAVO WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325852",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8297.jpg?14072",
+              "epgChannelId": "Bravo.us",
+              "language": "Unverified",
+              "name": "US: BRAVO WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8297.jpg?14072",
+          "epgChannelId": "Bravo.us"
+        },
+        {
+          "name": "US: CATCHY COMEDY HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "1782815",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/14738.png?28884",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: CATCHY COMEDY HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/14738.png?28884",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: BYU TV",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "542324",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/9761.jpg?14917",
+              "epgChannelId": "BrighamYoungUniversity.us",
+              "language": "Unverified",
+              "name": "US: BYU TV"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/9761.jpg?14917",
+          "epgChannelId": "BrighamYoungUniversity.us"
+        },
+        {
+          "name": "US: BUZZR",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325914",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8511.jpg?47723",
+              "epgChannelId": "BuzzrTV.us",
+              "language": "Unverified",
+              "name": "US: BUZZR"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8511.jpg?47723",
+          "epgChannelId": "BuzzrTV.us"
+        },
+        {
+          "name": "US: CHARGE!",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325940",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/10549.jpg?12533",
+              "epgChannelId": "ChargeTV.us",
+              "language": "Unverified",
+              "name": "US: CHARGE!"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/10549.jpg?12533",
+          "epgChannelId": "ChargeTV.us"
+        },
+        {
+          "name": "US: CHEDDAR BUSINESS HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "436543",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/10634.png?18565",
+              "epgChannelId": "CheddarBusiness.us",
+              "language": "Unverified",
+              "name": "US: CHEDDAR BUSINESS HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/10634.png?18565",
+          "epgChannelId": "CheddarBusiness.us"
+        },
+        {
+          "name": "US: CMT HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325831",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/11185.jpg?98781",
+              "epgChannelId": "CMT.us",
+              "language": "Unverified",
+              "name": "US: CMT HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/11185.jpg?98781",
+          "epgChannelId": "CMT.us"
+        },
+        {
+          "name": "US: COMEDY CENTRAL HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325781",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/749.png?33276",
+              "epgChannelId": "ComedyCentral.us",
+              "language": "Unverified",
+              "name": "US: COMEDY CENTRAL HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/749.png?33276",
+          "epgChannelId": "ComedyCentral.us"
+        },
+        {
+          "name": "US: CLEO TV 4K",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "434014",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3023.jpg?78275",
+              "epgChannelId": "CleoTV.us",
+              "language": "Unverified",
+              "name": "US: CLEO TV 4K"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3023.jpg?78275",
+          "epgChannelId": "CleoTV.us"
+        },
+        {
+          "name": "US: COMEDY TV HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325909",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2997.jpg?21570",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: COMEDY TV HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2997.jpg?21570",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: COMET HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325853",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3064.jpg?1960",
+              "epgChannelId": "Comet.us",
+              "language": "Unverified",
+              "name": "US: COMET HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3064.jpg?1960",
+          "epgChannelId": "Comet.us"
+        },
+        {
+          "name": "US: COOKING CHANNEL HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325825",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8272.jpg?22708",
+              "epgChannelId": "CookingChannel.us",
+              "language": "Unverified",
+              "name": "US: COOKING CHANNEL HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8272.jpg?22708",
+          "epgChannelId": "CookingChannel.us"
+        },
+        {
+          "name": "US: COURT TV HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325916",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13520.jpg?65798",
+              "epgChannelId": "CourtTV.us",
+              "language": "Unverified",
+              "name": "US: COURT TV HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13520.jpg?65798",
+          "epgChannelId": "CourtTV.us"
+        },
+        {
+          "name": "US: COWBOY CHANNEL",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325912",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2372.png?90102",
+              "epgChannelId": "TheCowboyChannel.us",
+              "language": "Unverified",
+              "name": "US: COWBOY CHANNEL"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2372.png?90102",
+          "epgChannelId": "TheCowboyChannel.us"
+        },
+        {
+          "name": "US: COZI",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325824",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8271.jpg?74385",
+              "epgChannelId": "CoziTV.us",
+              "language": "Unverified",
+              "name": "US: COZI"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8271.jpg?74385",
+          "epgChannelId": "CoziTV.us"
+        },
+        {
+          "name": "US: CRIME & INVESTIGATION HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325832",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3959.jpg?32238",
+              "epgChannelId": "CrimeInvestigation.us",
+              "language": "Unverified",
+              "name": "US: CRIME & INVESTIGATION HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3959.jpg?32238",
+          "epgChannelId": "CrimeInvestigation.us"
+        },
+        {
+          "name": "US: DESTINATION AMERICA HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325833",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/12523.png?16017",
+              "epgChannelId": "DestinationAmerica.us",
+              "language": "Unverified",
+              "name": "US: DESTINATION AMERICA HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/12523.png?16017",
+          "epgChannelId": "DestinationAmerica.us"
+        },
+        {
+          "name": "US: DISCOVERY HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325775",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3955.jpg?82800",
+              "epgChannelId": "DiscoveryChannel.us",
+              "language": "Unverified",
+              "name": "US: DISCOVERY HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3955.jpg?82800",
+          "epgChannelId": "DiscoveryChannel.us"
+        },
+        {
+          "name": "US: DISCOVERY FAMILY HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325776",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6308.jpg?18025",
+              "epgChannelId": "DiscoveryFamily.us",
+              "language": "Unverified",
+              "name": "US: DISCOVERY FAMILY HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6308.jpg?18025",
+          "epgChannelId": "DiscoveryFamily.us"
+        },
+        {
+          "name": "US: DISCOVERY SCIENCE HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325774",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/620.jpg?1168",
+              "epgChannelId": "discoveryscience.us",
+              "language": "Unverified",
+              "name": "US: DISCOVERY SCIENCE HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/620.jpg?1168",
+          "epgChannelId": "discoveryscience.us"
+        },
+        {
+          "name": "US: DISCOVERY WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325855",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/618.jpg?34720",
+              "epgChannelId": "DiscoveryChannel.us",
+              "language": "Unverified",
+              "name": "US: DISCOVERY WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/618.jpg?34720",
+          "epgChannelId": "DiscoveryChannel.us"
+        },
+        {
+          "name": "US: DOG TV HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325911",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/849.jpg?61270",
+              "epgChannelId": "DogTV.us",
+              "language": "Unverified",
+              "name": "US: DOG TV HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/849.jpg?61270",
+          "epgChannelId": "DogTV.us"
+        },
+        {
+          "name": "US: DIY HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325823",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13320.jpg?53931",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: DIY HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13320.jpg?53931",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: DABL",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "1465505",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/14258.jpg?49744",
+              "epgChannelId": "WKMGDT2.us",
+              "language": "Unverified",
+              "name": "US: DABL"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/14258.jpg?49744",
+          "epgChannelId": "WKMGDT2.us"
+        },
+        {
+          "name": "US: E! ENTERTAINMENT WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325857",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6000.jpg?63659",
+              "epgChannelId": "EEntertainment.us",
+              "language": "Unverified",
+              "name": "US: E! ENTERTAINMENT WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6000.jpg?63659",
+          "epgChannelId": "EEntertainment.us"
+        },
+        {
+          "name": "US: E! ENTERTAINMENT HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325822",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6000.jpg?14243",
+              "epgChannelId": "EEntertainment.us",
+              "language": "Unverified",
+              "name": "US: E! ENTERTAINMENT HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6000.jpg?14243",
+          "epgChannelId": "EEntertainment.us"
+        },
+        {
+          "name": "US: FETV",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325942",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8479.jpg?91876",
+              "epgChannelId": "FamilyEntertainment.us",
+              "language": "Unverified",
+              "name": "US: FETV"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8479.jpg?91876",
+          "epgChannelId": "FamilyEntertainment.us"
+        },
+        {
+          "name": "US: TBS WEST",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325943",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3274.jpg?ver=34257",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: TBS WEST"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3274.jpg?ver=34257",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: FOOD NETWORK HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325821",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6168.png?98103",
+              "epgChannelId": "foodnetwork.us",
+              "language": "Unverified",
+              "name": "US: FOOD NETWORK HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6168.png?98103",
+          "epgChannelId": "foodnetwork.us"
+        },
+        {
+          "name": "US: FOX SOUL",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325936",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/593.png?26616",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: FOX SOUL"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/593.png?26616",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: FREEFORM WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325858",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8236.jpg?51099",
+              "epgChannelId": "Freeform.us",
+              "language": "Unverified",
+              "name": "US: FREEFORM WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8236.jpg?51099",
+          "epgChannelId": "Freeform.us"
+        },
+        {
+          "name": "US: FREEFORM EAST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "1205661",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8236.jpg?51099",
+              "epgChannelId": "Freeform.us",
+              "language": "Unverified",
+              "name": "US: FREEFORM EAST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8236.jpg?51099",
+          "epgChannelId": "Freeform.us"
+        },
+        {
+          "name": "US: FX WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325860",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8228.jpeg?17349",
+              "epgChannelId": "FX.us",
+              "language": "Unverified",
+              "name": "US: FX WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8228.jpeg?17349",
+          "epgChannelId": "FX.us"
+        },
+        {
+          "name": "US: FX HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325784",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6695.png?86707",
+              "epgChannelId": "FX.us",
+              "language": "Unverified",
+              "name": "US: FX HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6695.png?86707",
+          "epgChannelId": "FX.us"
+        },
+        {
+          "name": "US: FXM HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325783",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8234.jpg?62275",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: FXM HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8234.jpg?62275",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: FXX HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325782",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8234.jpg?87392",
+              "epgChannelId": "FXX.us",
+              "language": "Unverified",
+              "name": "US: FXX HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8234.jpg?87392",
+          "epgChannelId": "FXX.us"
+        },
+        {
+          "name": "US: FXX WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325861",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8228.jpeg?17349",
+              "epgChannelId": "FXX.us",
+              "language": "Unverified",
+              "name": "US: FXX WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8228.jpeg?17349",
+          "epgChannelId": "FXX.us"
+        },
+        {
+          "name": "US: FYI HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325820",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6401.png?13227",
+              "epgChannelId": "fyi.us",
+              "language": "Unverified",
+              "name": "US: FYI HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6401.png?13227",
+          "epgChannelId": "fyi.us"
+        },
+        {
+          "name": "US: GAME TV HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325802",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1962.jpg?20194",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: GAME TV HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1962.jpg?20194",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: GET TV",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325917",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/7701.png?2212",
+              "epgChannelId": "GetTV.us",
+              "language": "Unverified",
+              "name": "US: GET TV"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/7701.png?2212",
+          "epgChannelId": "GetTV.us"
+        },
+        {
+          "name": "US: GREAT AMERICAN COUNTRY 4K",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325862",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/7724.jpg?88806",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: GREAT AMERICAN COUNTRY 4K"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/7724.jpg?88806",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: GRIT",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325863",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3934.jpg?52653",
+              "epgChannelId": "Grit.us",
+              "language": "Unverified",
+              "name": "US: GRIT"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3934.jpg?52653",
+          "epgChannelId": "Grit.us"
+        },
+        {
+          "name": "US: Game Show Central",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "698885",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8476.png?99560",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: Game Show Central"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8476.png?99560",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: GSN HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325819",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8231.png?87144",
+              "epgChannelId": "GameShowNetwork.us",
+              "language": "Unverified",
+              "name": "US: GSN HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8231.png?87144",
+          "epgChannelId": "GameShowNetwork.us"
+        },
+        {
+          "name": "US: HALLMARK DRAMA HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325835",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8225.jpg?68352",
+              "epgChannelId": "HallmarkDrama.us",
+              "language": "Unverified",
+              "name": "US: HALLMARK DRAMA HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8225.jpg?68352",
+          "epgChannelId": "HallmarkDrama.us"
+        },
+        {
+          "name": "US: HALLMARK HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325790",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8225.jpg?68871",
+              "epgChannelId": "Hallmark.us",
+              "language": "Unverified",
+              "name": "US: HALLMARK HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8225.jpg?68871",
+          "epgChannelId": "Hallmark.us"
+        },
+        {
+          "name": "US: HALLMARK M & M HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325789",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8225.jpg?50284",
+              "epgChannelId": "Hallmark.us",
+              "language": "Unverified",
+              "name": "US: HALLMARK M & M HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8225.jpg?50284",
+          "epgChannelId": "Hallmark.us"
+        },
+        {
+          "name": "US: HALLMARK MOVIES/MYSTERIES 4K",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "434011",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8225.jpg?31549",
+              "epgChannelId": "HallmarkMoviesMysteries.us",
+              "language": "Unverified",
+              "name": "US: HALLMARK MOVIES/MYSTERIES 4K"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8225.jpg?31549",
+          "epgChannelId": "HallmarkMoviesMysteries.us"
+        },
+        {
+          "name": "US: HD NET MOVIES HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325885",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/897.jpg?45827",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: HD NET MOVIES HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/897.jpg?45827",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: HEROES & ICONS",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325918",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8293.jpg?69210",
+              "epgChannelId": "HeroesAndIconsTV.us",
+              "language": "Unverified",
+              "name": "US: HEROES & ICONS"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8293.jpg?69210",
+          "epgChannelId": "HeroesAndIconsTV.us"
+        },
+        {
+          "name": "US: HGTV HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325791",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8224.png?52942",
+              "epgChannelId": "hgtv.us",
+              "language": "Unverified",
+              "name": "US: HGTV HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8224.png?52942",
+          "epgChannelId": "hgtv.us"
+        },
+        {
+          "name": "US: HGTV WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325901",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8224.png?2756",
+              "epgChannelId": "hgtv.us",
+              "language": "Unverified",
+              "name": "US: HGTV WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8224.png?2756",
+          "epgChannelId": "hgtv.us"
+        },
+        {
+          "name": "US: HISTORY HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325777",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/621.jpg?7885",
+              "epgChannelId": "HistoryChannel.us",
+              "language": "Unverified",
+              "name": "US: HISTORY HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/621.jpg?7885",
+          "epgChannelId": "HistoryChannel.us"
+        },
+        {
+          "name": "US: ID INVESTIGATION DISCOVERY HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325865",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/622.jpg?59027",
+              "epgChannelId": "investigationdiscovery.us",
+              "language": "Unverified",
+              "name": "US: ID INVESTIGATION DISCOVERY HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/622.jpg?59027",
+          "epgChannelId": "investigationdiscovery.us"
+        },
+        {
+          "name": "US: ION",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "1468062",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/14273.jpg?86176",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: ION"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/14273.jpg?86176",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: ION MYSTERY",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "1468061",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/14273.jpg?86176",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: ION MYSTERY"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/14273.jpg?86176",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: ION PLUS",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "1468060",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/14273.jpg?86176",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: ION PLUS"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/14273.jpg?86176",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: IFC HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325817",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8212.png?29092",
+              "epgChannelId": "IndependentFilmChannel.us",
+              "language": "Unverified",
+              "name": "US: IFC HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8212.png?29092",
+          "epgChannelId": "IndependentFilmChannel.us"
+        },
+        {
+          "name": "US: INDIEPLEX HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325816",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8220.jpg?56570",
+              "epgChannelId": "IndiePlex.us",
+              "language": "Unverified",
+              "name": "US: INDIEPLEX HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8220.jpg?56570",
+          "epgChannelId": "IndiePlex.us"
+        },
+        {
+          "name": "US: INSP HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325896",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/4005.png?48560",
+              "epgChannelId": "INSP.us",
+              "language": "Unverified",
+              "name": "US: INSP HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/4005.png?48560",
+          "epgChannelId": "INSP.us"
+        },
+        {
+          "name": "US: JUSTICE CENTRAL HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325908",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3252.jpg?88743",
+              "epgChannelId": "JusticeCentral.us",
+              "language": "Unverified",
+              "name": "US: JUSTICE CENTRAL HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3252.jpg?88743",
+          "epgChannelId": "JusticeCentral.us"
+        },
+        {
+          "name": "US: LIFETIME HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325815",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8213.jpg?31619",
+              "epgChannelId": "LifetimeNetwork.us",
+              "language": "Unverified",
+              "name": "US: LIFETIME HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8213.jpg?31619",
+          "epgChannelId": "LifetimeNetwork.us"
+        },
+        {
+          "name": "US: LIFETIME MOVIE NETWORK HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325788",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8213.jpg?90786",
+              "epgChannelId": "LifetimeMovieNetwork.us",
+              "language": "Unverified",
+              "name": "US: LIFETIME MOVIE NETWORK HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8213.jpg?90786",
+          "epgChannelId": "LifetimeMovieNetwork.us"
+        },
+        {
+          "name": "US: LIFETIME REAL WOMEN HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325920",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8213.jpg?18452",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: LIFETIME REAL WOMEN HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8213.jpg?18452",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: LOGO HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325867",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3138.jpg?91685",
+              "epgChannelId": "Logo.us",
+              "language": "Unverified",
+              "name": "US: LOGO HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3138.jpg?91685",
+          "epgChannelId": "Logo.us"
+        },
+        {
+          "name": "US:  LAFF TV  HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "624002",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8332.png?53229",
+              "epgChannelId": "Laff.us",
+              "language": "Unverified",
+              "name": "US:  LAFF TV  HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8332.png?53229",
+          "epgChannelId": "Laff.us"
+        },
+        {
+          "name": "US: ME TV",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325868",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/407.png?9153",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: ME TV"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/407.png?9153",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: MGM HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325886",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8527.png?46535",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: MGM HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8527.png?46535",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: MILITARY HISTORY",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325869",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/621.jpg?2038",
+              "epgChannelId": "MilitaryHistory.us",
+              "language": "Unverified",
+              "name": "US: MILITARY HISTORY"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/621.jpg?2038",
+          "epgChannelId": "MilitaryHistory.us"
+        },
+        {
+          "name": "US: MTV HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325793",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/656.png?11783",
+              "epgChannelId": "MTV.us",
+              "language": "Unverified",
+              "name": "US: MTV HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/656.png?11783",
+          "epgChannelId": "MTV.us"
+        },
+        {
+          "name": "US: MTV 2 HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325837",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/656.png?84666",
+              "epgChannelId": "MTV2.us",
+              "language": "Unverified",
+              "name": "US: MTV 2 HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/656.png?84666",
+          "epgChannelId": "MTV2.us"
+        },
+        {
+          "name": "US:  THE VICTORY CHANNEL HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "668549",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/11484.png?43629",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US:  THE VICTORY CHANNEL HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/11484.png?43629",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: MTV LIVE HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325792",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/656.png?11783",
+              "epgChannelId": "MTVLive.us",
+              "language": "Unverified",
+              "name": "US: MTV LIVE HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/656.png?11783",
+          "epgChannelId": "MTVLive.us"
+        },
+        {
+          "name": "US: : NATIONAL GEOGRAPHIC WILD HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325785",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1395.png?40753",
+              "epgChannelId": "NatGeoWild.us",
+              "language": "Unverified",
+              "name": "US: : NATIONAL GEOGRAPHIC WILD HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1395.png?40753",
+          "epgChannelId": "NatGeoWild.us"
+        },
+        {
+          "name": "US: OUTDOOR CHANNEL HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325838",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/765.png?59653",
+              "epgChannelId": "OutdoorChannel.us",
+              "language": "Unverified",
+              "name": "US: OUTDOOR CHANNEL HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/765.png?59653",
+          "epgChannelId": "OutdoorChannel.us"
+        },
+        {
+          "name": "US: OVATION HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325871",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/7702.png?6626",
+              "epgChannelId": "Ovation.us",
+              "language": "Unverified",
+              "name": "US: OVATION HD"
+            },
+            {
+              "id": "1426451",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13980.png?41458",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: OVATION"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/7702.png?6626",
+          "epgChannelId": "Ovation.us"
+        },
+        {
+          "name": "US: OUTSIDE TV HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325872",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/7886.jpg?9567",
+              "epgChannelId": "OutsideTV.us",
+              "language": "Unverified",
+              "name": "US: OUTSIDE TV HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/7886.jpg?9567",
+          "epgChannelId": "OutsideTV.us"
+        },
+        {
+          "name": "US: OWN HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325813",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8197.jpg?1638",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: OWN HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8197.jpg?1638",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: OXYGEN HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325812",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8181.jpg?93487",
+              "epgChannelId": "Oxygen.us",
+              "language": "Unverified",
+              "name": "US: OXYGEN HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8181.jpg?93487",
+          "epgChannelId": "Oxygen.us"
+        },
+        {
+          "name": "US: OXYGEN WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325873",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8181.jpg?524",
+              "epgChannelId": "Oxygen.us",
+              "language": "Unverified",
+              "name": "US: OXYGEN WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8181.jpg?524",
+          "epgChannelId": "Oxygen.us"
+        },
+        {
+          "name": "US: PARAMOUNT HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325806",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/766.png?7092",
+              "epgChannelId": "ParamountNetwork.us",
+              "language": "Unverified",
+              "name": "US: PARAMOUNT HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/766.png?7092",
+          "epgChannelId": "ParamountNetwork.us"
+        },
+        {
+          "name": "US: PBS HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325811",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/12149.jpg?93627",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: PBS HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/12149.jpg?93627",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: PIXL HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325905",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/9703.jpg?66736",
+              "epgChannelId": "PixLTV.us",
+              "language": "Unverified",
+              "name": "US: PIXL HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/9703.jpg?66736",
+          "epgChannelId": "PixLTV.us"
+        },
+        {
+          "name": "US: POP HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325810",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/4003.jpg?39505",
+              "epgChannelId": "Pop.uk",
+              "language": "Unverified",
+              "name": "US: POP HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/4003.jpg?39505",
+          "epgChannelId": "Pop.uk"
+        },
+        {
+          "name": "US: AFV FAMILY",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "1123570",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13978.png?35931",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: AFV FAMILY"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13978.png?35931",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: REELZ FAMUS HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325809",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8131.jpg?80047",
+              "epgChannelId": "reelzchannel.us",
+              "language": "Unverified",
+              "name": "US: REELZ FAMUS HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8131.jpg?80047",
+          "epgChannelId": "reelzchannel.us"
+        },
+        {
+          "name": "US: RETROPLEX HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325808",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8139.png?22272",
+              "epgChannelId": "RetroPlex.us",
+              "language": "Unverified",
+              "name": "US: RETROPLEX HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8139.png?22272",
+          "epgChannelId": "RetroPlex.us"
+        },
+        {
+          "name": "US: RETRO TV",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325922",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/7650.png?92583",
+              "epgChannelId": "RetroTV.us",
+              "language": "Unverified",
+              "name": "US: RETRO TV"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/7650.png?92583",
+          "epgChannelId": "RetroTV.us"
+        },
+        {
+          "name": "US: REVOLT HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325897",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/11536.jpg?54750",
+              "epgChannelId": "Revolt.us",
+              "language": "Unverified",
+              "name": "US: REVOLT HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/11536.jpg?54750",
+          "epgChannelId": "Revolt.us"
+        },
+        {
+          "name": "US: RFD TV HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325875",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/12806.png?38504",
+              "epgChannelId": "RFDTV.us",
+              "language": "Unverified",
+              "name": "US: RFD TV HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/12806.png?38504",
+          "epgChannelId": "RFDTV.us"
+        },
+        {
+          "name": "US: RT DOCUMENTARY HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325929",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3898.jpeg?32640",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: RT DOCUMENTARY HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3898.jpeg?32640",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: SHOWTIME BET HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325932",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8130.jpg?86612",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: SHOWTIME BET HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8130.jpg?86612",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: SMITHSONIAN CHANNEL HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325877",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3051.png?79749",
+              "epgChannelId": "SmithsonianChannel.us",
+              "language": "Unverified",
+              "name": "US: SMITHSONIAN CHANNEL HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3051.png?79749",
+          "epgChannelId": "SmithsonianChannel.us"
+        },
+        {
+          "name": "US: SMITHSONIAN CHANNEL WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325902",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3051.png?53674",
+              "epgChannelId": "SmithsonianChannel.us",
+              "language": "Unverified",
+              "name": "US: SMITHSONIAN CHANNEL WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3051.png?53674",
+          "epgChannelId": "SmithsonianChannel.us"
+        },
+        {
+          "name": "US: SUNDANCE HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325805",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/11322.jpg?91806",
+              "epgChannelId": "SundanceTV.us",
+              "language": "Unverified",
+              "name": "US: SUNDANCE HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/11322.jpg?91806",
+          "epgChannelId": "SundanceTV.us"
+        },
+        {
+          "name": "US: SYFY HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325804",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6611.png?80387",
+              "epgChannelId": "Syfy.us",
+              "language": "Unverified",
+              "name": "US: SYFY HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6611.png?80387",
+          "epgChannelId": "Syfy.us"
+        },
+        {
+          "name": "US: SYFY WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325878",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6611.png?46941",
+              "epgChannelId": "Syfy.us",
+              "language": "Unverified",
+              "name": "US: SYFY WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6611.png?46941",
+          "epgChannelId": "Syfy.us"
+        },
+        {
+          "name": "US: TASTEMADE HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325923",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3066.png?67764",
+              "epgChannelId": "Tastemade.us",
+              "language": "Unverified",
+              "name": "US: TASTEMADE HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3066.png?67764",
+          "epgChannelId": "Tastemade.us"
+        },
+        {
+          "name": "US: TBS HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325803",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/9683.png?89795",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: TBS HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/9683.png?89795",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: TCM HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325841",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6339.jpg?31830",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: TCM HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/6339.jpg?31830",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: TCM EAST",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "2109510",
+              "ext": "ts",
+              "logo": "https://photo-tmdb.com/stalker_portal/misc/logos/320/6339.jpg?68626",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: TCM EAST"
+            }
+          ],
+          "logo": "https://photo-tmdb.com/stalker_portal/misc/logos/320/6339.jpg?68626",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: TEEN NICK",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325879",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13346.jpg?68674",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: TEEN NICK"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13346.jpg?68674",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: TLC HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325801",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1421.png?59529",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: TLC HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1421.png?59529",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: TLC WEST",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325894",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1421.png?86039",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: TLC WEST"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1421.png?86039",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: TNT 4K",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "716522",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2270.jpg?37560",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: TNT 4K"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2270.jpg?37560",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: TNT WEST 4K",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325881",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2270.jpg?37560",
+              "epgChannelId": "TNT.us",
+              "language": "Unverified",
+              "name": "US: TNT WEST 4K"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2270.jpg?37560",
+          "epgChannelId": "TNT.us"
+        },
+        {
+          "name": "US: TRAVEL CHANNEL HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325772",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3081.jpg?12958",
+              "epgChannelId": "TravelChannel.us",
+              "language": "Unverified",
+              "name": "US: TRAVEL CHANNEL HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3081.jpg?12958",
+          "epgChannelId": "TravelChannel.us"
+        },
+        {
+          "name": "US: TRAVEL CHANNEL WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325882",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3081.jpg?83728",
+              "epgChannelId": "TravelChannel.us",
+              "language": "Unverified",
+              "name": "US: TRAVEL CHANNEL WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3081.jpg?83728",
+          "epgChannelId": "TravelChannel.us"
+        },
+        {
+          "name": "US: TRUTV 4K",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325798",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1876.jpg?90056",
+              "epgChannelId": "truTV.us",
+              "language": "Unverified",
+              "name": "US: TRUTV 4K"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1876.jpg?90056",
+          "epgChannelId": "truTV.us"
+        },
+        {
+          "name": "US: TRUTV WEST 4K",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325880",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1876.jpg?23444",
+              "epgChannelId": "truTV.us",
+              "language": "Unverified",
+              "name": "US: TRUTV WEST 4K"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1876.jpg?23444",
+          "epgChannelId": "truTV.us"
+        },
+        {
+          "name": "US: TV LAND HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325797",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8098.png?40000",
+              "epgChannelId": "TVLand.us",
+              "language": "Unverified",
+              "name": "US: TV LAND HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8098.png?40000",
+          "epgChannelId": "TVLand.us"
+        },
+        {
+          "name": "US: TV ONE HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325842",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1288.jpg?13049",
+              "epgChannelId": "TVOne.us",
+              "language": "Unverified",
+              "name": "US: TV ONE HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1288.jpg?13049",
+          "epgChannelId": "TVOne.us"
+        },
+        {
+          "name": "US: USA NETWORK 4K",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "610437",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8091.png?12315",
+              "epgChannelId": "USANetwork.us",
+              "language": "Unverified",
+              "name": "US: USA NETWORK 4K"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8091.png?12315",
+          "epgChannelId": "USANetwork.us"
+        },
+        {
+          "name": "US: USA NETWORK WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325884",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8091.png?61853",
+              "epgChannelId": "USANetwork.us",
+              "language": "Unverified",
+              "name": "US: USA NETWORK WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8091.png?61853",
+          "epgChannelId": "USANetwork.us"
+        },
+        {
+          "name": "US: VH 1 4K",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "718277",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/767.png?7909",
+              "epgChannelId": "VH1.us",
+              "language": "Unverified",
+              "name": "US: VH 1 4K"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/767.png?7909",
+          "epgChannelId": "VH1.us"
+        },
+        {
+          "name": "US: VICELAND HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325795",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/665.png?10050",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: VICELAND HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/665.png?10050",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: WE TV HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325794",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8090.png?96298",
+              "epgChannelId": "WeTV.us",
+              "language": "Unverified",
+              "name": "US: WE TV HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8090.png?96298",
+          "epgChannelId": "WeTV.us"
+        },
+        {
+          "name": "US: LAW & CRIME",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "1426450",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13981.png?25579",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: LAW & CRIME"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13981.png?25579",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: EL REY",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "1426449",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13982.jpg?17982",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: EL REY"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13982.jpg?17982",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: GREAT AMERICAN FAITH & LIVING",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "1426448",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13983.png?33993",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: GREAT AMERICAN FAITH & LIVING"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13983.png?33993",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: CIRCLE TV HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "1426447",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13984.png?54412",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: CIRCLE TV HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13984.png?54412",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: DUS (S)",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "1426446",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13985.jpg?36783",
+              "epgChannelId": null,
+              "language": "Unverified",
+              "name": "US: DUS (S)"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/13985.jpg?36783",
+          "epgChannelId": null
+        },
+        {
+          "name": "US: Magnolia Network West (Y) HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "510969",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8469.png?89503",
+              "epgChannelId": "MagnoliaNetwork.us",
+              "language": "Unverified",
+              "name": "US: Magnolia Network West (Y) HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8469.png?89503",
+          "epgChannelId": "MagnoliaNetwork.us"
+        },
+        {
+          "name": "US: FOOD NETWORK WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325859",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3936.jpg?36329",
+              "epgChannelId": "foodnetwork.us",
+              "language": "Unverified",
+              "name": "US: FOOD NETWORK WEST HD"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/3936.jpg?36329",
+          "epgChannelId": "foodnetwork.us"
         }
       ]
     },
