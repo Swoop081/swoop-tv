@@ -8,33 +8,38 @@ def request(url,headers=None):
     req=urllib.request.Request(url,headers={"User-Agent":"SwoopTV-Catalogue-Sync/1.0",**(headers or {})})
     with urllib.request.urlopen(req,timeout=90) as response:return json.load(response)
 def norm(value):
-    return re.sub(r"[^a-z0-9]+"," ",re.sub(r"^(?:(?:4k|8k|uhd|hdr|dv|multi|en|eng|nf|dsnp|disney|netflix)[\s._-]+)+","",str(value or ""),flags=re.I).lower()).strip()
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
 def year(value):
-    match=re.search(r"\b(?:19|20)\d{2}\b",str(value or ""))
-    return match.group(0) if match else ""
-def key(name,yr=""):return norm(re.sub(r"\b(?:19|20)\d{2}\b","",name or "")),str(yr or year(name))
-def title_key(name):
-    name=str(name or "")
-    name=re.sub(r"^(?:(?:[A-Z]{2,5}\s*[:|]\s*)|(?:NETFLIX|DISNEY|AMAZON|APPLE|HBO|MAX|NF|DSNP|WEB-DL|4K|8K|UHD|HDR|MULTI)\s*[:|._ -]+)+","",name,flags=re.I)
-    name=re.sub(r"\b(?:19|20)\d{2}\b|\b(?:1080p|2160p|720p|4k|hdr|dv|multi.subs?|season\s*\d+|complete)\b"," ",name,flags=re.I)
+    m=re.search(r"\b(?:19|20)\d{2}\b",str(value or ""))
+    return m.group() if m else ""
+def title_key(value):
+    name=str(value or "")
+    name=re.sub(r"^(?:(?:[a-z]{2,5}\s*[:|]\s*)|(?:netflix|disney\+?|amazon|prime|apple\s*tv|hbo|max|hulu|nf|dsnp|4k|8k|uhd|hdr|dv|multi|eng|en)\s*[:|._ -]+)+","",name,flags=re.I)
+    name=re.sub(r"\b(?:19|20)\d{2}\b|\b(?:1080p|2160p|720p|4k|hdr|dolby vision|multi[- ]?subs?|season\s*\d+|s\d{1,2}\s*e\d{1,3}|complete)\b"," ",name,flags=re.I)
     return norm(name)
+def key(name,yr=""):
+    return title_key(name),str(yr or year(name))
 def variants(name):
-    result={title_key(name)}
+    values={title_key(name)}
     for sep in (" | "," : "," - "):
         parts=str(name or "").split(sep)
-        if len(parts)>1:result.add(title_key(parts[-1]))
-    return {v for v in result if len(v)>2}
+        if len(parts)>1:values.add(title_key(parts[-1]))
+    return {v for v in values if len(v)>2}
 def lookup(t,title,yr,tmdb,indices):
     by_tmdb,by_name,by_title=indices[t]
     if tmdb and by_tmdb.get(str(tmdb)):return by_tmdb[str(tmdb)]
     exact=by_name.get(key(title,yr),[])
     if exact:return exact
-    hits={}
-    for v in (variants(title) if t=="series" else {title_key(title)}):
+    # Both movies and shows use title + original release year, then title only
+    # when the provider omits the year. Never accept a conflicting known year.
+    matches={}
+    for v in variants(title):
         for x in by_title.get(v,[]):
+            provider_year=year(x.get("name"))
+            if yr and provider_year and provider_year!=str(yr):continue
             sid=str(x.get("series_id" if t=="series" else "stream_id"))
-            if not yr or not year(x.get("name")) or year(x.get("name"))==str(yr):hits[sid]=x
-    return list(hits.values())
+            matches[sid]=x
+    return list(matches.values())
 
 def refresh_mdblist(updated,available,indices,record,identity):
     api_key=os.getenv("SWOOP_MDBLIST_API_KEY","").strip()
@@ -180,7 +185,7 @@ def main():
         for x in available[t].values():
             if x.get("tmdb_id"):by_tmdb.setdefault(str(x["tmdb_id"]),[]).append(x)
             by_name.setdefault(key(x.get("name"),year(x.get("name"))),[]).append(x)
-            for v in (variants(x.get("name")) if t=="series" else {title_key(x.get("name"))}):by_title.setdefault(v,[]).append(x)
+            for v in variants(x.get("name")):by_title.setdefault(v,[]).append(x)
         indices[t]=(by_tmdb,by_name,by_title)
     def match(e,t):
         ids={str(s.get("id")) for s in e.get("streams",[]) if s.get("id")}
