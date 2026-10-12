@@ -12,7 +12,29 @@ def norm(value):
 def year(value):
     match=re.search(r"\b(?:19|20)\d{2}\b",str(value or ""))
     return match.group(0) if match else ""
-def key(name,yr=""):return norm(re.sub(r"\b(?:19|20)\d{2}\b","",name or "")),str(yr or year(name))
+def key(name,yr=""):return norm(re.sub(r"\\b(?:19|20)\\d{2}\\b","",name or "")),str(yr or year(name))
+def title_key(name):
+    name=str(name or "")
+    name=re.sub(r"^(?:(?:[A-Z]{2,5}\\s*[:|]\\s*)|(?:NETFLIX|DISNEY|AMAZON|APPLE|HBO|MAX|NF|DSNP|WEB-DL|4K|8K|UHD|HDR|MULTI)\\s*[:|._ -]+)+","",name,flags=re.I)
+    name=re.sub(r"\\b(?:19|20)\\d{2}\\b|\\b(?:1080p|2160p|720p|4k|hdr|dv|multi.subs?|season\\s*\\d+|complete)\\b"," ",name,flags=re.I)
+    return norm(name)
+def variants(name):
+    result={title_key(name)}
+    for sep in (" | "," : "," - "):
+        parts=str(name or "").split(sep)
+        if len(parts)>1:result.add(title_key(parts[-1]))
+    return {v for v in result if len(v)>2}
+def lookup(t,title,yr,tmdb,indices):
+    by_tmdb,by_name,by_title=indices[t]
+    if tmdb and by_tmdb.get(str(tmdb)):return by_tmdb[str(tmdb)]
+    exact=by_name.get(key(title,yr),[])
+    if exact:return exact
+    hits={}
+    for v in (variants(title) if t=="series" else {title_key(title)}):
+        for x in by_title.get(v,[]):
+            sid=str(x.get("series_id" if t=="series" else "stream_id"))
+            if not yr or not year(x.get("name")) or year(x.get("name"))==str(yr):hits[sid]=x
+    return list(hits.values())
 
 def refresh_mdblist(updated,available,indices,record,identity):
     api_key=os.getenv("SWOOP_MDBLIST_API_KEY","").strip()
@@ -33,7 +55,6 @@ def refresh_mdblist(updated,available,indices,record,identity):
             if not rows:raise ValueError("MDBList returned no titles")
             prior=next((g for g in updated if g.get("type")==t and g.get("name","").lower()==name.lower()),None)
             previous={key(e.get("name"),e.get("year")):e for e in (prior or {}).get("entries",[])}
-            by_tmdb,by_name=indices[t]
             entries=[];seen=set()
             for row in rows:
                 v=row.get("movie") or row.get("show") or row
@@ -41,8 +62,7 @@ def refresh_mdblist(updated,available,indices,record,identity):
                 if not title:continue
                 yr=str(v.get("year") or v.get("release_year") or row.get("year") or "")
                 tmdb=(v.get("ids") or {}).get("tmdb") or v.get("tmdb_id") or v.get("tmdbid") or row.get("tmdb_id")
-                candidates=by_tmdb.get(str(tmdb),[]) if tmdb else []
-                if not candidates:candidates=by_name.get(key(title,yr),[])
+                candidates=lookup(t,title,yr,tmdb,indices)
                 if not candidates:continue
                 k=key(title,yr)
                 if k in seen:continue
@@ -81,7 +101,6 @@ def enrich_tmdb(updated):
                 e["metadata"]={**m,**cache[ident]}
                 continue
             if remaining<=0:continue
-            remaining-=1
             endpoint="movie" if t=="movie" else "tv"
             tmdb=m.get("tmdbId")
             try:
@@ -101,9 +120,10 @@ def enrich_tmdb(updated):
                 logo=next((x for x in logos if x.get("iso_639_1")=="en"),logos[0] if logos else None)
                 enriched={"tmdbId":tmdb,"cast":cast,"poster":"https://image.tmdb.org/t/p/w500"+details["poster_path"] if details.get("poster_path") else m.get("poster",""),"backdrop":"https://image.tmdb.org/t/p/w1280"+details["backdrop_path"] if details.get("backdrop_path") else m.get("backdrop",""),"overview":details.get("overview") or m.get("overview","")}
                 if logo and logo.get("file_path"):enriched["logo"]="https://image.tmdb.org/t/p/w500"+logo["file_path"]
-                e["metadata"]={**m,**enriched};cache[ident]=enriched;total+=1
+                e["metadata"]={**m,**enriched};cache[ident]=enriched;total+=1;remaining-=1
             except Exception as exc:
-                print("TMDb enrichment skipped",t,str(e.get("name",""))[:70],type(exc).__name__,file=sys.stderr)
+                remaining-=1
+                print("TMDb enrichment skipped",t,str(e.get("name",""))[:70],type(exc).__name__,getattr(exc,"code",""),file=sys.stderr)
     # Propagate newly enriched cast and artwork to all rails, including Asian Series.
     known={}
     for g in updated:
@@ -144,19 +164,18 @@ def main():
     # Match published lists against current provider by stream ID, TMDb ID, or title+year.
     indices={}
     for t in ("movie","series"):
-        by_tmdb={};by_name={}
+        by_tmdb={};by_name={};by_title={}
         for x in available[t].values():
             if x.get("tmdb_id"):by_tmdb.setdefault(str(x["tmdb_id"]),[]).append(x)
             by_name.setdefault(key(x.get("name"),year(x.get("name"))),[]).append(x)
-        indices[t]=(by_tmdb,by_name)
+            for v in (variants(x.get("name")) if t=="series" else {title_key(x.get("name"))}):by_title.setdefault(v,[]).append(x)
+        indices[t]=(by_tmdb,by_name,by_title)
     def match(e,t):
         ids={str(s.get("id")) for s in e.get("streams",[]) if s.get("id")}
         found=[available[t][sid] for sid in ids if sid in available[t]]
         if not found:
-            by_tmdb,by_name=indices[t]
             tmdb=str((e.get("metadata") or {}).get("tmdbId") or "")
-            found=by_tmdb.get(tmdb,[]) if tmdb else []
-            if not found:found=by_name.get(key(e.get("name"),e.get("year")),[])
+            found=lookup(t,e.get("name"),e.get("year"),tmdb,indices)
         return found
     def reconcile(e,t):
         found=match(e,t)
