@@ -13,39 +13,46 @@ def year(value):
     m=re.search(r"\b(?:19|20)\d{2}\b",str(value or ""))
     return m.group() if m else ""
 def title_key(value):
-    name=str(value or "")
-    name=re.sub(r"^(?:(?:[a-z]{2,5}\s*[:|]\s*)|(?:netflix|disney\+?|amazon|prime|apple\s*tv|hbo|max|hulu|nf|dsnp|4k|8k|uhd|hdr|dv|multi|eng|en)\s*[:|._ -]+)+","",name,flags=re.I)
-    name=re.sub(r"\b(?:19|20)\d{2}\b|\b(?:1080p|2160p|720p|4k|hdr|dolby vision|multi[- ]?subs?|season\s*\d+|s\d{1,2}\s*e\d{1,3}|complete)\b"," ",name,flags=re.I)
-    name=re.sub(r"\\b(?:s(?:eason)?\\s*0?[1-9][0-9]?|series\\s*0?[1-9][0-9]?|(?:dubbed|subbed|dual audio|english dubbed))\\b"," ",name,flags=re.I)
-    name=re.sub(r"\\s*\\[[^]]*(?:1080|2160|4k|sub|dub|netflix)[^]]*\\]"," ",name,flags=re.I)
-    return norm(name)
+    return norm(value)
+
 def key(name,yr=""):
     return title_key(name),str(yr or year(name))
+
 def variants(name):
-    values={title_key(name)}
-    for sep in (" | "," : "," - "):
-        parts=str(name or "").split(sep)
-        if len(parts)>1:values.add(title_key(parts[-1]))
-    return {v for v in values if len(v)>2}
+    return {title_key(name)}
+
+def title_in_listing(title,listing):
+    """Match complete title as a contiguous word sequence, anywhere in a listing.
+
+    Does not depend on a maintained list of provider prefixes or suffixes.
+    Short or generic titles require an exact normalized name or a TMDb ID.
+    """
+    target=title_key(title)
+    source=title_key(listing)
+    if not target or not source:return False
+    if target==source:return True
+    words=target.split()
+    if len(words)<2 or len(target)<8:return False
+    return (" "+target+" ") in (" "+source+" ")
+
 def lookup(t,title,yr,tmdb,indices):
-    by_tmdb,by_name,by_title=indices[t]
-    if tmdb and by_tmdb.get(str(tmdb)):return by_tmdb[str(tmdb)]
+    by_tmdb,by_name,by_title,_=indices[t]
+    if tmdb and by_tmdb.get(str(tmdb)):
+        return by_tmdb[str(tmdb)]
     exact=by_name.get(key(title,yr),[])
     if exact:return exact
-    # Both movies and shows use title + original release year, then title only
-    # when the provider omits the year. Never accept a conflicting known year.
     matches={}
-    for v in variants(title):
-        for x in by_title.get(v,[]):
-            provider_year=year(x.get("name"))
-            if yr and provider_year and provider_year!=str(yr):continue
-            sid=str(x.get("series_id" if t=="series" else "stream_id"))
-            matches[sid]=x
+    for x in indices[t][3]:
+        provider_year=year(x.get("name"))
+        if yr and provider_year and provider_year!=str(yr):continue
+        if not title_in_listing(title,x.get("name")):continue
+        sid=str(x.get("series_id" if t=="series" else "stream_id"))
+        matches[sid]=x
     return list(matches.values())
 
 def match_diagnostics(t,rows,indices):
     # Print a bounded sample for auditing without exposing provider credentials.
-    by_tmdb,by_name,by_title=indices[t]
+    by_tmdb,by_name,by_title,_=indices[t]
     misses=[]
     for row in rows:
         v=row.get("movie") or row.get("show") or row
@@ -202,7 +209,7 @@ def main():
             if x.get("tmdb_id"):by_tmdb.setdefault(str(x["tmdb_id"]),[]).append(x)
             by_name.setdefault(key(x.get("name"),year(x.get("name"))),[]).append(x)
             for v in variants(x.get("name")):by_title.setdefault(v,[]).append(x)
-        indices[t]=(by_tmdb,by_name,by_title)
+        indices[t]=(by_tmdb,by_name,by_title,list(available[t].values()))
     def match(e,t):
         ids={str(s.get("id")) for s in e.get("streams",[]) if s.get("id")}
         found=[available[t][sid] for sid in ids if sid in available[t]]
