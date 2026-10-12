@@ -1,7 +1,7 @@
 {
   "format": "swooptv-curated-v1",
   "version": 2,
-  "generatedAt": "2026-10-12T09:42:43.455Z",
+  "generatedAt": "2026-10-12T10:09:23.526Z",
   "categories": [
     {
       "id": "group-1791785041794",
@@ -19,7 +19,7 @@
               "epgChannelId": "foxsports501.au"
             }
           ],
-          "logo": "http://photo-tmdb.com/stalker_portal/logos/foxsportshd.png",
+          "logo": "assets/channel-logos/kayo-sports-a-ox-sports-hd-grop.png",
           "epgChannelId": "foxsports501.au"
         },
         {
@@ -105,6 +105,125 @@
           ],
           "logo": "http://photo-tmdb.com/stalker_portal/logos/foxsportshd.png",
           "epgChannelId": null
+        }
+      ]
+    },
+    {
+      "id": "group-1791799449731",
+      "type": "live",
+      "name": "Premium Entertainment",
+      "entries": [
+        {
+          "name": "US: HBO HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325973",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2279.jpg?55933",
+              "epgChannelId": "HBO.us"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2279.jpg?55933",
+          "epgChannelId": "HBO.us"
+        },
+        {
+          "name": "US: HBO WEST HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325990",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2279.jpg?19723",
+              "epgChannelId": "HBO.us"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/2279.jpg?19723",
+          "epgChannelId": "HBO.us"
+        },
+        {
+          "name": "US: HBO 2 HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325976",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/4009.jpg?12996",
+              "epgChannelId": "HBO2.us"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/4009.jpg?12996",
+          "epgChannelId": "HBO2.us"
+        },
+        {
+          "name": "US: HBO SIGNATURE HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325972",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/9720.jpg?68846",
+              "epgChannelId": "HBOSignature.us"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/9720.jpg?68846",
+          "epgChannelId": "HBOSignature.us"
+        },
+        {
+          "name": "US: HBO ZONE HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325971",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8216.jpg?30214",
+              "epgChannelId": "HBOZone.us"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8216.jpg?30214",
+          "epgChannelId": "HBOZone.us"
+        },
+        {
+          "name": "US: HBO FAMILY HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325974",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/9729.png?22984",
+              "epgChannelId": "HBOFamily.us"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/9729.png?22984",
+          "epgChannelId": "HBOFamily.us"
+        },
+        {
+          "name": "US: HBO COMEDY HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "325975",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8226.jpg?82955",
+              "epgChannelId": "HBOComedy.us"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/8226.jpg?82955",
+          "epgChannelId": "HBOComedy.us"
+        },
+        {
+          "name": "US: HBO LATINO HD",
+          "language": "Unverified",
+          "streams": [
+            {
+              "id": "436156",
+              "ext": "ts",
+              "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1916.jpg?29487",
+              "epgChannelId": "HBOLatino.us"
+            }
+          ],
+          "logo": "http://photo-tmdb.com/stalker_portal/misc/logos/320/1916.jpg?29487",
+          "epgChannelId": "HBOLatino.us"
         }
       ]
     },
