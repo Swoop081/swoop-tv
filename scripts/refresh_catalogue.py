@@ -12,11 +12,11 @@ def norm(value):
 def year(value):
     match=re.search(r"\b(?:19|20)\d{2}\b",str(value or ""))
     return match.group(0) if match else ""
-def key(name,yr=""):return norm(re.sub(r"\\b(?:19|20)\\d{2}\\b","",name or "")),str(yr or year(name))
+def key(name,yr=""):return norm(re.sub(r"\b(?:19|20)\d{2}\b","",name or "")),str(yr or year(name))
 def title_key(name):
     name=str(name or "")
-    name=re.sub(r"^(?:(?:[A-Z]{2,5}\\s*[:|]\\s*)|(?:NETFLIX|DISNEY|AMAZON|APPLE|HBO|MAX|NF|DSNP|WEB-DL|4K|8K|UHD|HDR|MULTI)\\s*[:|._ -]+)+","",name,flags=re.I)
-    name=re.sub(r"\\b(?:19|20)\\d{2}\\b|\\b(?:1080p|2160p|720p|4k|hdr|dv|multi.subs?|season\\s*\\d+|complete)\\b"," ",name,flags=re.I)
+    name=re.sub(r"^(?:(?:[A-Z]{2,5}\s*[:|]\s*)|(?:NETFLIX|DISNEY|AMAZON|APPLE|HBO|MAX|NF|DSNP|WEB-DL|4K|8K|UHD|HDR|MULTI)\s*[:|._ -]+)+","",name,flags=re.I)
+    name=re.sub(r"\b(?:19|20)\d{2}\b|\b(?:1080p|2160p|720p|4k|hdr|dv|multi.subs?|season\s*\d+|complete)\b"," ",name,flags=re.I)
     return norm(name)
 def variants(name):
     result={title_key(name)}
