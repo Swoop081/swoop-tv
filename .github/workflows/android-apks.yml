@@ -113,6 +113,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view android-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && gh release upload android-latest SwoopTV-Phone.apk SwoopTV-AndroidTV.apk --clobber --repo "$GITHUB_REPOSITORY" || gh release create android-latest SwoopTV-Phone.apk SwoopTV-AndroidTV.apk --repo "$GITHUB_REPOSITORY" --title "SwoopTV Android" --notes "Signed Android phone and TV releases."
+      - name: Verify public Downloader APK URLs deliver exact APK bytes
+        run: |
+          set -euo pipefail
+          for apk in SwoopTV-AndroidTV.apk SwoopTV-Phone.apk; do
+            url="https://github.com/$GITHUB_REPOSITORY/releases/download/android-latest/$apk"
+            echo "Checking public URL: $url"
+            curl --fail --location --retry 6 --retry-all-errors --retry-delay 3 --connect-timeout 15 --max-time 180 --output "/tmp/$apk" "$url"
+            test -s "/tmp/$apk"
+            cmp "$apk" "/tmp/$apk" || { echo "::error::$apk public download differs from signed build"; exit 1; }
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "/tmp/$apk"
+            echo "$apk: public download verified ($(wc -c < "/tmp/$apk") bytes)"
+          done
       - name: Retire obsolete Android test release
         env:
           GH_TOKEN: ${{ github.token }}
