@@ -42,6 +42,7 @@ public class MainActivity extends Activity {
         browser.getSettings().setMediaPlaybackRequiresUserGesture(false);
         browser.setWebChromeClient(new WebChromeClient());
         browser.addJavascriptInterface(new Object() {
+            @JavascriptInterface public boolean isTv() { return "tv".equals(BuildConfig.FLAVOR); }
             @JavascriptInterface public String request(String address, int timeoutMs) {
                 HttpURLConnection connection = null;
                 try {
