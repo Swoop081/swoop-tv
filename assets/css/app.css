@@ -1013,3 +1013,20 @@ html.swoop-android-tv .nba-slate .nba-game-top .action{font-size:10px!important;
 html.swoop-android-tv .nba-slate .nba-matchup small{font-size:10px!important}
 html.swoop-android-tv .nba-slate .sports-result-score{font-size:19px!important}
 html.swoop-android-tv .nba-slate .nba-game-bottom{padding-top:4px!important;font-size:10px!important}
+
+
+/* Android TV: all eight leagues and accessible fixture scrolling. */
+html.swoop-android-tv .sport-league-rail{grid-template-columns:repeat(8,minmax(0,1fr))!important;gap:5px!important}
+html.swoop-android-tv .sport-league-tile{min-height:62px!important;height:62px!important;padding:4px 2px!important}
+html.swoop-android-tv .sport-league-tile img{height:29px!important;max-width:75%!important}
+html.swoop-android-tv .sport-live-symbol{font-size:14px!important}
+html.swoop-android-tv .sport-league-tile span{font-size:9px!important}
+html.swoop-android-tv .nba-hub{margin:0!important;padding:0 0 110px!important;overflow:visible!important;min-height:max-content!important}
+html.swoop-android-tv .nba-hub .nba-header{padding:5px 8px!important}
+html.swoop-android-tv .nba-hub .nba-header .eyebrow{font-size:10px!important}
+html.swoop-android-tv .nba-hub .nba-section-label{margin:4px 0!important}
+html.swoop-android-tv .nba-hub .nba-nav{margin:0 0 5px!important;padding:0!important}
+html.swoop-android-tv .nba-hub .nba-slate{grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-auto-rows:max-content!important}
+html.swoop-android-tv .nba-hub .nba-slate>.nba-game{min-height:0!important}
+html.swoop-android-tv main{overflow-y:auto!important;overscroll-behavior-y:contain!important;min-height:0!important;padding-bottom:100px!important}
+html.swoop-android-tv body{overflow-y:auto!important}
