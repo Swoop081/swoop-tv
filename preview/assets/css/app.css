@@ -525,3 +525,32 @@ h2{margin:16px 0 9px}
 .swoop-tv-mode .wrap{max-width:1800px;padding-left:3vw;padding-right:3vw}
 .swoop-tv-mode .bottom{display:none}
 .swoop-tv-mode .rail,.swoop-tv-mode .vod-cast-rail{scroll-behavior:smooth}
+
+/* TV 10-foot layout: scoped to detected TV devices only. */
+.swoop-tv-mode header{min-height:74px;padding:10px 3vw}
+.swoop-tv-mode .brand{font-size:26px}
+.swoop-tv-mode #topnav{gap:16px}
+.swoop-tv-mode #topnav button{font-size:18px;padding:12px 20px}
+.swoop-tv-mode .live-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:20px}
+.swoop-tv-mode .live-category-sidebar{display:block;position:sticky;top:86px;max-height:calc(100vh - 110px);overflow:auto}
+.swoop-tv-mode .live-category-selector{display:none}
+.swoop-tv-mode .live-category-item{font-size:17px;min-height:54px;padding:12px}
+.swoop-tv-mode .live-main .live-upper{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(300px,1fr);gap:22px}
+.swoop-tv-mode .live-preview{max-height:none;min-height:260px;aspect-ratio:16/9}
+.swoop-tv-mode .live-info h2{font-size:27px}
+.swoop-tv-mode .guide-scroll{max-height:55vh}
+.swoop-tv-mode .guide-line{height:72px!important}
+.swoop-tv-mode .guide-channel{min-width:215px;width:215px;font-size:17px!important;padding:12px}
+.swoop-tv-mode .guide-channel img{width:58px!important;height:48px!important}
+.swoop-tv-mode .guide-program{font-size:16px;padding:14px}
+.swoop-tv-mode .guide-controls button{font-size:16px;padding:12px 18px}
+.swoop-tv-mode .vod-grid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:22px;padding:12px 2vw 40px}
+.swoop-tv-mode .vod-rail{gap:20px;padding:8px 2vw 28px}
+.swoop-tv-mode .vod-rail .vod-poster{flex:0 0 200px;width:200px}
+.swoop-tv-mode .vod-poster{border-radius:10px}
+.swoop-tv-mode .vod-section-title h2,.swoop-tv-mode .vod-heading h2{font-size:27px}
+.swoop-tv-mode .vod-searchbar input{font-size:19px;min-height:54px}
+.swoop-tv-mode .vod-detail .vod-backdrop{height:44vh}
+.swoop-tv-mode .vod-detail-body{padding:0 5vw 55px}
+.swoop-tv-mode .vod-actions button,.swoop-tv-mode .episode-item{min-height:58px;font-size:18px}
+.swoop-tv-mode :is(.vod-poster,.home-poster,.guide-channel,.guide-program,.live-category-item):focus-visible{outline:4px solid white!important;outline-offset:4px!important;transform:scale(1.025);z-index:5}
