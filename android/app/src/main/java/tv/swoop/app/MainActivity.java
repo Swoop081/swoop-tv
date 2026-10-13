@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.content.Intent;
 import android.net.Uri;
 import android.webkit.WebView;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebViewClient;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -22,6 +23,18 @@ public class MainActivity extends Activity {
         browser.getSettings().setDomStorageEnabled(true);
         browser.getSettings().setMediaPlaybackRequiresUserGesture(false);
         browser.setWebChromeClient(new WebChromeClient());
+        browser.addJavascriptInterface(new Object() {
+            @JavascriptInterface public void play(String url, String title) {
+                runOnUiThread(() -> {
+                    Uri uri = Uri.parse(url);
+                    if (!"https".equalsIgnoreCase(uri.getScheme()) && !"http".equalsIgnoreCase(uri.getScheme())) return;
+                    Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
+                    intent.putExtra("url", url);
+                    intent.putExtra("title", title);
+                    startActivity(intent);
+                });
+            }
+        }, "SwoopNative");
         browser.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
