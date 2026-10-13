@@ -296,7 +296,7 @@ def main():
     for g in groups:
         if g.get("type") not in ("movie","series"):
             updated.append(g);continue
-        if g.get("id") in ("recently-added","asian-series","new-movies-netflix","new-series-netflix","new-movies-amazon","new-series-amazon","new-movies-apple-tv","new-series-apple-tv"):continue
+        if g.get("id") in ("recently-added","asian-series","new-movies-netflix","new-series-netflix","new-movies-amazon","new-series-amazon","new-movies-apple-tv","new-series-apple-tv","new-movies-disney","new-series-disney"):continue
         entries=[r for e in g.get("entries",[]) if (r:=reconcile(e,g["type"]))]
         updated.append({**g,"entries":entries})
     def consolidate(entries):
