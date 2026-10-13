@@ -27,6 +27,10 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         browser = new WebView(this);
+        browser.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        browser.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
+        browser.getSettings().setLoadsImagesAutomatically(true);
+        browser.getSettings().setBlockNetworkImage(false);
         boolean isTv = "tv".equals(BuildConfig.FLAVOR);
         if (isTv) {
             browser.getSettings().setUseWideViewPort(true);
