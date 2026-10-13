@@ -103,9 +103,11 @@ jobs:
           gh release view android-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && gh release upload android-latest SwoopTV-Phone.apk SwoopTV-AndroidTV.apk --clobber --repo "$GITHUB_REPOSITORY" || gh release create android-latest SwoopTV-Phone.apk SwoopTV-AndroidTV.apk --repo "$GITHUB_REPOSITORY" --title "SwoopTV Android" --notes "Signed Android phone and TV releases." --prerelease
       - name: Publish update manifest
         run: |
-          cat > android-update.json <<'JSON'
+          VERSION_CODE=$(sed -n "s/.*versionCode \([0-9][0-9]*\).*/\1/p" android/app/build.gradle | head -1)
+          test -n "$VERSION_CODE"
+          cat > android-update.json <<JSON
           {
-            "phone": {"versionCode": 4, "url": "https://github.com/Swoop081/swoop-tv/releases/download/android-latest/SwoopTV-Phone.apk"},
+            "phone": {"versionCode": $VERSION_CODE, "url": "https://github.com/Swoop081/swoop-tv/releases/download/android-latest/SwoopTV-Phone.apk"},
             "tv": {"versionCode": 4, "url": "https://github.com/Swoop081/swoop-tv/releases/download/android-latest/SwoopTV-AndroidTV.apk"}
           }
           JSON
