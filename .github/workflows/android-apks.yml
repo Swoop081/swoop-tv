@@ -113,6 +113,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view android-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && gh release upload android-latest SwoopTV-Phone.apk SwoopTV-AndroidTV.apk --clobber --repo "$GITHUB_REPOSITORY" || gh release create android-latest SwoopTV-Phone.apk SwoopTV-AndroidTV.apk --repo "$GITHUB_REPOSITORY" --title "SwoopTV Android" --notes "Signed Android phone and TV releases." --prerelease
+      - name: Keep legacy Android test download links current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view android-test-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && gh release upload android-test-latest SwoopTV-Phone.apk SwoopTV-AndroidTV.apk --clobber --repo "$GITHUB_REPOSITORY" || gh release create android-test-latest SwoopTV-Phone.apk SwoopTV-AndroidTV.apk --repo "$GITHUB_REPOSITORY" --title "SwoopTV Android testing" --notes "Signed Android phone and TV builds, synchronized with android-latest." --prerelease
       - name: Publish update manifest
         run: |
           VERSION_CODE=$(sed -n "s/.*versionCode \([0-9][0-9]*\).*/\1/p" android/app/build.gradle | head -1)
