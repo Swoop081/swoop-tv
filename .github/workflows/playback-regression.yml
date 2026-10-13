@@ -1,7 +1,7 @@
 name: Playback regression checks
 on:
   push:
-    branches: [main]
+    branches: [main, development/catalogue-sports-modules]
   pull_request:
     branches: [main]
   workflow_dispatch:
