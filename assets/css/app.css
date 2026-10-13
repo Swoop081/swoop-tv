@@ -1030,3 +1030,20 @@ html.swoop-android-tv .nba-hub .nba-slate{grid-template-columns:repeat(3,minmax(
 html.swoop-android-tv .nba-hub .nba-slate>.nba-game{min-height:0!important}
 html.swoop-android-tv main{overflow-y:auto!important;overscroll-behavior-y:contain!important;min-height:0!important;padding-bottom:100px!important}
 html.swoop-android-tv body{overflow-y:auto!important}
+
+
+/* Live Sports is grouped by league, not a masonry grid of separate labels. */
+.live-league-list{display:flex;flex-direction:column;gap:14px;padding-bottom:60px}
+.live-league-group{min-width:0}
+.live-league-heading{font-size:15px;line-height:1.2;font-weight:800;margin:0 0 7px;color:#e7eef9}
+.live-league-games{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;align-items:start}
+.live-league-games>.nba-game{grid-column:auto!important;min-width:0;min-height:0!important;padding:9px!important;border-radius:8px!important}
+.live-league-games .nba-matchup{margin:6px 0 0!important;gap:5px!important}
+.live-league-games .nba-team-logo{width:35px!important;height:35px!important;max-height:35px!important}
+.live-league-games .nba-game-top{gap:4px!important}
+.live-league-games .nba-game-top .action{font-size:10px!important;padding:6px 7px!important}
+.live-league-games .nba-matchup small{font-size:10px!important;line-height:1.15!important}
+.live-league-games .nba-matchup>b{font-size:16px!important}
+@media(max-width:900px){.live-league-games{grid-template-columns:repeat(2,minmax(0,1fr))}}
+html.swoop-android-tv .live-league-games{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+html.swoop-android-tv .live-league-list{padding-bottom:100px!important}
