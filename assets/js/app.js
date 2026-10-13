@@ -119,16 +119,6 @@ function recentlyAddedEntries(type){
  })));
 }
 function asianSeriesEntries(){const published=curatedGroups("series").find(g=>g.id==="asian-series");if(published?.entries?.length)return published.entries;const names=["asia series (multi-subs)","disney+ asia series","disney+ asia series 4k 3840p dolby vision","netflix asia"];const norm=x=>String(x||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();const clean=x=>norm(String(x||"").replace(/^(?:(?:4k|8k|uhd|hdr|dv|multi|en|eng|nf|dsnp|disney|netflix)[\s._-]+)+/i,"").replace(/\s*\((?:20|19)\d{2}\).*/,""));const wanted=new Set(names.map(norm));const ids=new Set((xtream.seriesCats||[]).filter(c=>wanted.has(norm(c.category_name))).map(c=>String(c.category_id)));const candidates=(xtream.series||[]).filter(x=>x.series_id&&(ids.has(String(x.category_id))||(Array.isArray(x.category_ids)&&x.category_ids.some(id=>ids.has(String(id))))));const timestamp=x=>Number(x.added||x.last_modified||x.date_added||x.created_at||0);const ordered=[...candidates].sort((a,b)=>timestamp(b)-timestamp(a)||Number(b.series_id)-Number(a.series_id));const groups=new Map();for(const x of ordered){const identity=x.tmdb_id||x.tmdbId||x.info?.tmdb_id;const year=String(x.name||"").match(/\b(?:19|20)\d{2}\b/)?.[0]||"";const key=identity?"tmdb:"+identity:"title:"+clean(x.name)+"|"+year;let entry=groups.get(key);if(!entry){entry={name:String(x.name||"Untitled"),streams:[],metadata:{poster:x.cover||x.cover_big||x.stream_icon||"",backdrop:providerBackdrop(x.backdrop_path)||providerBackdrop(x.backdrop),overview:x.plot||x.info?.plot||""},providerAdded:timestamp(x)};groups.set(key,entry)}if(!entry.streams.some(st=>st.id===String(x.series_id)))entry.streams.push({id:String(x.series_id),name:String(x.name||""),category:String(x.category_id||"")});if(!entry.metadata.poster)entry.metadata.poster=x.cover||x.cover_big||x.stream_icon||"";if(!entry.metadata.backdrop)entry.metadata.backdrop=providerBackdrop(x.backdrop_path)||providerBackdrop(x.backdrop)}return [...groups.values()].sort((a,b)=>b.providerAdded-a.providerAdded||Number(b.streams[0]?.id)-Number(a.streams[0]?.id))}
-function canonicalVodTitle(raw){
- let t=String(raw||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
- // Strip provider language, quality, and platform prefixes only at the start.
- t=t.replace(/^(?:(?:4k|8k|uhd|hdr|dv|nf|netflix|dsnp|disney|amzn|prime|hbo|en|eng|de|fr|es|it|pt|us|uk|multi|top)(?:[\s._:-]|$))+/i,"");
- t=t.replace(/\s*\((?:us|uk|en|eng|de|fr|es|it|pt|4k|8k|uhd|hdr|dv)\)\s*/gi," ");
- t=t.replace(/\b(?:19|20)\d{2}\b.*$/,"");
- t=t.replace(/(?:\s|^)(?:(?:4k|8k|uhd|hdr|dv|dolby vision|1080p|2160p|720p|hevc|h265|prime|apple tv\+?)\s*)+$/gi,"");
- return t.replace(/[^a-z0-9]+/g," ").trim().replace(/\s+/g," ");
-}
-function canonicalVodYear(e){return String(e.year||e.metadata?.releaseDate||e.name||"").match(/\b(?:19|20)\d{2}\b/)?.[0]||""}
 function consolidatedVodEntries(entries){
  const result=[],byKey=new Map();
  for(const e of entries){
