@@ -1,0 +1,19 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'tv.swoop.app'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'tv.swoop.app'
+        minSdk 23
+        targetSdk 28
+        versionCode 1
+        versionName '0.1.0'
+    }
+    flavorDimensions 'device'
+    productFlavors {
+        phone { dimension 'device'; applicationIdSuffix '.phone'; resValue 'string', 'app_name', 'SwoopTV' }
+        tv { dimension 'device'; applicationIdSuffix '.tv'; resValue 'string', 'app_name', 'SwoopTV TV' }
+    }
+    buildTypes { release { minifyEnabled false } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
