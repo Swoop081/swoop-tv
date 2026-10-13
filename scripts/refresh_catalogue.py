@@ -296,7 +296,7 @@ def main():
     for g in groups:
         if g.get("type") not in ("movie","series"):
             updated.append(g);continue
-        if g.get("id") in ("recently-added","asian-series","new-movies-netflix","new-series-netflix"):continue
+        if g.get("id") in ("recently-added","asian-series","new-movies-netflix","new-series-netflix","new-movies-amazon","new-series-amazon"):continue
         entries=[r for e in g.get("entries",[]) if (r:=reconcile(e,g["type"]))]
         updated.append({**g,"entries":entries})
     def consolidate(entries):
@@ -391,6 +391,53 @@ def main():
             e["streams"].append(record(x,"series")["streams"][0])
     updated.append({"id":"new-series-netflix","name":"New Series on Netflix","type":"series","entries":list(netflix_series_entries.values())})
     print("New Series on Netflix:",len(netflix_series_entries),"titles from",len(netflix_series_rows),"provider sources across",len(netflix_series_ids),"categories")
+    # Amazon provider categories, including documentary, kids, 4K and audio variants.
+    # Rebuilt on every scheduled catalogue sync; provider-added order is preserved.
+    for kind,source,source_cats,group_id,group_name in [
+        ("movie",vod,movie_cats,"new-movies-amazon","New Movies on Amazon"),
+        ("series",series,cats,"new-series-amazon","New Series on Amazon")
+    ]:
+        amazon_ids={str(c.get("category_id")) for c in source_cats
+                    if re.match(r"^amazon(?:\\s|$)",norm(c.get("category_name")))}
+        prior_amazon=next((g.get("entries",[]) for g in groups if g.get("type")==kind and g.get("id")==group_id),[])
+        if not amazon_ids:
+            if prior_amazon:updated.append({"id":group_id,"name":group_name,"type":kind,"entries":prior_amazon})
+            print(group_name,": provider categories unavailable; retaining prior entries")
+            continue
+        amazon_rows=[x for x in source if str(x.get("category_id")) in amazon_ids or
+                     any(str(i) in amazon_ids for i in (x.get("category_ids") or []))]
+        if not amazon_rows and prior_amazon:
+            updated.append({"id":group_id,"name":group_name,"type":kind,"entries":prior_amazon})
+            print(group_name,": empty provider response; retaining prior entries")
+            continue
+        prior_by_stream={str(st.get("id")):e for e in prior_amazon for st in e.get("streams",[])}
+        entries={}
+        def amazon_added(x):
+            try:return int(x.get("added") or x.get("last_modified") or x.get("date_added") or 0)
+            except (ValueError,TypeError):return 0
+        for x in sorted(amazon_rows,key=lambda x:(amazon_added(x),identity(x,kind)),reverse=True):
+            sid=identity(x,kind)
+            old=prior_by_stream.get(sid)
+            tmdb=str(x.get("tmdb_id") or (old or {}).get("metadata",{}).get("tmdbId") or "")
+            clean_title=title_key((old or {}).get("name") or x.get("name"))
+            yr=year((old or {}).get("name") or x.get("name"))
+            ident=("tmdb",tmdb) if tmdb else ("title",clean_title,yr)
+            if not clean_title and not tmdb:continue
+            if ident not in entries:
+                e=record(x,kind)
+                if old:
+                    e["name"]=old.get("name") or e["name"]
+                    e["metadata"]={**e.get("metadata",{}),**{k:v for k,v in (old.get("metadata") or {}).items() if v not in (None,"",[])}}
+                e["providerAdded"]=amazon_added(x)
+                entries[ident]=e
+            else:
+                e=entries[ident]
+                if sid not in {str(st.get("id")) for st in e["streams"]}:
+                    e["streams"].extend(record(x,kind)["streams"])
+                e["providerAdded"]=max(e.get("providerAdded",0),amazon_added(x))
+        ordered=sorted(entries.values(),key=lambda e:e.get("providerAdded",0),reverse=True)
+        updated.append({"id":group_id,"name":group_name,"type":kind,"entries":ordered})
+        print(group_name,":",len(ordered),"titles from",len(amazon_rows),"streams across",len(amazon_ids),"categories")
     wanted={norm(n) for n in ["asia series (multi-subs)","disney+ asia series","disney+ asia series 4k 3840p dolby vision","netflix asia"]}
     asian_ids={str(c.get("category_id")) for c in cats if norm(c.get("category_name")) in wanted}
     asian=[x for x in series if str(x.get("category_id")) in asian_ids or any(str(i) in asian_ids for i in x.get("category_ids",[]) or [])]
