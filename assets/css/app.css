@@ -941,3 +941,10 @@ html.swoop-android-tv .home-cinema > .home-rail .home-poster{
 html.swoop-android-tv .home-cinema > .home-rail .home-poster small{
  display:none!important;
 }
+
+/* Android TV fixed Home rail geometry */
+html.swoop-android-tv .home-cinema{--home-tile:clamp(72px,8.1vw,125px)}
+html.swoop-android-tv .home-cinema > section.home-rail{height:calc(var(--home-tile)*1.5 + 34px)!important;max-height:calc(var(--home-tile)*1.5 + 34px)!important}
+html.swoop-android-tv .home-cinema > section.home-rail > .home-poster-rail{height:calc(var(--home-tile)*1.5 + 12px)!important;max-height:calc(var(--home-tile)*1.5 + 12px)!important;overflow-x:auto!important;overflow-y:hidden!important}
+html.swoop-android-tv .home-cinema > section.home-rail .home-poster{flex:0 0 var(--home-tile)!important;width:var(--home-tile)!important;min-width:var(--home-tile)!important;height:calc(var(--home-tile)*1.5)!important;max-height:calc(var(--home-tile)*1.5)!important;aspect-ratio:auto!important}
+html.swoop-android-tv .home-cinema > section.home-rail .home-poster img{height:100%!important;max-height:100%!important;content-visibility:visible!important}
