@@ -22,6 +22,8 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private WebView browser;
+    private boolean hasPaused = false;
+    private boolean openingPlayer = false;
     private static final String HOME = "https://swoop081.github.io/swoop-tv/";
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -77,6 +79,7 @@ public class MainActivity extends Activity {
                     Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
                     intent.putExtra("url", url);
                     intent.putExtra("title", title);
+                    openingPlayer = true;
                     startActivity(intent);
                 });
             }
@@ -96,6 +99,18 @@ public class MainActivity extends Activity {
         browser.setFocusableInTouchMode(true);
         setContentView(browser);
         browser.loadUrl(HOME);
+    }
+    @Override protected void onPause() { hasPaused = true; super.onPause(); }
+    @Override protected void onResume() {
+        super.onResume();
+        if (hasPaused) {
+            hasPaused = false;
+            if (openingPlayer) { openingPlayer = false; return; }
+            Intent update = new Intent(this, UpdateActivity.class);
+            update.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(update);
+            finish();
+        }
     }
     @Override public void onBackPressed() {
         if (browser.canGoBack()) browser.goBack();
