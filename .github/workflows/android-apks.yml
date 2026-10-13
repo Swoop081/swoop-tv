@@ -7,7 +7,7 @@ on:
       - 'android/**'
       - '.github/workflows/android-apks.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     name: Build ${{ matrix.flavor }} APK
@@ -62,3 +62,28 @@ jobs:
           name: swooptv-${{ matrix.flavor }}-debug-apk
           path: android/app/build/outputs/apk/${{ matrix.flavor }}/debug/*.apk
           if-no-files-found: error
+
+  publish:
+    name: Publish stable Downloader links
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: swooptv-phone-debug-apk
+          path: phone
+      - uses: actions/download-artifact@v4
+        with:
+          name: swooptv-tv-debug-apk
+          path: tv
+      - name: Prepare stable APK filenames
+        run: |
+          cp phone/*.apk SwoopTV-Phone.apk
+          cp tv/*.apk SwoopTV-AndroidTV.apk
+      - name: Publish latest testing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-test-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create android-test-latest SwoopTV-Phone.apk SwoopTV-AndroidTV.apk --repo "$GITHUB_REPOSITORY" --title "SwoopTV Android testing" --notes "Early Android test builds. Debug signing may change between builds: reinstall may be necessary until persistent release signing is configured." --prerelease --latest
