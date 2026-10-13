@@ -1,0 +1,520 @@
+
+:root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#eef2fb;background:#0c101a;font-synthesis:none}*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer;color:inherit}button:focus-visible,.tile:focus-visible{outline:3px solid #f9bb54;outline-offset:2px}header{height:66px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid #222a3a;position:sticky;top:0;background:#0c101af5;z-index:5}.brand{font-size:25px;font-weight:900;letter-spacing:-1px}.brand b{color:#f5b44c}nav{display:flex;gap:7px}nav button,.pill,.action{border:0;background:#1d2738;border-radius:12px;padding:11px 16px}nav button.active,.pill.active{background:#e7a941;color:#131723;font-weight:800}.wrap{max-width:1500px;margin:auto;padding:22px 24px 110px}.hero{border-radius:22px;padding:34px;min-height:230px;background:radial-gradient(circle at 80% 30%,#684335 0,transparent 44%),linear-gradient(115deg,#27364f,#101725);display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:13px}.eyebrow{font-size:12px;letter-spacing:2px;color:#f3bc64;font-weight:800}.hero h1{margin:0;font-size:clamp(26px,4vw,48px)}.muted{color:#9eacc2}.action{background:#e7a941;color:#121827;font-weight:800}h2{font-size:19px;margin:27px 0 14px}.rail{display:flex;gap:13px;overflow-x:auto;padding-bottom:10px}.tile{border:1px solid #344055;background:#1a2536;border-radius:15px;padding:18px;min-width:190px;min-height:116px;text-align:left}.tile strong{display:block;margin:10px 0 4px}.sectionhead{display:flex;align-items:center;justify-content:space-between;gap:10px}.epgtop{display:grid;grid-template-columns:1fr 330px;gap:14px;margin-bottom:18px}.details,.preview{background:#1a2536;border-radius:18px;padding:20px;min-height:180px}.preview{background:#03060b;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;aspect-ratio:16/9}.preview video{width:100%;height:100%;object-fit:contain}.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}.toolbar select,.toolbar input{background:#1d2738;border:1px solid #344055;border-radius:10px;color:white;padding:11px;min-width:150px}.guide{overflow:auto;border:1px solid #29364b;border-radius:14px;max-height:510px;position:relative}.epggrid{min-width:940px}.epgrow{display:grid;grid-template-columns:200px repeat(4,minmax(180px,1fr));min-height:63px;border-bottom:1px solid #101725}.epgrow>div,.epgrow>button{padding:12px;border:0;border-right:1px solid #111827;text-align:left;background:#222d40}.epgrow>.channel{position:sticky;left:0;z-index:2;background:#172133;font-weight:800}.epgrow.heading{position:sticky;top:0;z-index:3;min-height:40px}.epgrow.heading>div{background:#344258;font-size:13px}.epgrow button.current{background:#3b3c41}.epgrow button.selected{outline:2px solid #f5b44c;outline-offset:-2px}.progress{height:4px;background:#536073;border-radius:4px;margin-top:10px;overflow:hidden}.progress span{display:block;background:#f3b64f;height:100%}.categorylist{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}.categorylist button{border:1px solid #344055;border-radius:12px;padding:17px;text-align:left;background:#1c2637}.status{font-size:12px;color:#aab7ca}.panel{background:#192435;padding:22px;border-radius:16px;margin:15px 0}.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}.poster{background:linear-gradient(135deg,#334764,#20283a);min-height:210px;border-radius:12px;display:flex;align-items:end;padding:16px;font-weight:700}.toggle{display:flex;gap:12px;align-items:center;margin:12px 0}.toggle input{accent-color:#e7a941}.bottom{display:none}.small{font-size:13px}body.fullscreen .preview{position:fixed;inset:0;z-index:20;border-radius:0;aspect-ratio:auto}body.fullscreen .preview button{position:absolute;top:20px;right:20px} @media(max-width:780px){header{height:60px;padding:0 16px}header nav{display:none}.wrap{padding:14px 14px 100px}.hero{min-height:200px;padding:24px}.epgtop{grid-template-columns:1fr 42%;gap:8px}.details,.preview{min-height:150px;padding:12px}.details h2{font-size:17px}.preview{aspect-ratio:auto}.bottom{display:flex;position:fixed;bottom:0;left:0;right:0;justify-content:space-around;background:#151e2df5;padding:10px 4px max(13px,env(safe-area-inset-bottom));z-index:10;border-top:1px solid #344055}.bottom button{border:0;background:none;color:#c5d0e0;font-size:12px;padding:7px}.bottom button.active{color:#f3b64f}.epgrow{grid-template-columns:145px repeat(4,190px)}.toolbar select{min-width:110px}.tile{min-width:160px}} 
+/* Cinematic curated catalogue */
+.vod-browse{margin:-22px -24px 0}.vod-heading{display:flex;align-items:baseline;gap:14px;padding:12px 24px 5px}.vod-heading h1{font-size:clamp(23px,3vw,32px);margin:8px 0;font-weight:800}.vod-heading span{font-size:13px;color:#9aa5b5}.vod-searchbar{display:flex;gap:10px;padding:8px 24px 18px}.vod-searchbar input,.vod-searchbar select,.vod-episodes select{background:#171d29;color:#f6f6f6;border:1px solid #323948;border-radius:7px;padding:10px 12px;min-width:0}.vod-searchbar input{flex:1}.vod-searchbar select{max-width:45%}.vod-feature{height:clamp(220px,32vw,420px);background-color:#1d2839;background-position:center;background-size:cover;display:flex;align-items:end;padding:25px 5%;position:relative}.vod-feature-content{max-width:470px}.vod-feature h2{font-size:clamp(25px,4vw,42px);line-height:1.1;margin:12px 0}.vod-feature p{font-size:14px;line-height:1.5;max-width:520px;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}.vod-feature .action{border-radius:5px}.vod-section-title{padding:10px 24px 0}.vod-section-title h2{font-size:19px;margin:14px 0}.vod-rail{display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;padding:0 24px 24px;scrollbar-width:thin}.vod-rail .vod-poster{flex:0 0 clamp(130px,19vw,205px);width:clamp(130px,19vw,205px);scroll-snap-align:start}.vod-rail::-webkit-scrollbar{height:5px}.vod-rail::-webkit-scrollbar-thumb{background:#465166;border-radius:5px}@media(max-width:600px){.vod-rail{gap:10px;padding:0 20px 22px}.vod-rail .vod-poster{flex-basis:clamp(132px,39vw,180px);width:clamp(132px,39vw,180px)}}.vod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;padding:0 24px 28px}.vod-poster{display:block;aspect-ratio:2/3;border:0;background:#202a38;border-radius:7px;overflow:hidden;padding:0;position:relative;transition:transform .16s ease}.vod-poster img{display:block;width:100%;height:100%;object-fit:cover}.vod-poster:hover{transform:scale(1.035)}.poster-fallback{display:grid;place-items:center;height:100%;padding:12px;font-weight:700}.vod-detail{position:relative;min-height:480px}.vod-backdrop{height:clamp(230px,45vw,520px);background-size:cover;background-position:center top;background-color:#1a2330}.vod-return{position:absolute;top:18px;left:24px;background:#111a25cf;border:1px solid #5c6470;border-radius:6px;padding:10px 14px}.vod-detail-body{position:relative;max-width:850px;padding:0 24px 35px;margin-top:-50px}.vod-detail-body h1{font-size:clamp(28px,4vw,46px);line-height:1.1;margin:0 0 15px}.vod-facts{display:flex;gap:15px;color:#bfc8d6;font-size:14px}.vod-actions{display:flex;gap:9px;margin:20px 0}.vod-actions button{border-radius:5px}.vod-overview{font-size:clamp(14px,1.5vw,17px);line-height:1.6;max-width:690px}.vod-genres,.vod-cast{font-size:13px;color:#aeb8c7;line-height:1.6}.vod-episodes{margin-top:25px}.episode-list{display:grid;gap:8px;margin-top:12px}.episode-item{background:#202b39;border:0;border-radius:6px;padding:15px;text-align:left}@media(max-width:780px){.vod-browse{margin:-14px -14px 0}.vod-heading{padding:8px 16px 4px}.vod-searchbar{padding:8px 16px 14px}.vod-feature{height:245px;padding:16px;background-position:60% center}.vod-feature-content{max-width:85%}.vod-feature h2{font-size:26px}.vod-feature p{font-size:12px;-webkit-line-clamp:2}.vod-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:0 12px 30px}.vod-section-title{padding:7px 16px 0}.vod-section-title h2{font-size:17px}.vod-poster{border-radius:5px}.vod-return{left:14px;top:12px}.vod-detail-body{padding:0 18px 35px;margin-top:-32px}.vod-backdrop{height:260px}}
+
+/* Home and programme guide */
+.home-cinema{margin:-22px -24px 0}.home-feature{min-height:420px;background:#1d2738;background-size:cover;background-position:center;display:flex;align-items:end;padding:48px 5%}.home-feature-copy{max-width:510px}.home-feature h1{font-size:clamp(30px,5vw,55px);line-height:1.08;margin:12px 0}.home-feature p{font-size:15px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}.home-buttons{display:flex;gap:10px}.home-buttons button{border-radius:5px}.home-rail{padding:4px 24px 15px}.home-rail-title{display:flex;align-items:center;justify-content:space-between}.home-rail-title h2{font-size:20px}.home-rail-title button{background:none;border:0;color:#b8c3d1}.home-poster-rail{display:flex;gap:11px;overflow-x:auto;padding-bottom:10px;scroll-snap-type:x mandatory}.home-poster{width:155px;min-width:155px;aspect-ratio:2/3;background:#1e2836;border:0;border-radius:6px;overflow:hidden;padding:0;scroll-snap-align:start}.home-poster img{width:100%;height:100%;object-fit:cover}.home-poster span{display:block;padding:12px}.home-live-entry{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:#1c2737;border:1px solid #354357;border-radius:8px;padding:18px}.home-live-entry span:nth-last-child(2){flex:1;color:#aeb9c9}.live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#f05252;flex-shrink:0}.live-premium{margin:-10px -8px}.live-title{display:flex;align-items:center;gap:9px}.live-title h1{font-size:26px;margin:12px 10px 14px 0}.live-title>span:last-child{color:#b8c3d0;font-size:13px}.live-upper{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;margin-bottom:24px}.live-preview{background:#030508;border-radius:9px;min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;gap:8px}.live-preview #videohost{width:100%;flex:1;min-height:120px}.live-preview video{width:100%;height:100%;object-fit:contain}.live-preview .status{font-size:11px}.live-preview .pill{font-size:12px;padding:7px 10px}.live-info{min-width:0;display:flex;flex-direction:column;justify-content:center}.live-info h2{font-size:24px;margin:10px 0 5px}.live-info h3{font-size:16px;margin:6px 0}.live-info p{font-size:13px;color:#b2bdcb;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.live-info small{color:#9aa8bb}.live-info-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.live-info-actions button{border-radius:5px;font-size:13px;padding:10px 13px}.guide-controls{display:flex;align-items:center;gap:8px;margin-bottom:10px}.guide-controls strong{margin-right:auto}.guide-controls button{font-size:12px;padding:8px 11px;border-radius:6px}.guide-scroll{overflow:auto;position:relative;border:1px solid #2b3443;border-radius:7px;max-height:570px}.guide-inner{min-width:878px}.guide-time-head,.guide-line{display:flex;width:878px}.guide-time-head{position:sticky;top:0;z-index:4;background:#222d3d;height:38px}.guide-time-head>div{width:180px;flex-shrink:0;padding:10px;border-right:1px solid #354052;font-size:12px}.guide-time-head .guide-time-label{width:158px;position:sticky;left:0;background:#222d3d;z-index:5}.guide-category{position:sticky;left:0;z-index:2;background:#283447;color:#d7e0eb;font-size:12px;font-weight:800;padding:9px 13px;border-bottom:1px solid #354052}.guide-line{height:73px;border-bottom:1px solid #263144}.guide-channel{position:sticky;left:0;z-index:2;width:158px;min-width:158px;border:0;border-right:1px solid #354052;background:#141e2b;color:#eaf0f7;display:flex;align-items:center;gap:8px;padding:8px;text-align:left;font-size:12px;font-weight:700}.guide-channel img{width:42px;height:37px;object-fit:contain;flex-shrink:0}.guide-channel.is-focused{box-shadow:inset 3px 0 #f2b349;background:#253346}.guide-channel.is-playing:after{content:'●';color:#f05252;margin-left:auto}.guide-programs{display:flex;width:720px;flex-shrink:0;background:repeating-linear-gradient(90deg,#182233 0,#182233 179px,#303b4d 180px)}.guide-program{position:relative;flex-shrink:0;min-width:0;border:1px solid #2e3a4d;background:#202b3a;color:#e7edf5;text-align:left;padding:9px 10px;overflow:hidden}.guide-program.on-now{background:#334256}.guide-program strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}.guide-program small{display:block;margin-top:6px;color:#9eacc0;font-size:10px;white-space:nowrap}.guide-program i{position:absolute;bottom:0;left:0;height:3px;background:#f2b349}.guide-gap{flex-shrink:0;color:#78879a;font-size:11px;padding:15px 9px;overflow:hidden}.guide-nowline{position:absolute;top:38px;bottom:0;width:2px;background:#e5a23c;pointer-events:none;z-index:1}.guide-hint{font-size:12px;color:#8493a7;margin-top:9px}@media(max-width:780px){.home-cinema{margin:-14px -14px 0}.home-feature{min-height:310px;padding:24px 16px;background-position:58% center}.home-feature h1{font-size:31px}.home-feature p{font-size:13px;-webkit-line-clamp:2}.home-rail{padding:3px 14px 10px}.home-rail-title h2{font-size:17px}.home-poster{width:112px;min-width:112px}.home-live-entry{padding:13px;gap:9px;font-size:12px}.live-premium{margin:0}.live-title h1{font-size:22px}.live-upper{grid-template-columns:1fr;gap:10px}.live-preview{min-height:200px}.live-info{padding:0 4px}.live-info h2{font-size:19px}.live-info p{font-size:12px;margin:5px 0}.guide-controls{gap:5px}.guide-controls button{font-size:11px;padding:7px 8px}.guide-scroll{max-height:460px}}
+
+.nba-hub{margin:-10px -5px}.nba-header{padding:24px 24px 16px;background:linear-gradient(115deg,#253a61,#111927 70%);border-radius:12px}.nba-header h1{font-size:clamp(40px,6vw,70px);letter-spacing:-2px;margin:4px 0}.nba-header p{color:#b8c4d4;font-size:13px}.nba-nav{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:20px 0}.nba-nav strong{margin-right:auto}.nba-nav button{font-size:12px;padding:9px 11px}.nba-slate{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.nba-game{background:linear-gradient(140deg,#202e43,#131d2c);border:1px solid #35445a;border-radius:12px;padding:19px;min-width:0}.nba-feature{grid-column:1/-1;min-height:265px;background:radial-gradient(circle at 80% 0,#394b70,#1b2940 55%,#111a29);padding:28px}.nba-game-top,.nba-game-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px}.nba-game-top{color:#c4cfe0;font-size:12px;font-weight:700}.nba-matchup{display:flex;justify-content:space-around;align-items:center;gap:12px;text-align:center;margin:25px 0}.nba-matchup>div{flex:1;min-width:0}.nba-matchup strong{display:block;font-size:clamp(25px,4vw,45px);font-weight:900}.nba-feature .nba-matchup strong{font-size:clamp(45px,7vw,74px)}.nba-matchup small{display:block;color:#b2c1d4;font-size:11px}.nba-matchup>b{font-size:12px;color:#788aa3}.nba-game-bottom{font-size:12px;color:#afbed0}.nba-game-bottom button{font-size:12px;padding:10px 13px;border-radius:6px}.nba-unavailable{color:#8c9bad}.nba-empty{padding:50px 20px;text-align:center;background:#192536;border-radius:12px}.nba-footnote{font-size:12px;color:#8394ab;line-height:1.5;margin-top:20px}@media(max-width:780px){.nba-header{padding:22px 17px}.nba-nav strong{order:-1;width:100%;font-size:14px}.nba-slate{grid-template-columns:1fr}.nba-game{padding:17px}.nba-feature{min-height:250px;padding:20px}.nba-matchup{margin:22px 0}.nba-matchup strong{font-size:35px}.nba-feature .nba-matchup strong{font-size:55px}}
+.nba-brand{display:flex;align-items:center;gap:18px}.nba-brand img{height:75px;width:auto;max-width:90px;object-fit:contain}.nba-team-logo{display:block;width:76px;height:76px;object-fit:contain;margin:0 auto 8px}.nba-feature .nba-team-logo{width:115px;height:115px}@media(max-width:780px){.nba-brand img{height:60px}.nba-team-logo{width:65px;height:65px}.nba-feature .nba-team-logo{width:90px;height:90px}}
+
+.star-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;background:linear-gradient(120deg,#28344a,#101723);padding:28px 24px;border-radius:12px}.star-heading h1{font-size:clamp(32px,5vw,55px);margin:7px 0}.star-heading p,.star-update{color:#aab8ca;font-size:13px}.star-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:15px;margin-top:20px}.star-person{background:#192436;border:0;color:#eef2f8;border-radius:8px;overflow:hidden;padding:0 0 13px;text-align:left;position:relative}.star-person img,.star-no-photo{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;background:#2b3545}.star-no-photo{display:grid;place-items:center;font-size:30px}.star-rank{position:absolute;top:7px;left:7px;background:#0b1220df;padding:4px 7px;border-radius:5px;font-size:12px;font-weight:800;z-index:1}.star-person strong{display:block;padding:10px 9px 0;font-size:13px}.star-profile{display:flex;align-items:center;gap:22px;margin:20px 0;background:#1b293a;border-radius:12px;padding:20px}.star-profile img{width:120px;height:160px;object-fit:cover;border-radius:7px}.star-profile h2{font-size:30px}.star-titles{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:13px}.star-title{border:0;background:#1c2737;color:white;text-align:left;border-radius:7px;overflow:hidden;padding:0 0 10px}.star-title img{width:100%;aspect-ratio:2/3;object-fit:cover}.star-title strong,.star-title small{display:block;margin:8px 9px 0}.star-title small{color:#a6b5c8}@media(max-width:780px){.star-heading{padding:20px 16px}.star-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.star-person strong{font-size:12px}.star-profile img{width:85px;height:120px}.star-profile h2{font-size:23px}}
+
+/* SwoopTV premium editorial treatment — Sports & STARmeter */
+.nba-hub,.star-hub{max-width:1500px;margin:0 auto;padding-bottom:42px}
+.nba-header,.star-heading{position:relative;isolation:isolate;overflow:hidden;border:1px solid rgba(255,255,255,.09);border-radius:18px;box-shadow:0 24px 65px rgba(0,0,0,.24)}
+.nba-header{min-height:245px;padding:38px 38px 30px;background:radial-gradient(ellipse at 85% 15%,rgba(233,168,66,.23),transparent 42%),radial-gradient(ellipse at 15% 95%,rgba(51,101,160,.45),transparent 56%),linear-gradient(115deg,#192943,#0a101d 75%)}
+.nba-header:after,.star-heading:after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:repeating-linear-gradient(115deg,transparent 0,transparent 90px,rgba(255,255,255,.018) 91px,transparent 92px)}
+.nba-header .eyebrow,.star-heading .eyebrow{color:#f0b552;letter-spacing:3px;font-size:11px;font-weight:900}
+.nba-brand img{height:112px;max-width:240px;object-fit:contain;object-position:left center;filter:drop-shadow(0 12px 20px rgba(0,0,0,.3))}
+.nba-header p{font-size:14px;letter-spacing:.1px;color:#d0d8e5;margin-top:12px}
+.nba-section-label{display:flex;justify-content:space-between;align-items:center;margin:28px 2px 0;color:#e7edf8;font-size:11px;letter-spacing:2px;font-weight:850}
+.nba-section-label span:last-child{color:#a9b7cc;font-size:10px}
+.nba-nav{background:#141e2d;border:1px solid rgba(255,255,255,.07);padding:12px 14px;border-radius:12px;margin:12px 0 20px}
+.nba-nav strong{font-size:16px;letter-spacing:-.2px;color:#fff}
+.nba-nav .pill{border:1px solid rgba(255,255,255,.09);background:#202c3e;border-radius:9px;transition:background .2s,transform .2s}
+.nba-nav .pill:active{transform:scale(.97)}
+.nba-slate{gap:16px}
+.nba-game{position:relative;overflow:hidden;background:radial-gradient(circle at 85% 5%,rgba(83,113,159,.18),transparent 55%),linear-gradient(145deg,#1a273b,#101926);border:1px solid #35445b;border-radius:17px;padding:22px;box-shadow:0 12px 32px rgba(0,0,0,.17);transition:border-color .2s,transform .2s}
+.nba-game:hover{border-color:#617592}
+.nba-feature{min-height:300px;padding:32px;background:radial-gradient(ellipse at 50% 25%,rgba(65,101,157,.45),transparent 62%),linear-gradient(120deg,#1c2c47,#111b2c 85%);border-color:#53647c}
+.nba-game-top{font-size:11px;letter-spacing:1.2px;color:#d5e0ee}
+.nba-game-top span:first-child{color:#f0b552}
+.nba-game-top span:last-child{background:rgba(255,255,255,.07);padding:7px 10px;border-radius:6px}
+.nba-matchup{margin:25px 0 30px;gap:8px}
+.nba-matchup>div{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.nba-team-logo{width:88px;height:88px;object-fit:contain;filter:drop-shadow(0 10px 12px rgba(0,0,0,.27))}
+.nba-feature .nba-team-logo{width:136px;height:136px}
+.nba-matchup small{font-size:12px;color:#e3eaf4;font-weight:650;line-height:1.4}
+.nba-matchup>b{font-size:12px;color:#8fa1bb;letter-spacing:2px}
+.nba-game-bottom{border-top:1px solid rgba(255,255,255,.09);padding-top:16px}
+.nba-game-bottom .action{background:#f0b24a;color:#101826;border:0;border-radius:9px;font-weight:850;padding:12px 18px}
+.nba-unavailable{font-size:11px;color:#93a5bb}
+.nba-empty{border:1px solid #34435a;background:linear-gradient(130deg,#1a293d,#101a2a);border-radius:15px;padding:75px 20px;color:#b8c7d9}
+.star-heading{min-height:220px;padding:34px 38px;background:radial-gradient(ellipse at 80% 15%,rgba(226,168,76,.22),transparent 43%),radial-gradient(ellipse at 15% 85%,rgba(57,83,130,.55),transparent 65%),linear-gradient(120deg,#1d2c43,#0d1421)}
+.star-heading h1{font-size:clamp(42px,6vw,76px);font-weight:900;letter-spacing:-2.5px;line-height:1.1;margin:14px 0}
+.star-heading p{font-size:14px;color:#c6d2e2;line-height:1.5}
+.star-heading .pill{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);padding:12px 18px;border-radius:10px}
+.star-update{margin:23px 3px 8px;font-size:12px;letter-spacing:.5px}
+.star-grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:17px;margin-top:22px}
+.star-person{background:#172235;border:1px solid #2c3a4e;border-radius:13px;padding-bottom:14px;box-shadow:0 10px 25px rgba(0,0,0,.16);transition:transform .2s,border-color .2s;cursor:pointer}
+.star-person:hover{transform:translateY(-4px);border-color:#c48e45}
+.star-person img,.star-no-photo{aspect-ratio:3/4;object-fit:cover;background:linear-gradient(150deg,#293b57,#141d2c)}
+.star-person:after{content:"";position:absolute;top:40%;left:0;right:0;height:30%;background:linear-gradient(transparent,rgba(15,22,34,.7));pointer-events:none}
+.star-rank{top:9px;left:9px;background:rgba(9,15,27,.9);color:#f6bd62;font-size:12px;border:1px solid rgba(255,255,255,.14);padding:6px 9px}
+.star-person strong{padding:12px 11px 0;font-size:14px;line-height:1.3;min-height:46px}
+.star-profile{background:radial-gradient(ellipse at 80% 0,rgba(70,98,148,.35),transparent 60%),#1a2739;border:1px solid #34455e;border-radius:16px;padding:25px;gap:25px}
+.star-profile img{width:160px;height:215px;border-radius:11px;object-fit:cover}
+.star-profile h2{font-size:clamp(28px,5vw,54px);letter-spacing:-1px}
+.star-titles{grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:15px}
+.star-title{background:#172335;border:1px solid #314056;border-radius:12px;transition:transform .2s;cursor:pointer}
+.star-title:hover{transform:translateY(-3px)}
+.star-title img{aspect-ratio:2/3;object-fit:cover}
+.star-title strong{font-size:13px;line-height:1.35}
+@media(max-width:780px){.nba-header{padding:27px 22px;min-height:215px}.nba-brand img{height:90px}.nba-section-label{margin-top:22px}.nba-nav{padding:12px;gap:8px}.nba-nav strong{font-size:15px}.nba-nav .pill{padding:10px 12px}.nba-game{padding:18px}.nba-feature{padding:21px;min-height:270px}.nba-team-logo{width:84px;height:84px}.nba-feature .nba-team-logo{width:115px;height:115px}.nba-matchup small{font-size:11px}.nba-game-bottom{gap:10px}.star-heading{padding:27px 21px;min-height:190px}.star-heading h1{font-size:45px;letter-spacing:-1.8px}.star-heading .pill{font-size:12px;padding:10px 12px}.star-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.star-person{border-radius:9px}.star-person strong{font-size:12px;padding:9px 8px 0;min-height:43px}.star-rank{font-size:10px;padding:5px 6px}.star-profile{padding:16px;gap:15px}.star-profile img{width:100px;height:140px}.star-titles{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}}
+@media(max-width:360px){.nba-feature .nba-team-logo{width:94px;height:94px}.nba-team-logo{width:74px;height:74px}.star-heading h1{font-size:36px}}
+
+/* Cinematic, artwork-first Sports and STARmeter layouts */
+.nba-hub,.star-hub{margin:0 auto;max-width:1480px}
+.nba-header{min-height:310px;display:flex;align-items:flex-end;padding:30px;border:0;border-radius:10px;background:linear-gradient(90deg,#080e1af2 0%,#0b1325cc 52%,#0d13244a 100%),radial-gradient(ellipse at 82% 32%,#5c2734 0%,#253c64 38%,#080d19 78%)}
+.nba-header:after{background:radial-gradient(ellipse at 82% 45%,transparent 0%,#0b10236b 90%)}
+.nba-hero-content{position:relative;z-index:1;max-width:550px}
+.nba-header .eyebrow,.star-heading .eyebrow{font-size:11px;letter-spacing:2.8px;color:#ffba4c}
+.nba-brand img{height:104px;max-width:235px}
+.nba-header h2{font-size:clamp(24px,5vw,44px);font-weight:950;letter-spacing:-1.4px;line-height:1.04;margin:8px 0 10px;color:#fff}
+.nba-header p{color:#d6dce7;font-size:13px;margin:0 0 16px}
+.nba-hero-tag,.star-hero-chip{display:inline-block;border-left:3px solid #f4ac3f;background:#ffffff15;color:#f5f6f9;padding:8px 11px;font-size:10px;font-weight:850;letter-spacing:1.6px}
+.nba-section-label{margin-top:30px;padding-bottom:11px;border-bottom:1px solid #ffffff24;font-size:13px;letter-spacing:1.5px}
+.nba-section-label span:last-child{font-size:11px;color:#f4b452}
+.nba-nav{background:transparent;border:0;border-radius:0;padding:7px 0;margin:8px 0 15px;display:flex;align-items:center;justify-content:space-between}
+.nba-nav strong{font-size:clamp(17px,3vw,23px);font-weight:850;letter-spacing:-.6px;margin:0}
+.nba-nav-actions{display:flex;gap:6px;align-items:center}
+.nba-nav .pill{border:1px solid #ffffff24;background:#ffffff13;border-radius:6px;min-width:36px;padding:8px 10px;color:#fff;font-weight:800;font-size:13px}
+.nba-nav .pill:first-child,.nba-nav .pill:nth-child(3){font-size:22px;padding:3px 11px}
+.nba-game,.nba-feature{border-radius:10px;border:1px solid #ffffff19;box-shadow:none;background:linear-gradient(115deg,#192b46,#0c1423)}
+.nba-feature{background:radial-gradient(ellipse at 50% 50%,#29466c 0%,#182942 53%,#0b1322 100%);padding:26px}
+.nba-game-top{font-size:10px;font-weight:850;letter-spacing:1.7px}
+.nba-phase{color:#ffb84d}
+.nba-game-top .nba-state{border-radius:4px;background:#ffffff14;color:#fff;padding:7px 10px}
+.nba-game-top .nba-state.is-live{background:#c6263d;color:#fff}
+.nba-matchup{margin:24px 0 30px}
+.nba-matchup>b{font-size:13px;color:#b8c6da}
+.nba-matchup small{font-size:12px;font-weight:750;color:#fff}
+.nba-feature .nba-team-logo{width:135px;height:135px}
+.nba-game-bottom{border-top:1px solid #ffffff22}
+.nba-time-label{font-size:12px;color:#b6c4d9}
+.nba-game-bottom .action{border-radius:5px;background:#fff;color:#0d1420;letter-spacing:.5px}
+.nba-unavailable{font-size:10px;letter-spacing:1px;font-weight:750}
+.nba-empty{border-radius:8px;padding:65px 20px;background:#121e30}
+.nba-empty strong{font-size:20px;letter-spacing:1px}
+.nba-empty p{font-size:13px;color:#9dacc1}
+.star-heading{min-height:330px;border:0;border-radius:10px;display:flex;align-items:flex-end;justify-content:space-between;padding:32px;background:linear-gradient(90deg,#080e19 0%,#101625ed 46%,#11172878 100%),var(--star-hero-image,linear-gradient(110deg,#233b5b,#18101e));background-position:center,80% 24%;background-size:cover;box-shadow:none}
+.star-heading:after{background:linear-gradient(0deg,#090f1c88,transparent 65%)}
+.star-hero-copy{position:relative;z-index:1;max-width:480px}
+.star-heading h1{font-size:clamp(43px,8vw,86px);font-weight:950;letter-spacing:-3px;margin:14px 0 10px;line-height:1}
+.star-heading h1 span{color:#f4b24b}
+.star-heading p{max-width:350px;font-size:14px;color:#e2e5ed;line-height:1.5;margin-bottom:20px}
+.star-hero-refresh{z-index:1;align-self:flex-start;background:#ffffff22;border:1px solid #ffffff45;color:white;font-size:23px;border-radius:50%;width:42px;height:42px;flex-shrink:0}
+.star-list-heading{display:flex;align-items:end;justify-content:space-between;gap:8px;border-bottom:1px solid #ffffff27;margin:28px 0 17px;padding-bottom:13px}
+.star-list-heading h2,.star-section-title{margin:0;color:#fff;font-size:clamp(17px,3vw,25px);font-weight:900;letter-spacing:-.5px}
+.star-list-heading h2 span{color:#f0ae49}
+.star-list-heading small,.star-section-title span{font-size:10px;color:#a9b7cb;letter-spacing:.7px;white-space:nowrap}
+.star-grid{gap:12px;margin:0;grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+.star-person{border:0;border-radius:7px;aspect-ratio:2/3.25;position:relative;padding:0;box-shadow:none;background:#1a2435}
+.star-person img,.star-no-photo{height:100%;width:100%;aspect-ratio:auto;object-fit:cover}
+.star-person:after{top:25%;height:75%;background:linear-gradient(transparent 15%,#080c13e8 100%)}
+.star-rank{z-index:2;top:10px;left:10px;background:#f0af49;color:#0d1420;border:0;font-size:12px;font-weight:950;border-radius:4px;padding:6px 9px}
+.star-person-info{position:absolute;bottom:0;left:0;right:0;z-index:2;text-align:left;padding:12px}
+.star-person strong{font-size:14px;font-weight:850;min-height:0;line-height:1.25;padding:0;margin:0}
+.star-person-info small{display:block;color:#f0b455;font-size:9px;font-weight:800;letter-spacing:.5px;margin-top:8px}
+.star-profile{border-radius:8px;margin-top:14px;background:linear-gradient(110deg,#1b2a42,#101824)}
+.star-back{border:0;background:transparent;color:#f1b34e;font-weight:850;letter-spacing:1px;font-size:11px;margin-top:23px;padding:8px 0}
+.star-section-title{margin:27px 0 15px}
+.star-titles{gap:12px}
+.star-title{border-radius:6px}
+@media(max-width:780px){.nba-header{min-height:275px;padding:23px}.nba-header h2{font-size:27px}.nba-brand img{height:86px}.nba-nav strong{order:initial;width:auto;font-size:16px}.nba-nav .pill{padding:7px 9px}.nba-nav-actions{gap:5px}.nba-feature{padding:20px}.nba-feature .nba-team-logo{width:108px;height:108px}.nba-matchup small{font-size:11px}.star-heading{min-height:275px;padding:22px}.star-heading h1{font-size:47px;letter-spacing:-2px}.star-heading p{font-size:12px;max-width:260px}.star-hero-chip{font-size:9px}.star-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.star-person{aspect-ratio:2/3.4}.star-person-info{padding:9px}.star-person strong{font-size:12px}.star-person-info small{font-size:8px}.star-list-heading h2{font-size:16px}.star-list-heading small{font-size:9px}}
+@media(max-width:390px){.nba-nav strong{font-size:14px}.nba-nav .pill{min-width:30px;padding:6px 7px}.star-heading h1{font-size:40px}.star-person strong{font-size:11px}}
+
+/* Content-first mobile: compact mastheads, visible content above the fold */
+.nba-header{min-height:0!important;padding:16px 20px!important;align-items:center!important;border-radius:8px!important}
+.nba-header .eyebrow,.star-heading .eyebrow{font-size:9px!important;letter-spacing:1.6px!important}
+.nba-brand img{height:55px!important;max-width:120px!important;margin:3px 0!important}
+.nba-header p{font-size:11px!important;margin:3px 0 0!important}
+.nba-section-label{margin-top:17px!important;padding-bottom:7px!important}
+.nba-nav{margin:5px 0 10px!important;padding:5px 0!important}
+.nba-feature{min-height:0!important}
+.nba-matchup{margin:13px 0 16px!important}
+.nba-feature .nba-team-logo{width:92px!important;height:92px!important}
+.nba-team-logo{width:68px!important;height:68px!important}
+.nba-game{padding:15px!important}
+.nba-feature{padding:17px!important}
+.nba-game-bottom{padding-top:11px!important}
+.star-heading{min-height:0!important;padding:16px 20px!important;align-items:center!important;border-radius:8px!important;background:linear-gradient(90deg,#0c1422 0%,#101b2be8 70%,#151c2bb0 100%),var(--star-hero-image,linear-gradient(110deg,#233b5b,#18101e))!important;background-position:center,90% 35%!important;background-size:cover!important}
+.star-heading h1{font-size:clamp(29px,5vw,40px)!important;letter-spacing:-1.2px!important;margin:4px 0!important}
+.star-heading p{font-size:11px!important;margin:4px 0 0!important}
+.star-hero-refresh{width:33px!important;height:33px!important;font-size:18px!important}
+.star-list-heading{margin:14px 0 10px!important;padding-bottom:8px!important}
+.star-grid{gap:8px!important}
+.star-person{aspect-ratio:2/3!important}
+.star-person-info small{display:none!important}
+.star-person-info{padding:8px!important}
+.star-person strong{font-size:12px!important}
+@media(max-width:780px){.nba-header{padding:14px 16px!important}.nba-brand img{height:47px!important}.nba-section-label{margin-top:12px!important}.nba-nav strong{font-size:14px!important}.nba-feature .nba-team-logo{width:88px!important;height:88px!important}.star-heading{padding:14px 16px!important}.star-heading h1{font-size:34px!important}.star-list-heading h2{font-size:15px!important}.star-person{aspect-ratio:2/3.05!important}}
+
+/* Live TV: compact player above an immediately visible, primary EPG */
+.live-premium{margin:0!important}
+.live-title{margin:0 0 8px!important;gap:7px!important}
+.live-title h1{font-size:21px!important;margin:3px 7px 5px 0!important;line-height:1.2}
+.live-title>span:last-child{font-size:10px!important;letter-spacing:1.3px;font-weight:800}
+.live-upper{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:12px!important;margin-bottom:12px!important;align-items:stretch}
+.live-preview{min-height:0!important;aspect-ratio:16/10;max-height:190px;border-radius:7px!important;padding:4px!important;gap:3px!important;justify-content:center}
+.live-preview #videohost{min-height:0!important;flex:1;overflow:hidden}
+.live-preview #videohost video{height:100%!important;width:100%!important;object-fit:contain}
+.live-preview .status{font-size:10px!important;text-align:center;line-height:1.2}
+.live-preview .pill{font-size:10px!important;padding:4px 8px!important}
+.live-info{padding:0!important;justify-content:center!important;overflow:hidden}
+.live-info .eyebrow{font-size:9px!important;letter-spacing:1px}
+.live-info h2{font-size:clamp(12px,2vw,19px)!important;line-height:1.2;margin:5px 0!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.live-info h3{font-size:11px!important;line-height:1.3!important;font-weight:500;color:#b6c4d6;margin:3px 0!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.live-info p,.live-info>small{display:none!important}
+.live-info-actions{margin:6px 0 0!important;gap:5px!important}
+.live-info-actions button{font-size:10px!important;padding:7px 9px!important;border-radius:5px!important}
+.guide-controls{margin:4px 0 8px!important}
+.guide-controls strong{font-size:12px!important;letter-spacing:.8px}
+.guide-controls button{font-size:11px!important;padding:7px 9px!important}
+.guide-scroll{max-height:min(66vh,760px)!important;border-radius:5px!important}
+.guide-hint{font-size:10px!important;margin:7px 0!important}
+@media(max-width:780px){.live-upper{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:9px!important}.live-preview{aspect-ratio:4/3;max-height:160px!important}.live-info h2{font-size:13px!important}.live-info h3{font-size:10px!important}.live-info-actions button{font-size:10px!important;padding:6px 7px!important}.guide-scroll{max-height:65vh!important}.guide-line{height:61px!important}.guide-channel img{height:30px!important;width:36px!important}.guide-channel{font-size:11px!important}}
+@media(max-width:390px){.live-upper{gap:7px!important}.live-preview{max-height:140px!important}.live-info-actions button{padding:5px 6px!important;font-size:9px!important}.guide-controls button{padding:6px!important;font-size:10px!important}}
+.vod-source-picker{width:100%;margin:14px 0 6px}.vod-source-picker>.eyebrow{display:block;margin-bottom:9px;font-size:11px}.vod-source-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}.vod-source-option{display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;border:1px solid #39485f;background:#1b2739;color:#e9eff8;border-radius:7px;padding:12px;min-width:0}.vod-source-option.active{border-color:#f0b24a;background:#2b3040}.vod-source-option b{font-size:13px}.vod-source-option small{font-size:10px;color:#b5c3d5;overflow-wrap:anywhere}.vod-source-option span{font-size:10px;color:#f0b24a;font-weight:800;letter-spacing:.6px}.vod-actions{flex-wrap:wrap}.vod-feature{position:relative}.vod-feature-navigation{position:absolute;right:17px;bottom:24px;display:flex;gap:7px}.vod-feature-navigation button{width:35px;height:35px;border-radius:50%;border:1px solid #ffffff80;background:#101725b8;color:white;font-size:25px;line-height:1}.vod-feature-progress{position:absolute;bottom:9px;left:5%;display:flex;gap:5px}.vod-feature-progress button{width:17px;height:3px;padding:0;border:0;background:#ffffff75;border-radius:3px}.vod-feature-progress button.active{background:#f0b24a;width:27px}@media(max-width:780px){.vod-feature-navigation{right:12px;bottom:16px}.vod-feature-navigation button{width:29px;height:29px;font-size:20px}.vod-feature-progress{bottom:7px}}.vod-source-picker{display:block!important;flex-basis:100%;margin-top:12px!important}.vod-source-note{font-size:11px;color:#aab8cb;margin:9px 0 0;line-height:1.5}.vod-source-list{grid-template-columns:1fr!important}.vod-source-option{width:100%;min-height:57px}.vod-source-picker{max-width:100%;margin-top:12px!important}.vod-source-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:13px 14px;text-align:left;background:#1b2739;border:1px solid #39485f;border-radius:9px;color:#f2f5fb}.vod-source-toggle>span{min-width:0;flex:1}.vod-source-toggle b{display:block;font-size:13px}.vod-source-toggle small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#b5c3d5;font-size:11px;margin-top:5px}.vod-source-toggle strong{font-size:11px;color:#f0b24a;white-space:nowrap}.vod-source-list{max-height:245px;overflow-y:auto;overscroll-behavior:contain;margin-top:7px;display:flex!important;flex-direction:column;gap:4px}.vod-source-option{padding:9px 11px!important;min-height:40px!important;gap:3px!important}.vod-source-option b{font-size:11px!important;font-weight:500;overflow-wrap:anywhere}.vod-source-option span{font-size:9px!important}.vod-title-art{display:flex;align-items:center;max-width:420px;min-height:55px;margin-bottom:12px}.vod-title-art img{display:block;max-width:100%;width:auto;height:auto;max-height:145px;object-fit:contain;object-position:left center}.vod-feature .vod-title-art{max-width:300px;min-height:40px;margin-bottom:7px}.vod-feature .vod-title-art img{max-height:95px}@media(max-width:780px){.vod-title-art{max-width:85%;min-height:40px}.vod-title-art img{max-height:95px}.vod-feature .vod-title-art img{max-height:70px}}.vod-title-fallback{display:none}.vod-title-art{display:flex;align-items:center;max-width:min(450px,90%);min-height:48px;margin:8px 0 14px}.vod-title-art img{width:auto;max-width:100%;height:auto;max-height:135px;object-fit:contain;object-position:left center}.vod-feature .vod-title-art{max-width:min(310px,90%)}.vod-feature .vod-title-art img{max-height:90px}@media(max-width:780px){.vod-title-art img{max-height:100px}.vod-feature .vod-title-art img{max-height:70px}}.vod-detail .vod-backdrop{height:clamp(155px,27vw,295px);background-position:center 28%}.vod-detail .vod-detail-body{margin-top:-20px;max-width:980px}.vod-detail .vod-overview{margin:12px 0 6px}.vod-detail .vod-genres,.vod-detail .vod-cast{margin:5px 0}.vod-detail .vod-episodes{margin-top:18px}.vod-episodes h2{font-size:20px;margin:0 0 10px}.episode-list{gap:8px}.episode-item{display:flex;align-items:flex-start;gap:12px;padding:10px;min-height:100px;width:100%;border:1px solid #354154;background:#182231;border-radius:9px;color:inherit}.episode-thumb{position:relative;flex:0 0 148px;aspect-ratio:16/9;border-radius:6px;background:#293547;overflow:hidden;display:flex;align-items:center;justify-content:center}.episode-thumb img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}.episode-play{position:relative;z-index:1;background:#0a111ab3;border-radius:50%;width:31px;height:31px;display:grid;place-items:center;font-size:13px}.episode-copy{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}.episode-copy strong{font-size:15px;line-height:1.3}.episode-copy small{color:#aeb8c7}.episode-description{color:#b9c5d4;font-size:13px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.episode-muted{opacity:.65}@media(max-width:780px){.vod-detail .vod-backdrop{height:175px}.vod-detail .vod-detail-body{margin-top:-15px;padding:0 15px 25px}.vod-detail .vod-return{top:9px;left:12px;padding:7px 10px;font-size:12px}.vod-detail .vod-overview{font-size:13px;line-height:1.4}.vod-detail .vod-facts{font-size:12px}.episode-thumb{flex-basis:115px}.episode-item{padding:8px;gap:9px;min-height:80px}.episode-copy strong{font-size:13px}.episode-description{font-size:12px;-webkit-line-clamp:2}.vod-detail .vod-episodes{margin-top:14px}}.nba-header{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(290px,46%);align-items:center;gap:20px;min-height:230px!important;padding:20px!important}.nba-tv-panel{position:relative;z-index:2;min-width:0;background:#090d16;border:1px solid #35435a;border-radius:9px;overflow:hidden;align-self:center}.nba-tv-label{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;font-size:12px;font-weight:800;color:#fff}.nba-tv-label span{font-size:10px;font-weight:500;color:#aeb8c7}.nba-tv-panel video{display:block;width:100%;aspect-ratio:16/9;background:#05070d;object-fit:contain}.nba-tv-status{font-size:11px;color:#aeb8c7;padding:5px 10px}.nba-tv-status:empty{display:none}@media(max-width:680px){.nba-header{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:9px;min-height:145px!important;padding:11px!important}.nba-header .nba-brand img{height:55px}.nba-header .eyebrow{font-size:9px;letter-spacing:1px}.nba-header p{font-size:10px;margin:3px 0}.nba-tv-label{font-size:10px;padding:5px}.nba-tv-label span{display:none}.nba-tv-status{font-size:9px;padding:3px 5px}}.nba-tv-vlc{display:block;width:100%;padding:10px 8px;background:#243b59;color:#fff;border:0;border-top:1px solid #3c526c;font-size:12px;font-weight:750;cursor:pointer}.nba-tv-vlc:active{background:#35577e}@media(max-width:680px){.nba-tv-vlc{font-size:10px;padding:8px 4px}}.nba-slate{gap:10px}.nba-game,.nba-feature{padding:13px 15px!important;min-height:0!important}.nba-matchup,.nba-feature .nba-matchup{margin:10px 0 12px!important;gap:7px}.nba-team-logo,.nba-feature .nba-team-logo{width:66px!important;height:66px!important;margin:0 auto 5px}.nba-matchup small{font-size:11px;line-height:1.25}.nba-game-top .nba-state{padding:5px 8px}.nba-game-bottom{padding-top:9px}.nba-game-bottom .action{padding:7px 10px;font-size:11px}.nba-game-top{font-size:10px}@media(max-width:780px){.nba-game,.nba-feature{padding:12px 13px!important}.nba-team-logo,.nba-feature .nba-team-logo{width:62px!important;height:62px!important}.nba-matchup,.nba-feature .nba-matchup{margin:9px 0 11px!important}.nba-game-bottom{font-size:11px}.nba-unavailable{font-size:9px}}.guide-language{width:110px;min-width:90px;background:#202b3b;color:#eaf0fc;border:1px solid #34445a;font-size:11px;padding:5px;align-self:stretch}@media(max-width:700px){.guide-language{width:84px;min-width:72px;font-size:10px;padding:3px}}.guide-category-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;text-align:left;cursor:pointer}.guide-category-indicator{font-size:18px;margin-left:16px}
+
+/* Compact streaming-service layout: artwork first, minimal framing and whitespace */
+:root{background:#101014;color:#f5f5f6}
+body{background:#101014}
+header{height:56px;padding:0 3%;background:#101014f2;border-bottom:1px solid #242428}
+nav{gap:3px}nav button{padding:8px 12px;background:transparent;border-radius:4px;font-size:13px}
+.wrap{max-width:none;padding:12px 3% 65px}
+h2{margin:16px 0 9px}
+.sectionhead{margin-bottom:5px}
+.home-cinema,.vod-browse{margin:-12px -3.19% 0}
+.home-feature{min-height:clamp(235px,34vw,420px);padding:26px 4%}
+.home-feature h1{font-size:clamp(26px,4vw,48px);margin:8px 0}
+.home-feature p{font-size:13px;line-height:1.4;margin:8px 0 12px}
+.home-buttons{gap:7px}.home-buttons button,.vod-feature .action{padding:9px 15px}
+.home-rail{padding:2px 3% 8px}
+.home-rail-title h2{font-size:18px;margin:12px 0 8px}
+.home-poster-rail{gap:7px;padding-bottom:6px}
+.home-poster{width:clamp(105px,12vw,165px);min-width:clamp(105px,12vw,165px);border-radius:3px}
+.home-live-entry{padding:11px 13px;gap:10px;border-radius:4px;background:#1b1b20;border-color:#2d2d34}
+.vod-heading{padding:7px 3% 0}.vod-heading h1{font-size:23px;margin:6px 0}
+.vod-searchbar{padding:5px 3% 10px;gap:7px}
+.vod-searchbar input,.vod-searchbar select{padding:8px 10px;background:#1b1b20;border-color:#303037}
+.vod-feature{height:clamp(190px,27vw,350px);padding:20px 4%}
+.vod-feature h2{font-size:clamp(23px,3.4vw,36px);margin:7px 0}
+.vod-feature p{margin:7px 0 10px;line-height:1.35}
+.vod-section-title{padding:5px 3% 0}
+.vod-section-title h2{font-size:18px;margin:11px 0 8px}
+.vod-rail{gap:7px;padding:0 3% 12px}
+.vod-rail .vod-poster{flex:0 0 clamp(105px,13vw,170px);width:clamp(105px,13vw,170px)}
+.vod-poster{border-radius:3px}
+.vod-grid{gap:7px;padding:0 3% 18px;grid-template-columns:repeat(auto-fill,minmax(115px,1fr))}
+.vod-detail{min-height:0}
+.vod-detail-body{padding-bottom:20px}
+.vod-actions{margin:12px 0;gap:7px}
+.vod-overview{line-height:1.45}
+.vod-episodes{margin-top:13px}
+.episode-list{gap:5px}
+.episode-item{padding:8px;border-radius:4px;background:#1b1b20}
+.live-premium{margin:0}
+.live-title h1{margin:8px 6px 9px 0;font-size:23px}
+.live-upper{gap:10px;margin-bottom:12px}
+.live-preview{min-height:170px;border-radius:4px}
+.live-info h2{margin:5px 0;font-size:21px}
+.live-info-actions{margin:7px 0}
+.guide-controls{margin-bottom:6px}
+.guide-scroll{border-radius:4px}
+.guide-line{height:58px}
+.guide-category{padding:7px 10px}
+.guide-channel{padding:5px;font-size:11px}
+.guide-channel img{width:36px;height:31px}
+.guide-program{padding:7px}
+.panel,.details{padding:13px;border-radius:6px}
+.rail{gap:8px;padding-bottom:7px}
+.tile{min-height:85px;min-width:150px;padding:11px;border-radius:5px}
+.star-heading,.nba-header{border-radius:6px;box-shadow:none}
+.star-grid,.star-titles{gap:8px}
+.star-person,.star-title{border-radius:4px}
+@media(max-width:780px){
+ header{height:52px;padding:0 12px}
+ .wrap{padding:8px 10px 78px}
+ .home-cinema,.vod-browse{margin:-8px -10px 0}
+ .home-feature{min-height:235px;padding:16px 14px}
+ .home-feature h1{font-size:27px}
+ .home-rail{padding:2px 10px 7px}
+ .home-rail-title h2{font-size:16px;margin:9px 0 7px}
+ .home-poster-rail{gap:6px}
+ .home-poster{width:103px;min-width:103px}
+ .home-live-entry{padding:9px 10px}
+ .vod-heading{padding:6px 11px 0}
+ .vod-heading h1{font-size:21px}
+ .vod-searchbar{padding:4px 11px 8px}
+ .vod-feature{height:205px;padding:14px}
+ .vod-feature h2{font-size:23px}
+ .vod-section-title{padding:4px 11px 0}
+ .vod-section-title h2{font-size:16px;margin:9px 0 7px}
+ .vod-rail{gap:6px;padding:0 11px 11px}
+ .vod-rail .vod-poster{flex-basis:112px;width:112px}
+ .vod-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:0 10px 16px}
+ .vod-detail .vod-backdrop{height:160px}
+ .vod-detail .vod-detail-body{padding:0 12px 18px}
+ .live-title h1{font-size:20px}
+ .live-upper{gap:7px;margin-bottom:9px}
+ .live-preview{min-height:160px}
+ .live-info h2{font-size:17px}
+ .guide-scroll{max-height:520px}
+ .guide-line{height:54px}
+ .bottom{padding:7px 4px max(9px,env(safe-area-inset-bottom));background:#101014f7}
+}
+
+
+/* Mobile density correction: controls, whitespace and typography, not poster size */
+@media(max-width:780px){
+ header{height:43px;padding:0 10px}
+ .brand{font-size:21px;letter-spacing:-.7px}
+ header .status,header .muted{font-size:10px}
+ .wrap{padding:4px 10px 70px}
+ .home-cinema,.vod-browse{margin:-4px -10px 0}
+ .vod-heading{padding:6px 12px 2px;gap:9px}
+ .vod-heading h1{font-size:19px;margin:3px 0}
+ .vod-heading span{font-size:11px}
+ .vod-searchbar{padding:4px 12px 7px;gap:6px}
+ .vod-searchbar input,.vod-searchbar select{font-size:12px;padding:6px 9px;height:34px;border-radius:4px}
+ .vod-searchbar select{max-width:40%}
+ .home-feature{min-height:205px;padding:12px}
+ .home-feature h1{font-size:24px;margin:4px 0}
+ .home-feature p{font-size:12px;margin:5px 0 8px;line-height:1.3}
+ .home-buttons{gap:6px}
+ .home-buttons button,.home-feature .action,.vod-feature .action,.vod-feature button,.action,.pill{font-size:12px;padding:7px 11px;border-radius:4px;min-height:0}
+ .vod-feature{height:185px;padding:11px 12px}
+ .vod-feature h2{font-size:21px;margin:4px 0}
+ .vod-feature p{font-size:11px;line-height:1.3;margin:5px 0 7px}
+ .vod-feature .eyebrow,.home-feature .eyebrow{font-size:9px;letter-spacing:1px}
+ .vod-section-title{padding:2px 12px 0}
+ .vod-section-title h2{font-size:15px;margin:7px 0 5px}
+ .vod-rail{padding:0 12px 6px;gap:7px}
+ .vod-rail .vod-poster{flex-basis:clamp(130px,39vw,180px);width:clamp(130px,39vw,180px)}
+ .home-rail{padding:0 12px 5px}
+ .home-rail-title h2{font-size:15px;margin:8px 0 5px}
+ .home-rail-title button{font-size:11px;padding:3px}
+ .home-poster-rail{gap:7px;padding-bottom:3px}
+ .home-poster{width:clamp(125px,37vw,170px);min-width:clamp(125px,37vw,170px)}
+ .home-live-entry{padding:7px 9px;min-height:34px;gap:7px;font-size:11px}
+ .home-live-entry span:nth-last-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .home-live-entry strong{white-space:nowrap}
+ .bottom{padding:5px 2px max(7px,env(safe-area-inset-bottom));gap:0}
+ .bottom button{font-size:10px;padding:5px 3px}
+ .live-title h1{font-size:19px;margin:5px 0}
+ .live-upper{gap:6px;margin-bottom:7px}
+ .live-info-actions{gap:5px;margin:5px 0}
+ .live-info-actions button,.guide-controls button{padding:5px 7px;font-size:11px}
+ .guide-controls{margin-bottom:4px}
+ .guide-category{padding:5px 9px}
+ .guide-line{height:50px}
+ .guide-program{padding:5px}
+ .vod-detail-body h1{font-size:24px;margin:0 0 8px}
+ .vod-actions{margin:8px 0}
+ .vod-actions button{padding:7px 10px;font-size:12px}
+ .vod-detail .vod-episodes{margin-top:9px}
+ .episode-list{gap:4px}
+ .episode-item{padding:6px;min-height:0}
+}
+@media(min-width:781px){
+ .home-buttons button,.vod-feature .action,.vod-actions button{padding:8px 13px;font-size:13px}
+ .vod-rail .vod-poster{flex-basis:clamp(145px,17vw,205px);width:clamp(145px,17vw,205px)}
+}
+
+
+/* Live TV category navigation and landscape split-screen */
+.live-category-selector{display:flex;align-items:center;gap:9px;margin:0 0 10px}
+.live-category-selector label{font-size:12px;font-weight:750;color:#aab7c8}
+.live-category-selector select{background:#1c2635;color:#f3f5fa;border:1px solid #394458;border-radius:5px;padding:7px 10px;min-width:180px;max-width:100%;font-size:13px}
+.live-layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:12px;align-items:start}
+.live-main{min-width:0}
+.live-category-sidebar{position:sticky;top:65px;max-height:calc(100dvh - 85px);overflow-y:auto;background:#151b26;border:1px solid #30394a;border-radius:5px;padding:6px}
+.live-category-sidebar-title{font-size:11px;letter-spacing:1px;color:#a7b2c3;padding:8px 10px}
+.live-category-item{display:block;width:100%;border:0;border-radius:4px;background:transparent;text-align:left;padding:10px 9px;font-size:12px;line-height:1.3;color:#d3dce9}
+.live-category-item.active{background:#303a4a;color:#f2b349;font-weight:800}
+.live-category-item:hover{background:#273244}
+@media(max-width:850px) and (orientation:portrait){
+ .live-layout{display:block}
+ .live-category-sidebar{display:none}
+ .live-category-selector{margin-bottom:8px}
+}
+@media(max-width:950px) and (orientation:landscape){
+ header{height:43px}
+ .wrap{padding:5px 10px 15px}
+ .live-premium{margin:0}
+ .live-title{display:none}
+ .live-category-selector{display:none}
+ .live-layout{grid-template-columns:155px minmax(0,1fr);gap:8px}
+ .live-category-sidebar{top:46px;max-height:calc(100dvh - 53px);padding:3px}
+ .live-category-item{padding:8px 7px;font-size:11px}
+ .live-main .live-upper{grid-template-columns:minmax(0,1fr) minmax(0,.9fr);gap:8px;margin-bottom:7px}
+ .live-main .live-preview{min-height:0;aspect-ratio:16/9;padding:3px}
+ .live-main .live-preview #videohost{min-height:0}
+ .live-main .live-info h2{font-size:15px;margin:3px 0}
+ .live-main .live-info h3{font-size:12px;margin:3px 0}
+ .live-main .live-info p{display:none}
+ .live-main .live-info-actions{margin:3px 0}
+ .live-main .live-info-actions button{padding:5px 7px;font-size:10px}
+ .live-main .guide-controls{margin-bottom:4px}
+ .live-main .guide-scroll{max-height:calc(100dvh - 195px)}
+ .live-main .guide-line{height:48px}
+ .live-main .guide-hint{display:none}
+ .bottom{display:none}
+}
+@media(min-width:951px){.live-category-selector{display:none}}
+
+/* Consistent league logo carousel */
+.sport-brand-switch{display:flex;align-items:center;gap:10px;width:max-content;max-width:100%;margin:7px 0}
+.sport-league-logo{width:125px;height:83px;object-fit:contain;display:block}
+.sport-epl-logo{width:135px}
+.sport-nba-logo{width:100px}
+.sport-switch-arrow{display:grid;place-items:center;flex:0 0 33px;width:33px;height:42px;border:1px solid #394356;border-radius:5px;background:#1b2535;color:#f3f5fa;font-size:27px;line-height:1;padding:0}
+.sport-switch-arrow:active{background:#39475d}
+@media(max-width:780px){.sport-brand-switch{gap:7px;margin:5px 0}.sport-league-logo{height:72px;width:120px}.sport-nba-logo{width:95px}.sport-switch-arrow{width:31px;flex-basis:31px;height:39px}.nba-header .nba-hero-content{min-width:0}}
+
+.sports-result-score{display:flex;align-items:center;justify-content:center;gap:7px;font-size:clamp(25px,4vw,43px);font-weight:900;font-variant-numeric:tabular-nums;color:#fff;white-space:nowrap}.sports-score-dash{font-size:.55em;color:#a6b4c8;font-weight:600}@media(max-width:780px){.sports-result-score{font-size:30px;gap:5px}}
+
+/* Sports scoreboards: compact cards with scores as the primary information */
+.nba-slate{gap:9px}
+.nba-game,.nba-feature{min-height:0;padding:12px 14px;border-radius:7px;background:linear-gradient(135deg,#1b2a3e,#111a28)}
+.nba-game-top{font-size:10px;letter-spacing:.7px;line-height:1.2}
+.nba-game-top .nba-state{font-size:10px;padding:5px 8px}
+.nba-matchup{margin:9px 0 5px;gap:7px}
+.nba-matchup small{font-size:12px;line-height:1.2;margin-top:5px;color:#f1f3f8;font-weight:650}
+.nba-matchup>b.sports-result-score{font-size:clamp(35px,5vw,55px);color:#fff;font-weight:900;letter-spacing:0;gap:5px}
+.nba-matchup>b:not(.sports-result-score){font-size:12px}
+.nba-game-bottom{justify-content:flex-end;min-height:0;font-size:10px}
+.nba-game-bottom:empty{display:none}
+.nba-game-bottom button{font-size:10px;padding:6px 9px}
+.nba-feature .nba-matchup{margin:10px 0 6px}
+@media(max-width:780px){
+ .nba-slate{gap:8px}
+ .nba-game,.nba-feature{padding:11px 12px;min-height:0}
+ .nba-matchup{margin:8px 0 4px;gap:4px}
+ .nba-matchup>b.sports-result-score{font-size:clamp(32px,8.2vw,48px);gap:4px}
+ .nba-matchup small{font-size:11px;margin-top:4px}
+ .nba-game-top{font-size:9px}
+ .nba-game-bottom button{padding:5px 8px}
+}
+.sport-league-logo[alt="NFL"]{width:115px;object-fit:contain}
+/* Unified compact sports scorecards */
+.nba-game{position:relative;padding:14px 16px 12px}
+.nba-game-top{min-height:19px}
+.nba-game-top .nba-state{position:absolute;top:40px;left:50%;transform:translateX(-50%);white-space:nowrap;background:transparent;border:0;padding:0;font-size:11px;font-weight:850;letter-spacing:1.2px;text-transform:uppercase;color:#dce5f2}
+.nba-game-top .nba-state.is-live{background:transparent;color:#ff6477}
+.nba-matchup{margin:25px 0 0;gap:8px}
+.nba-matchup small{margin-top:4px}
+.nba-team-logo{margin-bottom:4px}
+.nba-game-bottom{border:0;min-height:0;padding:0;margin:0}
+.nba-game-bottom:empty{display:none}
+.nba-game-bottom .action{margin-top:10px}
+@media(max-width:780px){.nba-game{padding:13px 14px 11px}.nba-matchup{margin:25px 0 0}}
+
+/* Light logo treatments for dark UI */
+.sport-epl-logo{filter:brightness(0) invert(1);width:135px}
+.guide-channel img[src*="hbo-light.svg"]{width:58px;max-width:58px;height:35px}
+
+.sports-match-overlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:16px}
+.sports-match-dialog{width:min(850px,100%);background:#111a28;border:1px solid #40516a;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.sports-match-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:15px}
+.sports-match-heading strong{min-width:0;overflow-wrap:anywhere}
+#sports-match-close{background:#29364a;border:0;border-radius:7px;font-size:23px;padding:5px 12px}
+#sports-match-video{width:100%;aspect-ratio:16/9;background:#000}
+#sports-match-status{font-size:12px;color:#aab9cd}
+#sports-match-status:empty{display:none}
+#sports-match-vlc{align-self:flex-start;padding:9px 14px}
+/* Featured banner: keep artwork high and controls clear of carousel indicators. */
+.vod-feature{align-items:center;padding:18px 5% 66px}
+.vod-feature-content{position:relative;z-index:1;max-width:min(470px,78%)}
+.vod-feature .vod-title-art{margin:0 0 6px;min-height:0}
+.vod-feature .vod-title-art img{max-height:105px}
+.vod-feature-content>p{margin:6px 0 14px}
+.vod-feature-content>.action{position:relative;margin:0}
+.vod-feature-progress{bottom:14px;left:5%;right:100px;gap:6px}
+.vod-feature-navigation{bottom:12px}
+@media(max-width:780px){
+ .vod-feature{padding:14px 20px 69px;min-height:300px;height:clamp(300px,82vw,390px)}
+ .vod-feature-content{max-width:calc(100% - 16px);align-self:center}
+ .vod-feature .vod-title-art img{max-height:82px}
+ .vod-feature-content>p{font-size:13px;line-height:1.35;-webkit-line-clamp:2;margin:6px 0 12px;max-width:85%}
+ .vod-feature-progress{left:20px;right:100px;bottom:20px;flex-wrap:nowrap}
+ .vod-feature-navigation{right:15px;bottom:12px}
+}
+/* Home hero follows the same clean artwork-first layout as Movies and Series. */
+.home-feature{align-items:center;padding:28px 5% 36px;min-height:350px}
+.home-feature-copy{max-width:min(540px,88%)}
+.home-feature .vod-title-art{margin:0 0 10px;min-height:0;max-width:min(440px,100%)}
+.home-feature .vod-title-art img{max-height:125px}
+.home-feature-copy>p{margin:8px 0 16px}
+.home-buttons{flex-wrap:wrap;align-items:center;gap:10px}
+@media(max-width:780px){
+ .home-feature{min-height:290px;padding:22px 20px 34px;align-items:center}
+ .home-feature-copy{max-width:100%}
+ .home-feature .vod-title-art img{max-height:90px}
+ .home-feature-copy>p{font-size:13px;line-height:1.4;-webkit-line-clamp:2;margin:7px 0 14px}
+ .home-buttons{gap:8px}
+}
+/* Compact sports match cards on all three league schedules. */
+.nba-slate{gap:10px}
+.nba-game{padding:13px 15px}
+.nba-game-top{min-height:24px}
+.nba-matchup{margin:11px 0 8px;gap:8px}
+.nba-team-logo{width:58px;height:58px;margin:0 auto 5px}
+.nba-matchup small{font-size:12px;line-height:1.25}
+.nba-matchup strong{font-size:clamp(23px,3.5vw,36px)}
+.nba-game-bottom{min-height:0;justify-content:flex-end}
+.nba-game-bottom:empty{display:none}
+.nba-game-bottom button{padding:8px 12px}
+@media(max-width:780px){
+ .nba-game{padding:12px 14px}
+ .nba-matchup{margin:9px 0 7px}
+ .nba-team-logo{width:53px;height:53px;margin-bottom:4px}
+ .nba-matchup strong{font-size:30px}
+ .nba-game-bottom button{font-size:11px;padding:8px 11px}
+}
+/* Sports cards v2: content-sized layout, not stretched score panels. */
+.nba-slate{align-items:start!important;grid-auto-rows:max-content!important}
+.nba-slate>.nba-game,.nba-slate>.nba-feature{
+ display:flex!important;flex-direction:column!important;justify-content:flex-start!important;
+ align-self:start!important;height:auto!important;min-height:0!important;
+ padding:12px 14px!important;
+}
+.nba-slate .nba-game-top{position:relative!important;min-height:22px!important;margin:0 0 8px!important}
+.nba-slate .nba-game-top .nba-state{top:0!important;left:50%!important;transform:translateX(-50%)!important}
+.nba-slate .nba-matchup,.nba-slate .nba-feature .nba-matchup{
+ margin:14px 0 8px!important;padding:0!important;min-height:0!important;align-items:center!important;
+}
+.nba-slate .nba-matchup>div{gap:2px!important;justify-content:flex-start!important}
+.nba-slate .nba-team-logo,.nba-slate .nba-feature .nba-team-logo{width:62px!important;height:62px!important;margin:0 auto 3px!important}
+.nba-slate .nba-matchup small{margin:2px 0 0!important;line-height:1.2!important}
+.nba-slate .nba-game-bottom{margin:4px 0 0!important;padding:0!important;min-height:0!important;justify-content:flex-end!important}
+.nba-slate .nba-game-bottom .action{margin:0!important;padding:7px 11px!important}
+.nba-slate .nba-game-bottom:empty{display:none!important}
+@media(max-width:780px){
+ .nba-slate>.nba-game,.nba-slate>.nba-feature{padding:11px 12px!important}
+ .nba-slate .nba-matchup,.nba-slate .nba-feature .nba-matchup{margin:12px 0 7px!important}
+ .nba-slate .nba-team-logo,.nba-slate .nba-feature .nba-team-logo{width:56px!important;height:56px!important}
+}
+/* Compact horizontal sports card header: kickoff and playback share one row. */
+.nba-slate .nba-game-top{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;min-height:0!important;margin:0 0 7px!important}
+.nba-slate .nba-game-top .nba-state{position:static!important;top:auto!important;left:auto!important;transform:none!important;white-space:nowrap!important;font-size:12px!important;background:rgba(255,255,255,.08)!important;border-radius:5px!important;padding:6px 9px!important;letter-spacing:.3px!important}
+.nba-slate .nba-game-top .action{margin:0!important;padding:7px 11px!important;font-size:11px!important;white-space:nowrap!important}
+.nba-slate .nba-matchup,.nba-slate .nba-feature .nba-matchup{margin:3px 0 0!important;gap:5px!important}
+.nba-slate>.nba-game,.nba-slate>.nba-feature{padding:10px 13px!important}
+.nba-slate .nba-team-logo,.nba-slate .nba-feature .nba-team-logo{width:54px!important;height:54px!important}
+@media(max-width:780px){.nba-slate>.nba-game,.nba-slate>.nba-feature{padding:9px 12px!important}.nba-slate .nba-team-logo,.nba-slate .nba-feature .nba-team-logo{width:50px!important;height:50px!important}}
+/* v0.8.57: smaller scores, teams anchored to opposite card edges */
+.nba-slate .nba-matchup{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;align-items:center!important;justify-content:stretch!important;column-gap:5px!important;width:100%!important}
+.nba-slate .nba-matchup>div{min-width:0!important;width:100%!important;flex:none!important}
+.nba-slate .nba-matchup>div:first-child{text-align:left!important;justify-self:start!important}
+.nba-slate .nba-matchup>div:last-child{text-align:right!important;justify-self:end!important}
+.nba-slate .nba-matchup>div:first-child .nba-team-logo{margin-left:0!important;margin-right:auto!important}
+.nba-slate .nba-matchup>div:last-child .nba-team-logo{margin-left:auto!important;margin-right:0!important}
+.nba-slate .nba-matchup>b.sports-result-score{font-size:clamp(23px,3.2vw,35px)!important;gap:3px!important;line-height:1.1!important}
+.nba-slate .nba-matchup>b:not(.sports-result-score){font-size:12px!important}
+@media(max-width:780px){.nba-slate .nba-matchup>b.sports-result-score{font-size:27px!important}.nba-slate .nba-matchup{column-gap:4px!important}}
+.sport-league-rail{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:5px 2px 9px;max-width:100%}.sport-league-rail::-webkit-scrollbar{display:none}.sport-league-tile{flex:0 0 142px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-height:112px;background:#172438;border:1px solid #39485f;border-radius:9px;padding:12px;color:#d6dfed;font-size:12px;font-weight:700}.wrestling-event-inline{display:flex;align-items:center;justify-content:flex-start;gap:14px;min-height:66px}.wrestling-show-logo{display:block;flex:0 0 76px;width:76px;height:65px;object-fit:contain;object-position:center;margin:0}.wrestling-event-inline span{min-width:0}.live-sport-label{color:#f0b34b;font-size:12px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;margin:12px 4px 5px}.sport-live-symbol{display:flex;align-items:center;justify-content:center;gap:8px;height:61px;color:#f0b34b;font-size:20px}.sport-live-symbol b{font-size:22px;letter-spacing:1px}.sport-league-tile.selected{border-color:#f0b34b;background:#233249;color:#f4b64e}.sport-league-tile img{height:61px;max-width:105px;width:100%;object-fit:contain}.sport-league-tile[data-league="epl"] img{filter:brightness(0) invert(1)}.nba-header .nba-hero-content{width:100%;min-width:0}.nba-slate .nba-matchup>b.sports-result-score{font-size:clamp(19px,2.5vw,28px)!important;line-height:1.15!important}@media(max-width:780px){.sport-league-tile{flex-basis:120px;min-height:100px}.sport-league-tile img{height:52px}.nba-slate .nba-matchup>b.sports-result-score{font-size:22px!important}}.sports-score-stack{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0}.sports-score-status{font-size:10px;font-weight:800;letter-spacing:1px;color:#aebed1}.nba-slate .sports-score-stack .sports-result-score{font-size:22px!important;line-height:1.1!important}@media(min-width:781px){.nba-slate .sports-score-stack .sports-result-score{font-size:28px!important}}/* Sports rail occupies the full hero when native TV preview is unavailable. */.nba-header:not(:has(.nba-tv-panel)){display:block!important}.nba-header:not(:has(.nba-tv-panel)) .nba-hero-content{width:100%!important;max-width:none!important}.nba-header:not(:has(.nba-tv-panel)) .sport-league-rail{width:100%;max-width:100%;overflow-x:auto;touch-action:pan-x;position:relative;z-index:3}/* Center team crests beneath their names across all sports fixtures. */.nba-slate .nba-matchup>div:first-child,.nba-slate .nba-matchup>div:last-child{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important;gap:5px!important}.nba-slate .nba-matchup>div:first-child small,.nba-slate .nba-matchup>div:last-child small{order:0!important;display:block!important;text-align:center!important;width:100%!important}.nba-slate .nba-matchup>div:first-child .nba-team-logo,.nba-slate .nba-matchup>div:last-child .nba-team-logo{order:1!important;margin-left:auto!important;margin-right:auto!important}.vod-cast-section{margin:22px 0}.vod-cast-section h2{font-size:20px;margin-bottom:12px}.vod-cast-rail{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;scroll-snap-type:x proximity}.vod-cast-person{flex:0 0 105px;min-width:0;scroll-snap-align:start}.vod-cast-person img,.vod-cast-placeholder{width:105px;height:142px;object-fit:cover;border-radius:8px;background:#243247}.vod-cast-person strong,.vod-cast-person small{display:block;font-size:12px;line-height:1.3;margin-top:5px}.vod-cast-person small{color:#aeb8c7}.vod-cast-placeholder{display:grid;place-items:center;color:#aeb8c7;font-size:11px}
+#xtreamform input{max-width:100%;min-width:0;box-sizing:border-box}#xtreamform button{max-width:100%;white-space:normal}#connectionstatus{white-space:normal;overflow-wrap:anywhere;min-height:22px}.wrap:has(#xtreamform){padding:12px 16px 32px}
