@@ -17,6 +17,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
@@ -24,6 +25,7 @@ public class MainActivity extends Activity {
     private static final String HOME = "https://swoop081.github.io/swoop-tv/";
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         browser = new WebView(this);
         boolean isTv = "tv".equals(BuildConfig.FLAVOR);
         if (isTv) {
