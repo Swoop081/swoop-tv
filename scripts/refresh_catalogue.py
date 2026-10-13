@@ -307,7 +307,7 @@ def main():
             tmdb=str(m.get("tmdbId") or "").strip()
             title=title_key(e.get("name"))
             yr=str(e.get("year") or year(e.get("name")) or "")
-            ident=("tmdb",tmdb) if tmdb else ("title",title,yr)
+            ident=("title",title,yr) if title else ("tmdb",tmdb)
             if not title and not tmdb:continue
             if ident not in merged:
                 merged[ident]={**e,"streams":list(e.get("streams") or [])}
