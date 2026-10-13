@@ -36,8 +36,8 @@ public class MainActivity extends Activity {
         boolean isTv = "tv".equals(BuildConfig.FLAVOR);
         if (isTv) {
             browser.getSettings().setUseWideViewPort(true);
-            browser.getSettings().setLoadWithOverviewMode(true);
-            browser.setInitialScale(75);
+            browser.getSettings().setLoadWithOverviewMode(false);
+            browser.setInitialScale(100);
         }
         browser.getSettings().setJavaScriptEnabled(true);
         browser.getSettings().setDomStorageEnabled(true);
