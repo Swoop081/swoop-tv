@@ -1,6 +1,7 @@
 package tv.swoop.app;
 
 import android.app.Activity;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.content.Intent;
 import android.net.Uri;
@@ -19,6 +20,12 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         browser = new WebView(this);
+        boolean isTv = "tv".equals(BuildConfig.FLAVOR);
+        if (isTv) {
+            browser.getSettings().setUseWideViewPort(true);
+            browser.getSettings().setLoadWithOverviewMode(true);
+            browser.setInitialScale(75);
+        }
         browser.getSettings().setJavaScriptEnabled(true);
         browser.getSettings().setDomStorageEnabled(true);
         browser.getSettings().setMediaPlaybackRequiresUserGesture(false);
