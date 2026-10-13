@@ -977,3 +977,14 @@ html.swoop-android-tv .home-cinema{padding-bottom:24px!important}
 .vod-source-dialog-list{display:grid!important;gap:8px!important;margin-bottom:14px!important}
 .vod-source-dialog-list .vod-source-option{width:100%!important;display:flex!important;justify-content:space-between!important;gap:12px!important;padding:12px!important;min-height:44px!important}
 @media(max-width:780px){.vod-detail:has(#vodplay)>.vod-backdrop{height:clamp(120px,22vh,200px)!important}.vod-detail:has(#vodplay) .vod-overview{-webkit-line-clamp:4!important}}
+
+
+/* Compact Sports density on the dedicated Android TV build only. */
+html.swoop-android-tv .nba-game{padding:8px 12px!important;min-height:0!important;gap:6px!important}
+html.swoop-android-tv .nba-game-top{margin-bottom:4px!important;gap:8px!important}
+html.swoop-android-tv .nba-matchup{padding:4px 0!important;gap:8px!important;min-height:0!important}
+html.swoop-android-tv .nba-team-logo{width:42px!important;height:42px!important;max-width:42px!important;max-height:42px!important;object-fit:contain!important}
+html.swoop-android-tv .nba-game .action{padding:5px 12px!important;font-size:12px!important;min-height:30px!important}
+html.swoop-android-tv .nba-game small,html.swoop-android-tv .nba-state{font-size:11px!important}
+html.swoop-android-tv .sports-result-score{font-size:20px!important}
+html.swoop-android-tv .nba-game b{line-height:1.1!important}
