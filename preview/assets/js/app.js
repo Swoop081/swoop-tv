@@ -92,7 +92,7 @@ async function loadPublishedCatalogue(){
  indicator.textContent="Development preview: loading your curated catalogue…";
  document.body.appendChild(indicator);
  try{
-  const response=await fetch("/swoop-tv/swooptv-curated.json?ts="+Date.now(),{cache:"no-store"});
+  const response=await fetch("/swoop-tv/swooptv-curated.json",{cache:"default"});
   if(!response.ok)throw Error("Catalogue HTTP "+response.status);
   const data=await response.json();
   if(data.format!=="swooptv-curated-v1"||!Array.isArray(data.categories)||!data.categories.length)throw Error("Catalogue is missing categories");
