@@ -41,3 +41,13 @@ test('series episode lookup sends authenticated provider request',()=>{
  assert.match(source,/encodeURIComponent\(xtream\.user\)/);
  assert.match(source,/encodeURIComponent\(xtream\.pass\)/);
 });
+
+test('catalogue and sports helpers are loaded before the application',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ const catalogue=html.indexOf('assets/js/catalogue-identity.js');
+ const sports=html.indexOf('assets/js/sports-dates.js');
+ const app=html.indexOf('assets/js/app.js');
+ assert.ok(catalogue>=0&&sports>catalogue&&app>sports);
+ assert.match(fs.readFileSync('assets/js/catalogue-identity.js','utf8'),/function canonicalVodTitle\\(/);
+ assert.match(fs.readFileSync('assets/js/sports-dates.js','utf8'),/function nbaLocalDay\\(/);
+});
