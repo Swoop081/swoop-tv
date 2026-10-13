@@ -85,7 +85,7 @@ function vodCatalog(kind){const movies=kind==="Movies",items=movies?xtream.vod:x
 
 let curated=null,curatedGroup="all",curatedChoice=null;
 try{const d=JSON.parse(localStorage.getItem("swooptv-curated-preview")||"null");if(d?.format==="swooptv-curated-v1"&&Array.isArray(d.categories))curated=d}catch(e){}
-async function loadPublishedCatalogue(){try{const response=await fetch("./swooptv-curated.json?ts="+Date.now(),{cache:"no-store"});if(!response.ok){if(response.status!==404)console.warn("Curated catalogue HTTP",response.status);return}const data=await response.json();if(data.format!=="swooptv-curated-v1"||!Array.isArray(data.categories))throw Error("Invalid published catalogue");curated=data;curatedGroup="all";curatedChoice=null;vodSelected=null;render()}catch(err){console.warn("Published curated catalogue unavailable",err)}}
+async function loadPublishedCatalogue(){try{const response=await fetch("./swooptv-curated.json",{cache:"default"});if(!response.ok){if(response.status!==404)console.warn("Curated catalogue HTTP",response.status);return}const data=await response.json();if(data.format!=="swooptv-curated-v1"||!Array.isArray(data.categories))throw Error("Invalid published catalogue");curated=data;curatedGroup="all";curatedChoice=null;vodSelected=null;render()}catch(err){console.warn("Published curated catalogue unavailable",err)}}
 function curatedGroups(type){return (curated?.categories||[]).filter(g=>g.type===type&&g.entries?.length)}
 function curatedMovieSources(entry){
  if(!entry)return [];
