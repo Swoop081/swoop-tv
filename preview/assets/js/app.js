@@ -100,7 +100,7 @@ async function loadPublishedCatalogue(){
  }
 }
 function curatedGroups(type){
- const ids=new Set((type==="movie"?xtream.vod:xtream.series||[]).map(x=>String(type==="movie"?x.stream_id:x.series_id)).filter(Boolean));
+ const ids=new Set((type==="movie"?(xtream.vod||[]):(xtream.series||[])).map(x=>String(type==="movie"?x.stream_id:x.series_id)).filter(Boolean));
  const hasProviderList=type==="movie"?Array.isArray(xtream.vod):Array.isArray(xtream.series);
  if(!connected||!hasProviderList)return [];
  return (curated?.categories||[]).filter(g=>g.type===type).map(g=>({...g,entries:(g.entries||[]).filter(e=>(e.streams||[]).some(st=>ids.has(String(st.id))))})).filter(g=>g.entries.length);
