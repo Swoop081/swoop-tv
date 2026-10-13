@@ -1,0 +1,17 @@
+{
+  "name": "SwoopTV",
+  "short_name": "SwoopTV",
+  "start_url": "/swoop-tv/",
+  "scope": "/swoop-tv/",
+  "display": "standalone",
+  "background_color": "#101014",
+  "theme_color": "#101014",
+  "icons": [
+    {
+      "src": "/swoop-tv/assets/icons/swooptv-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
