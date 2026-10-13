@@ -1,4 +1,4 @@
 {
-  "phone": {"versionCode": 5, "url": "https://github.com/Swoop081/swoop-tv/releases/download/android-latest/SwoopTV-Phone.apk"},
-  "tv": {"versionCode": 5, "url": "https://github.com/Swoop081/swoop-tv/releases/download/android-latest/SwoopTV-AndroidTV.apk"}
+  "phone": {"versionCode": 6, "url": "https://github.com/Swoop081/swoop-tv/releases/download/android-latest/SwoopTV-Phone.apk"},
+  "tv": {"versionCode": 6, "url": "https://github.com/Swoop081/swoop-tv/releases/download/android-latest/SwoopTV-AndroidTV.apk"}
 }
