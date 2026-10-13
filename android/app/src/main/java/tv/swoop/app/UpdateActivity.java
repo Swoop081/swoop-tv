@@ -34,6 +34,9 @@ public class UpdateActivity extends Activity {
     private long downloadId = -1;
     private String apkName;
     private boolean installing = false;
+    private boolean waitingForPermission = false;
+    private String pendingUrl;
+    private int pendingVersion;
     private BroadcastReceiver receiver;
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -87,8 +90,9 @@ public class UpdateActivity extends Activity {
         new AlertDialog.Builder(this).setTitle("SwoopTV update available").setMessage("A newer version is available. Download and install it before continuing. Android will ask you to approve installation.").setPositiveButton("Update",(d,w)->download(url,version)).setNegativeButton("Later",(d,w)->launch()).setCancelable(false).show();
     }
     private void download(String url,int version) {
+        pendingUrl=url;pendingVersion=version;
         if(Build.VERSION.SDK_INT>=26&&!getPackageManager().canRequestPackageInstalls()){
-            new AlertDialog.Builder(this).setTitle("Allow SwoopTV updates").setMessage("Enable 'Allow from this source' for SwoopTV, then return to download the update.").setPositiveButton("Open settings",(d,w)->{Intent i=new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName()));startActivity(i);status.setText("Return here to install the update");}).setNegativeButton("Cancel",(d,w)->launch()).show();
+            new AlertDialog.Builder(this).setTitle("Allow SwoopTV updates").setMessage("Enable 'Allow from this source' for SwoopTV, then return to download the update.").setPositiveButton("Open settings",(d,w)->{Intent i=new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName()));waitingForPermission=true;startActivity(i);status.setText("Return here to install the update");}).setNegativeButton("Cancel",(d,w)->launch()).show();
             return;
         }
         try {
@@ -118,7 +122,7 @@ public class UpdateActivity extends Activity {
             startActivity(intent);
         }catch(Exception e){new AlertDialog.Builder(this).setMessage("Unable to open Android installer.").setPositiveButton("Continue",(d,w)->launch()).show();}
     }
-    @Override protected void onResume(){super.onResume();if(installing){installing=false;main.postDelayed(()->{if(!isFinishing())check();},1200);}}
+    @Override protected void onResume(){super.onResume();if(waitingForPermission){waitingForPermission=false;if(Build.VERSION.SDK_INT<26||getPackageManager().canRequestPackageInstalls()){main.post(()->download(pendingUrl,pendingVersion));}else{main.post(()->offerUpdate(pendingUrl,pendingVersion));}}else if(installing){installing=false;main.postDelayed(()->{if(!isFinishing())check();},1200);}}
     private void launch(){startActivity(new Intent(this,MainActivity.class));finish();}
     @Override protected void onDestroy(){if(receiver!=null){try{unregisterReceiver(receiver);}catch(Exception ignored){}}super.onDestroy();}
 }
