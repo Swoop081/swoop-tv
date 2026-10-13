@@ -693,3 +693,20 @@ html.swoop-android-tv .vod-detail .vod-backdrop{height:80vh!important}
 html.swoop-android-tv .vod-detail .vod-title-art img{max-height:65px!important}
 html.swoop-android-tv .vod-detail .vod-overview{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 }
+
+/* v0.8.93: detail layout structural fix, independent of native TV detection */
+@media(min-width:900px){
+.vod-detail{position:relative!important;isolation:isolate;min-height:calc(100dvh - 58px)!important;overflow:hidden!important;background:#0b1020!important;display:block!important}
+.vod-detail>.vod-backdrop{position:absolute!important;inset:0 0 auto 0!important;width:100%!important;height:min(83dvh,850px)!important;z-index:-1!important;background-size:cover!important;background-position:center 32%!important;-webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 60%,transparent 100%)!important;mask-image:linear-gradient(to bottom,#000 0%,#000 60%,transparent 100%)!important}
+.vod-detail:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(90deg,#0b1020 0%,rgba(11,16,32,.94) 18%,rgba(11,16,32,.55) 48%,transparent 82%),linear-gradient(0deg,#0b1020,transparent 55%)}
+.vod-detail>.vod-return{position:relative!important;top:auto!important;left:auto!important;display:inline-block!important;margin:12px 0 0 2.5%!important;padding:8px 13px!important;z-index:2}
+.vod-detail>.vod-detail-body{position:relative!important;max-width:none!important;width:100%!important;margin:0!important;padding:clamp(12px,4vh,40px) 2.5% 35px!important;z-index:1}
+.vod-detail-body>h1,.vod-detail-body>.vod-title-art{max-width:min(610px,53%)!important}
+.vod-detail-body h1{font-size:clamp(26px,2.8vw,48px)!important;margin:0 0 8px!important}
+.vod-detail-body .vod-facts{margin:6px 0!important}
+.vod-detail-body .vod-actions{margin:12px 0!important;gap:9px!important;flex-wrap:wrap!important}
+.vod-detail-body .vod-actions button{padding:9px 14px!important}
+.vod-detail-body .vod-overview{max-width:min(660px,54%)!important;font-size:clamp(13px,1.08vw,18px)!important;line-height:1.45!important}
+.vod-detail-body .vod-source-picker{max-width:min(650px,54%)!important}
+.vod-detail-body .vod-episodes,.vod-detail-body .vod-cast-section{margin-top:24px!important}
+}
