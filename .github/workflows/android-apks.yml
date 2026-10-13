@@ -86,4 +86,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete android-test-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
-          gh release create android-test-latest SwoopTV-Phone.apk SwoopTV-AndroidTV.apk --repo "$GITHUB_REPOSITORY" --title "SwoopTV Android testing" --notes "Early Android test builds. Debug signing may change between builds: reinstall may be necessary until persistent release signing is configured." --prerelease --latest
+          gh release create android-test-latest SwoopTV-Phone.apk SwoopTV-AndroidTV.apk --repo "$GITHUB_REPOSITORY" --title "SwoopTV Android testing" --notes "Early Android test builds. Debug signing may change between builds: reinstall may be necessary until persistent release signing is configured." --prerelease
