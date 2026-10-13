@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
                     }
                     return new JSONObject().put("ok", status >= 200 && status < 300).put("status", status).put("body", output.toString("UTF-8")).toString();
                 } catch (Exception error) {
-                    return new JSONObject().put("ok", false).put("status", 0).put("error", error.getClass().getSimpleName() + ": " + error.getMessage()).toString();
+                    return "{\"ok\":false,\"status\":0,\"error\":" + JSONObject.quote(error.getClass().getSimpleName() + ": " + error.getMessage()) + "}";
                 } finally { if (connection != null) connection.disconnect(); }
             }
             @JavascriptInterface public void play(String url, String title) {
