@@ -80,7 +80,7 @@ let curated=null,curatedGroup="all",curatedChoice=null;
 try{const d=JSON.parse(localStorage.getItem("swooptv-curated-preview")||"null");if(d?.format==="swooptv-curated-v1"&&Array.isArray(d.categories))curated=d}catch(e){}
 async function loadPublishedCatalogue(){try{const response=await fetch("./swooptv-curated.json",{cache:"default"});if(!response.ok){if(response.status!==404)console.warn("Curated catalogue HTTP",response.status);return}const data=await response.json();if(data.format!=="swooptv-curated-v1"||!Array.isArray(data.categories))throw Error("Invalid published catalogue");curated=data;curatedGroup="all";curatedChoice=null;vodSelected=null;render()}catch(err){console.warn("Published curated catalogue unavailable",err)}}
 function curatedGroups(type){
- const ids=new Set((type==="movie"?xtream.vod:xtream.series||[]).map(x=>String(type==="movie"?x.stream_id:x.series_id)).filter(Boolean));
+ const ids=new Set((type==="movie"?(xtream.vod||[]):(xtream.series||[])).map(x=>String(type==="movie"?x.stream_id:x.series_id)).filter(Boolean));
  const hasProviderList=type==="movie"?Array.isArray(xtream.vod):Array.isArray(xtream.series);
  if(!connected||!hasProviderList)return [];
  return (curated?.categories||[]).filter(g=>g.type===type).map(g=>({...g,entries:(g.entries||[]).filter(e=>(e.streams||[]).some(st=>ids.has(String(st.id))))})).filter(g=>g.entries.length);
