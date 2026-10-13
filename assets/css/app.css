@@ -839,3 +839,26 @@ html.swoop-android-tv .wrap :is(button,a,input,select):focus-visible{outline:2px
  html:not(.swoop-android-tv) .bottom button.active{background:#a3e635!important;border-color:#a3e635!important;color:#131723!important;font-weight:800!important}
  html:not(.swoop-android-tv) .wrap{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))!important}
 }
+
+
+/* Android TV: keep the entire D-pad focus ring inside horizontally scrolling Home rails. */
+html.swoop-android-tv .home-poster-rail{
+ padding:9px 11px 13px!important;
+ margin:0 0 0 0!important;
+ scroll-padding-inline:11px!important;
+ scroll-snap-type:x proximity!important;
+ overflow-x:auto!important;
+ overflow-y:hidden!important;
+}
+html.swoop-android-tv .home-poster-rail .home-poster{
+ transform:none!important;
+ transform-origin:center center!important;
+ flex-shrink:0!important;
+}
+html.swoop-android-tv .home-poster-rail .home-poster:focus{
+ transform:none!important;
+ outline:3px solid #a3e635!important;
+ outline-offset:2px!important;
+ box-shadow:0 0 0 2px #0c101a!important;
+}
+html.swoop-android-tv .home-rail{padding-left:14px!important;padding-right:14px!important}
