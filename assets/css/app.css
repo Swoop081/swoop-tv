@@ -948,3 +948,7 @@ html.swoop-android-tv .home-cinema > section.home-rail{height:calc(var(--home-ti
 html.swoop-android-tv .home-cinema > section.home-rail > .home-poster-rail{height:calc(var(--home-tile)*1.5 + 12px)!important;max-height:calc(var(--home-tile)*1.5 + 12px)!important;overflow-x:auto!important;overflow-y:hidden!important}
 html.swoop-android-tv .home-cinema > section.home-rail .home-poster{flex:0 0 var(--home-tile)!important;width:var(--home-tile)!important;min-width:var(--home-tile)!important;height:calc(var(--home-tile)*1.5)!important;max-height:calc(var(--home-tile)*1.5)!important;aspect-ratio:auto!important}
 html.swoop-android-tv .home-cinema > section.home-rail .home-poster img{height:100%!important;max-height:100%!important;content-visibility:visible!important}
+
+/* Android TV Home: scrollable end-of-content clearance after the final poster rail. */
+html.swoop-android-tv .home-cinema::after{content:""!important;display:block!important;flex:0 0 160px!important;height:160px!important;min-height:160px!important;pointer-events:none!important}
+html.swoop-android-tv .home-cinema{padding-bottom:24px!important}
