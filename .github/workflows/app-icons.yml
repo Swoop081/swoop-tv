@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'assets/icons/swooptv-icon.svg'
+      - 'apple-touch-icon.png'
       - '.github/workflows/app-icons.yml'
   workflow_dispatch:
 permissions:
@@ -28,6 +29,9 @@ jobs:
               cairosvg.svg2png(url=source,write_to=str(target),output_width=size,output_height=size)
           cairosvg.svg2png(url=source,write_to='apple-touch-icon.png',output_width=180,output_height=180)
           PY
+      - name: Verify generated PNG files
+        run: |
+          file apple-touch-icon.png assets/icons/swooptv-192.png assets/icons/swooptv-512.png assets/icons/swooptv-1024.png
       - name: Commit rendered icons
         run: |
           git config user.name "github-actions[bot]"
