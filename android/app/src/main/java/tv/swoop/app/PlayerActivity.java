@@ -7,6 +7,8 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 import androidx.media3.common.MediaItem;
+import androidx.media3.datasource.HttpDataSource;
+import android.util.Log;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -27,7 +29,17 @@ public class PlayerActivity extends Activity {
         view.setPlayer(player);
         player.addListener(new Player.Listener() {
             @Override public void onPlayerError(PlaybackException error) {
-                Toast.makeText(PlayerActivity.this, "Playback failed: " + error.getErrorCodeName(), Toast.LENGTH_LONG).show();
+                String detail = error.getErrorCodeName();
+                Throwable cause = error;
+                while (cause != null) {
+                    if (cause instanceof HttpDataSource.InvalidResponseCodeException) {
+                        detail += " HTTP " + ((HttpDataSource.InvalidResponseCodeException) cause).responseCode;
+                        break;
+                    }
+                    cause = cause.getCause();
+                }
+                Log.e("SwoopTVPlayer", "Playback failed: " + detail + " (stream URL redacted)", error);
+                Toast.makeText(PlayerActivity.this, "Playback failed: " + detail, Toast.LENGTH_LONG).show();
             }
         });
         player.setMediaItem(MediaItem.fromUri(Uri.parse(url)));
