@@ -85,7 +85,27 @@ function vodCatalog(kind){const movies=kind==="Movies",items=movies?xtream.vod:x
 
 let curated=null,curatedGroup="all",curatedChoice=null;
 try{const d=JSON.parse(localStorage.getItem("swooptv-curated-preview")||"null");if(d?.format==="swooptv-curated-v1"&&Array.isArray(d.categories))curated=d}catch(e){}
-async function loadPublishedCatalogue(){try{const response=await fetch("../swooptv-curated.json?ts="+Date.now(),{cache:"no-store"});if(!response.ok){if(response.status!==404)console.warn("Curated catalogue HTTP",response.status);return}const data=await response.json();if(data.format!=="swooptv-curated-v1"||!Array.isArray(data.categories))throw Error("Invalid published catalogue");curated=data;curatedGroup="all";curatedChoice=null;vodSelected=null;render()}catch(err){console.warn("Published curated catalogue unavailable",err)}}
+async function loadPublishedCatalogue(){
+ const indicator=document.createElement("div");
+ indicator.id="preview-catalogue-status";
+ indicator.style.cssText="position:fixed;top:0;left:0;right:0;z-index:9999;background:#263447;color:white;padding:9px 14px;text-align:center;font:14px system-ui";
+ indicator.textContent="Development preview: loading your curated catalogue…";
+ document.body.appendChild(indicator);
+ try{
+  const response=await fetch("/swoop-tv/swooptv-curated.json?ts="+Date.now(),{cache:"no-store"});
+  if(!response.ok)throw Error("Catalogue HTTP "+response.status);
+  const data=await response.json();
+  if(data.format!=="swooptv-curated-v1"||!Array.isArray(data.categories)||!data.categories.length)throw Error("Catalogue is missing categories");
+  curated=data;curatedGroup="all";curatedChoice=null;vodSelected=null;render();
+  indicator.textContent="Curated catalogue loaded: "+data.categories.length+" categories";
+  indicator.style.background="#1c5840";
+  setTimeout(()=>indicator.remove(),4500);
+ }catch(err){
+  indicator.textContent="Curated catalogue failed to load: "+String(err.message||err)+". Raw playlist shown temporarily.";
+  indicator.style.background="#802d30";
+  console.error("Preview catalogue load error",err);
+ }
+}
 function curatedGroups(type){return (curated?.categories||[]).filter(g=>g.type===type&&g.entries?.length)}
 function curatedMovieSources(entry){
  if(!entry)return [];
