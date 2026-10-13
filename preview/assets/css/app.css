@@ -643,3 +643,53 @@ header #topnav button.active:focus,html.swoop-android-tv header #topnav button.a
 
 /* v0.8.91 — Netflix-inspired wide-screen movie and series details */
 @media(min-width:781px){html.swoop-android-tv .vod-detail{min-height:calc(100dvh - 55px);display:flex;flex-direction:column;background:#0b1020;overflow-x:hidden}html.swoop-android-tv .vod-detail .vod-backdrop{position:absolute;inset:0 0 auto 0;width:100%;height:clamp(400px,76vh,950px)!important;background-size:cover!important;background-position:center 30%!important;mask-image:linear-gradient(to bottom,#000 0%,#000 48%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 48%,transparent 100%)}html.swoop-android-tv .vod-detail:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:linear-gradient(90deg,rgba(8,12,23,.97) 0%,rgba(8,12,23,.91) 22%,rgba(8,12,23,.55) 48%,transparent 80%),linear-gradient(0deg,#0b1020 5%,transparent 65%)}html.swoop-android-tv .vod-detail .vod-return{position:relative;z-index:3;align-self:flex-start;top:auto;left:auto;margin:18px 0 0 3%;padding:9px 15px}html.swoop-android-tv .vod-detail .vod-detail-body{z-index:2;position:relative;margin:0!important;padding:clamp(25px,7vh,90px) 3% 50px!important;max-width:none!important;width:100%;min-height:0}html.swoop-android-tv .vod-detail .vod-detail-body>.vod-title-art,html.swoop-android-tv .vod-detail .vod-detail-body>h1{max-width:min(620px,52%)!important}html.swoop-android-tv .vod-detail .vod-detail-body>h1{font-size:clamp(32px,3.6vw,62px)!important}html.swoop-android-tv .vod-detail .vod-title-art img{max-height:clamp(85px,14vh,190px)!important}html.swoop-android-tv .vod-detail .vod-facts{margin:12px 0;font-size:clamp(14px,1.1vw,19px)}html.swoop-android-tv .vod-detail .vod-actions{margin:16px 0 12px;gap:12px;max-width:680px}html.swoop-android-tv .vod-detail .vod-actions>button{padding:11px 19px;font-size:clamp(14px,1.1vw,18px)}html.swoop-android-tv .vod-detail .vod-overview{max-width:min(670px,55%);font-size:clamp(14px,1.12vw,19px);line-height:1.5;margin:18px 0}html.swoop-android-tv .vod-detail .vod-genres{max-width:670px}html.swoop-android-tv .vod-detail .vod-cast-section,html.swoop-android-tv .vod-detail .vod-episodes{position:relative;margin-top:32px;width:100%;max-width:none}html.swoop-android-tv .vod-detail .vod-source-picker{max-width:640px}html.swoop-android-tv .vod-detail .vod-episodes .episode-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:12px}}
+
+/* v0.8.92 — TV-wide viewport-fit audit: size from viewport, not physical panel inches */
+@media(min-width:781px){
+html.swoop-android-tv{--tv-gutter:clamp(12px,1.6vw,32px);--tv-gap:clamp(6px,.75vw,14px);--tv-header:42px}
+html.swoop-android-tv body{overflow-x:hidden}
+html.swoop-android-tv header{height:var(--tv-header)!important;min-height:var(--tv-header)!important;padding:2px var(--tv-gutter)!important}
+html.swoop-android-tv .wrap{width:100%!important;max-width:none!important;min-width:0!important;padding:12px var(--tv-gutter) 38px!important}
+html.swoop-android-tv .home-cinema,html.swoop-android-tv .vod-browse{margin:-12px calc(-1 * var(--tv-gutter)) 0!important}
+html.swoop-android-tv .home-rail{padding:2px var(--tv-gutter) 10px!important}
+html.swoop-android-tv .home-rail-title h2{font-size:clamp(16px,1.3vw,22px)!important;margin:12px 0 8px!important}
+html.swoop-android-tv .home-poster-rail{gap:var(--tv-gap)!important}
+html.swoop-android-tv .home-poster{width:clamp(96px,11vw,190px)!important;min-width:clamp(96px,11vw,190px)!important}
+html.swoop-android-tv .my-hub-header{padding:8px var(--tv-gutter) 0!important}
+html.swoop-android-tv .vod-rail .vod-poster{flex-basis:clamp(100px,11vw,190px)!important;width:clamp(100px,11vw,190px)!important}
+html.swoop-android-tv .vod-grid{grid-template-columns:repeat(auto-fill,minmax(clamp(105px,10vw,175px),1fr))!important;gap:var(--tv-gap)!important}
+html.swoop-android-tv .tv-catalog-layout{max-width:100%!important;min-width:0!important}
+html.swoop-android-tv .tv-catalog-hero{min-width:0!important}
+html.swoop-android-tv .tv-catalog-main{min-width:0!important}
+html.swoop-android-tv .tv-catalog-tile{max-width:clamp(115px,12vw,205px)!important}
+html.swoop-android-tv .star-grid{grid-template-columns:repeat(10,minmax(0,1fr))!important}
+html.swoop-android-tv .live-upper{gap:var(--tv-gap)!important;margin-bottom:12px!important}
+html.swoop-android-tv .live-preview{min-height:0!important;max-height:35vh!important}
+html.swoop-android-tv .guide-scroll,html.swoop-android-tv .guide{max-height:58vh!important}
+html.swoop-android-tv .nba-header{min-height:0!important}
+html.swoop-android-tv .nba-game,html.swoop-android-tv .nba-feature{min-width:0}
+html.swoop-android-tv .vod-detail{min-height:calc(100dvh - var(--tv-header))!important}
+html.swoop-android-tv .vod-detail .vod-backdrop{height:min(72vh,720px)!important;background-size:cover!important;background-position:center 25%!important}
+html.swoop-android-tv .vod-detail .vod-return{margin:8px 0 0 var(--tv-gutter)!important;padding:7px 12px!important}
+html.swoop-android-tv .vod-detail .vod-detail-body{padding:clamp(12px,3vh,35px) var(--tv-gutter) 32px!important;margin:0!important}
+html.swoop-android-tv .vod-detail .vod-detail-body>.vod-title-art,html.swoop-android-tv .vod-detail .vod-detail-body>h1{max-width:min(620px,56%)!important}
+html.swoop-android-tv .vod-detail .vod-detail-body>h1{font-size:clamp(26px,2.6vw,46px)!important;margin:0 0 8px!important}
+html.swoop-android-tv .vod-detail .vod-title-art{min-height:0!important;margin:0 0 8px!important}
+html.swoop-android-tv .vod-detail .vod-title-art img{max-height:clamp(65px,12vh,130px)!important}
+html.swoop-android-tv .vod-detail .vod-facts{font-size:clamp(12px,1vw,16px)!important;margin:6px 0!important}
+html.swoop-android-tv .vod-detail .vod-actions{margin:9px 0!important;gap:8px!important;max-width:700px}
+html.swoop-android-tv .vod-detail .vod-actions>button{padding:8px 12px!important;font-size:clamp(12px,1vw,16px)!important}
+html.swoop-android-tv .vod-detail .vod-overview{max-width:min(690px,57%)!important;font-size:clamp(12px,1vw,16px)!important;line-height:1.4!important;margin:9px 0!important}
+html.swoop-android-tv .vod-detail .vod-genres{margin:5px 0!important}
+html.swoop-android-tv .vod-detail .vod-source-picker{margin:8px 0!important;max-width:min(650px,57%)!important}
+html.swoop-android-tv .vod-detail .vod-source-toggle{padding:8px 11px!important}
+html.swoop-android-tv .vod-detail .vod-cast-section,html.swoop-android-tv .vod-detail .vod-episodes{margin-top:18px!important}
+html.swoop-android-tv .vod-detail .vod-cast-rail{max-width:100%;overflow-x:auto}
+html.swoop-android-tv .vod-detail .episode-list{grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))!important}
+}
+@media(min-width:781px) and (max-height:650px){
+html.swoop-android-tv .vod-detail .vod-detail-body{padding-top:8px!important}
+html.swoop-android-tv .vod-detail .vod-backdrop{height:80vh!important}
+html.swoop-android-tv .vod-detail .vod-title-art img{max-height:65px!important}
+html.swoop-android-tv .vod-detail .vod-overview{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+}
