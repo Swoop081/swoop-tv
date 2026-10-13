@@ -87,18 +87,31 @@ function vodCatalog(kind){const movies=kind==="Movies",items=movies?xtream.vod:x
 let curated=null,curatedGroup="all",curatedChoice=null;
 try{const d=JSON.parse(localStorage.getItem("swooptv-curated-preview")||"null");if(d?.format==="swooptv-curated-v1"&&Array.isArray(d.categories))curated=d}catch(e){}
 async function loadPublishedCatalogue(){try{const response=await fetch("./swooptv-curated.json",{cache:"default"});if(!response.ok){if(response.status!==404)console.warn("Curated catalogue HTTP",response.status);return}const data=await response.json();if(data.format!=="swooptv-curated-v1"||!Array.isArray(data.categories))throw Error("Invalid published catalogue");curated=data;curatedGroup="all";curatedChoice=null;vodSelected=null;render()}catch(err){console.warn("Published curated catalogue unavailable",err)}}
+/* Never trust a curated stream ID alone: validate the live provider title and year. */
+function verifiedVodMatch(entry,provider){
+ if(!entry||!provider)return false;
+ const expected=canonicalVodTitle(entry.name),actual=canonicalVodTitle(provider.name||provider.title||"");
+ if(!expected||!actual||expected!==actual)return false;
+ const expectedYear=canonicalVodYear(entry);
+ const actualYear=canonicalVodYear({name:provider.name||provider.title||"",year:provider.year||provider.releaseDate||provider.release_date||provider.info?.releasedate||provider.info?.releaseDate||""});
+ // A known year must match; a missing provider year is not evidence of a match.
+ if(expectedYear&&(!actualYear||expectedYear!==actualYear))return false;
+ return true;
+}
 function curatedGroups(type){
- const ids=new Set((type==="movie"?(xtream.vod||[]):(xtream.series||[])).map(x=>String(type==="movie"?x.stream_id:x.series_id)).filter(Boolean));
+ const providerItems=type==="movie"?(xtream.vod||[]):(xtream.series||[]);
+ const ids=new Set(providerItems.map(x=>String(type==="movie"?x.stream_id:x.series_id)).filter(Boolean));
+ const byId=new Map(providerItems.map(x=>[String(type==="movie"?x.stream_id:x.series_id),x]));
  const hasProviderList=type==="movie"?Array.isArray(xtream.vod):Array.isArray(xtream.series);
  if(!connected||!hasProviderList)return [];
- return (curated?.categories||[]).filter(g=>g.type===type).map(g=>({...g,entries:(g.entries||[]).filter(e=>(e.streams||[]).some(st=>ids.has(String(st.id))))})).filter(g=>g.entries.length);
+ return (curated?.categories||[]).filter(g=>g.type===type).map(g=>({...g,entries:(g.entries||[]).map(e=>({...e,streams:(e.streams||[]).filter(st=>ids.has(String(st.id))&&(type!=="movie"||verifiedVodMatch(e,byId.get(String(st.id)))))})).filter(e=>e.streams.length)})).filter(g=>g.entries.length);
 }
 function curatedMovieSources(entry){
  if(!entry)return [];
  const sources=[],seen=new Set();
  for(const st of entry.streams||[]){
   const provider=(xtream.vod||[]).find(x=>String(x.stream_id)===String(st.id));
-  if(!provider)continue;
+  if(!provider||!verifiedVodMatch(entry,provider))continue;
   const id=String(provider.stream_id||"");
   if(!id||seen.has(id))continue;
   seen.add(id);
