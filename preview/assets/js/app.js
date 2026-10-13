@@ -105,13 +105,19 @@ async function loadPublishedCatalogue(){
   console.error("Preview catalogue load error",err);
  }
 }
-function curatedGroups(type){return (curated?.categories||[]).filter(g=>g.type===type&&g.entries?.length)}
+function curatedGroups(type){
+ const ids=new Set((type==="movie"?xtream.vod:xtream.series||[]).map(x=>String(type==="movie"?x.stream_id:x.series_id)).filter(Boolean));
+ const hasProviderList=type==="movie"?Array.isArray(xtream.vod):Array.isArray(xtream.series);
+ if(!connected||!hasProviderList)return [];
+ return (curated?.categories||[]).filter(g=>g.type===type).map(g=>({...g,entries:(g.entries||[]).filter(e=>(e.streams||[]).some(st=>ids.has(String(st.id))))})).filter(g=>g.entries.length);
+}
 function curatedMovieSources(entry){
  if(!entry)return [];
  const sources=[],seen=new Set();
  for(const st of entry.streams||[]){
   const provider=(xtream.vod||[]).find(x=>String(x.stream_id)===String(st.id));
-  const id=String(provider?.stream_id||st.id||"");
+  if(!provider)continue;
+  const id=String(provider.stream_id||"");
   if(!id||seen.has(id))continue;
   seen.add(id);
   sources.push({id,ext:provider?.container_extension||st.ext||"mp4",name:provider?.name||st.name||entry.name});
