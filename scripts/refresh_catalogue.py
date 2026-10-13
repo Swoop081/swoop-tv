@@ -445,7 +445,7 @@ def main():
         ("series",series,cats,"new-series-apple-tv","New Series on Apple TV+")
     ]:
         apple_ids={str(c.get("category_id")) for c in source_cats
-                    if re.match(r"^apple\+(?:\s|$)",norm(c.get("category_name")))}
+                    if re.match(r"^apple(?:\s|$)",norm(c.get("category_name")))}
         prior_apple=next((g.get("entries",[]) for g in groups if g.get("type")==kind and g.get("id")==group_id),[])
         if not apple_ids:
             if prior_apple:updated.append({"id":group_id,"name":group_name,"type":kind,"entries":prior_apple})
@@ -492,7 +492,7 @@ def main():
         ("series",series,cats,"new-series-disney","New Series on Disney+")
     ]:
         disney_ids={str(c.get("category_id")) for c in source_cats
-                    if re.match(r"^disney\+(?:\s|$)",norm(c.get("category_name"))) and "asia" not in norm(c.get("category_name"))}
+                    if re.match(r"^disney(?:\s|$)",norm(c.get("category_name"))) and "asia" not in norm(c.get("category_name"))}
         prior_disney=next((g.get("entries",[]) for g in groups if g.get("type")==kind and g.get("id")==group_id),[])
         if not disney_ids:
             if prior_disney:updated.append({"id":group_id,"name":group_name,"type":kind,"entries":prior_disney})
