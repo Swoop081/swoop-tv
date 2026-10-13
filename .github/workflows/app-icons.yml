@@ -1,11 +1,5 @@
 name: Generate SwoopTV app icons
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'assets/icons/swooptv-icon.svg'
-      - 'apple-touch-icon.png'
-      - '.github/workflows/app-icons.yml'
   workflow_dispatch:
 permissions:
   contents: write
