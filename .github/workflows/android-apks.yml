@@ -84,6 +84,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
+      - name: Checkout repository for version metadata
+        uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: swooptv-phone-release-apk
@@ -108,7 +110,7 @@ jobs:
           cat > android-update.json <<JSON
           {
             "phone": {"versionCode": $VERSION_CODE, "url": "https://github.com/Swoop081/swoop-tv/releases/download/android-latest/SwoopTV-Phone.apk"},
-            "tv": {"versionCode": 4, "url": "https://github.com/Swoop081/swoop-tv/releases/download/android-latest/SwoopTV-AndroidTV.apk"}
+            "tv": {"versionCode": $VERSION_CODE, "url": "https://github.com/Swoop081/swoop-tv/releases/download/android-latest/SwoopTV-AndroidTV.apk"}
           }
           JSON
           git config user.name "github-actions[bot]"
