@@ -862,3 +862,35 @@ html.swoop-android-tv .home-poster-rail .home-poster:focus{
  box-shadow:0 0 0 2px #0c101a!important;
 }
 html.swoop-android-tv .home-rail{padding-left:14px!important;padding-right:14px!important}
+
+
+/* Android TV Home: dense STARmeter-like vertical rhythm without clipping focus. */
+html.swoop-android-tv .home-cinema .home-rail{
+ padding-top:0!important;
+ padding-bottom:1px!important;
+ margin-top:0!important;
+ margin-bottom:0!important;
+}
+html.swoop-android-tv .home-cinema .home-rail-title{
+ min-height:23px!important;
+ margin:0 0 2px!important;
+ align-items:center!important;
+}
+html.swoop-android-tv .home-cinema .home-rail-title h2{
+ margin:0!important;
+ line-height:22px!important;
+ font-size:16px!important;
+}
+html.swoop-android-tv .home-cinema .home-rail-title button{
+ margin:0!important;
+ padding:1px 4px!important;
+ line-height:20px!important;
+}
+html.swoop-android-tv .home-cinema .home-poster-rail{
+ padding-top:5px!important;
+ padding-bottom:6px!important;
+ margin-bottom:0!important;
+}
+html.swoop-android-tv .home-cinema .tv-home-heading{
+ margin-bottom:4px!important;
+}
