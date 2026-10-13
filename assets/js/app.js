@@ -334,6 +334,38 @@ function settings(){return '<h2>Settings</h2><div class="panel"><h3>Account</h3>
 
 
 
+/* TV login: D-pad focus is navigation only; OK activates editing. */
+(function(){
+ if(!document.documentElement.classList.contains("swoop-android-tv"))return;
+ const ids=["server","username","password"];
+ function lockLogin(){
+  if(!document.getElementById("xtreamform"))return;
+  for(const id of ids){const input=document.getElementById(id);if(input&&input!==document.activeElement)input.readOnly=true}
+ }
+ document.addEventListener("focusin",e=>{
+  if(!ids.includes(e.target.id)||!document.getElementById("xtreamform"))return;
+  if(e.target.dataset.tvEditing!=="1")e.target.readOnly=true;
+ });
+ document.addEventListener("focusout",e=>{
+  if(!ids.includes(e.target.id))return;
+  e.target.readOnly=true;delete e.target.dataset.tvEditing;
+ });
+ document.addEventListener("keydown",e=>{
+  if(!ids.includes(e.target.id)||!document.getElementById("xtreamform"))return;
+  if((e.key==="Enter"||e.key==="NumpadEnter")&&e.target.readOnly){
+   e.preventDefault();e.stopImmediatePropagation();
+   e.target.dataset.tvEditing="1";e.target.readOnly=false;
+   e.target.click();
+  }
+ },true);
+ const observer=new MutationObserver(lockLogin);
+ observer.observe(document.getElementById("app"),{childList:true});
+ lockLogin();
+ requestAnimationFrame(()=>{
+  const first=document.getElementById("server");
+  if(first){first.readOnly=true;first.focus({preventScroll:true})}
+ });
+})();
 /* Directional remote focus for the native Android TV WebView. */
 (function(){
  if(!document.documentElement.classList.contains("swoop-android-tv"))return;
