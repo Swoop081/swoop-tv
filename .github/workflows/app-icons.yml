@@ -28,6 +28,9 @@ jobs:
               target=Path(f'assets/icons/swooptv-{size}.png')
               cairosvg.svg2png(url=source,write_to=str(target),output_width=size,output_height=size)
           cairosvg.svg2png(url=source,write_to='apple-touch-icon.png',output_width=180,output_height=180)
+          target=Path('android/app/src/main/res/drawable-nodpi/swooptv_launcher.png')
+          target.parent.mkdir(parents=True,exist_ok=True)
+          cairosvg.svg2png(url=source,write_to=str(target),output_width=512,output_height=512)
           PY
       - name: Verify generated PNG files
         run: |
@@ -36,7 +39,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/icons/swooptv-192.png assets/icons/swooptv-512.png assets/icons/swooptv-1024.png apple-touch-icon.png
+          git add assets/icons/swooptv-192.png assets/icons/swooptv-512.png assets/icons/swooptv-1024.png apple-touch-icon.png android/app/src/main/res/drawable-nodpi/swooptv_launcher.png
           if ! git diff --cached --quiet; then
             git commit -m "Generate SwoopTV PNG app icons from master SVG"
             git push
