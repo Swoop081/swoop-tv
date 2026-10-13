@@ -1,6 +1,11 @@
 package tv.swoop.app;
 
 import android.app.Activity;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
+import org.json.JSONObject;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.content.Intent;
@@ -31,6 +36,33 @@ public class MainActivity extends Activity {
         browser.getSettings().setMediaPlaybackRequiresUserGesture(false);
         browser.setWebChromeClient(new WebChromeClient());
         browser.addJavascriptInterface(new Object() {
+            @JavascriptInterface public String request(String address, int timeoutMs) {
+                HttpURLConnection connection = null;
+                try {
+                    URL target = new URL(address);
+                    String scheme = target.getProtocol();
+                    if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) throw new Exception("Unsupported URL");
+                    connection = (HttpURLConnection) target.openConnection();
+                    connection.setConnectTimeout(Math.min(Math.max(timeoutMs, 1000), 30000));
+                    connection.setReadTimeout(Math.min(Math.max(timeoutMs, 1000), 30000));
+                    connection.setRequestProperty("Accept", "application/json");
+                    int status = connection.getResponseCode();
+                    InputStream input = status >= 400 ? connection.getErrorStream() : connection.getInputStream();
+                    ByteArrayOutputStream output = new ByteArrayOutputStream();
+                    if (input != null) {
+                        try (InputStream stream = input) {
+                            byte[] buffer = new byte[8192]; int count;
+                            while ((count = stream.read(buffer)) != -1) {
+                                output.write(buffer, 0, count);
+                                if (output.size() > 25000000) throw new Exception("Response too large");
+                            }
+                        }
+                    }
+                    return new JSONObject().put("ok", status >= 200 && status < 300).put("status", status).put("body", output.toString("UTF-8")).toString();
+                } catch (Exception error) {
+                    return new JSONObject().put("ok", false).put("status", 0).put("error", error.getClass().getSimpleName() + ": " + error.getMessage()).toString();
+                } finally { if (connection != null) connection.disconnect(); }
+            }
             @JavascriptInterface public void play(String url, String title) {
                 runOnUiThread(() -> {
                     Uri uri = Uri.parse(url);
