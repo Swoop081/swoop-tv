@@ -17,7 +17,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install cairosvg
+      - name: Install icon renderer
+        run: pip install cairosvg
       - name: Render icon PNG sizes
         run: |
           python - <<'PY'
