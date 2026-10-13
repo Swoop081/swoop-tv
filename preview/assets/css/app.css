@@ -576,3 +576,27 @@ html.swoop-android-tv .home-poster img{content-visibility:auto}
 /* Android TV remote focus is always clearly visible. */
 html.swoop-android-tv button:focus,html.swoop-android-tv a:focus,html.swoop-android-tv select:focus,html.swoop-android-tv input:focus{outline:4px solid #f9bb54!important;outline-offset:3px!important;box-shadow:0 0 0 6px rgba(249,187,84,.22)!important;position:relative;z-index:2}
 html.swoop-android-tv .home-poster:focus,html.swoop-android-tv .vod-poster:focus{transform:scale(1.045);transition:transform 120ms ease}
+
+/* Television-only, full-height split catalogue */
+html.swoop-android-tv .tv-catalog-layout{display:grid;grid-template-columns:38% minmax(0,62%);height:calc(100dvh - 78px);min-height:420px;overflow:hidden;background:#090e19}
+html.swoop-android-tv .tv-catalog-hero{position:relative;min-width:0;height:100%;background-size:cover;background-position:center;display:flex;align-items:flex-end;overflow:hidden}
+html.swoop-android-tv .tv-catalog-hero-info{width:100%;padding:26px 26px 34px;background:linear-gradient(0deg,rgba(7,10,18,.98),rgba(7,10,18,.74) 72%,transparent)}
+html.swoop-android-tv .tv-catalog-kicker{font-size:12px;letter-spacing:.13em;color:#f6c15d;font-weight:700}
+html.swoop-android-tv .tv-catalog-hero h2{font-size:clamp(24px,3vw,44px);line-height:1.08;margin:10px 0;max-height:110px;overflow:hidden}
+html.swoop-android-tv .tv-catalog-hero .vod-title-art img{max-width:95%;max-height:110px;object-fit:contain;object-position:left}
+html.swoop-android-tv .tv-catalog-hero p{font-size:clamp(13px,1.2vw,17px);line-height:1.4;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;max-height:100px}
+html.swoop-android-tv .tv-catalog-feature-nav{display:flex;align-items:center;gap:15px;margin-top:16px}
+html.swoop-android-tv .tv-catalog-feature-nav button{font-size:25px;border-radius:50%;width:38px;height:38px}
+html.swoop-android-tv .tv-catalog-main{height:100%;min-width:0;overflow-y:auto;overflow-x:hidden;padding:18px 20px 25px;scrollbar-width:thin}
+html.swoop-android-tv .tv-catalog-main-title{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
+html.swoop-android-tv .tv-catalog-main-title h1{font-size:26px;margin:0}
+html.swoop-android-tv .tv-catalog-main-title span{font-size:13px;color:#aeb6c8}
+html.swoop-android-tv .tv-catalog-row{margin-bottom:18px;min-width:0}
+html.swoop-android-tv .tv-catalog-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+html.swoop-android-tv .tv-catalog-heading h2{font-size:19px;margin:0}
+html.swoop-android-tv .tv-catalog-heading button{font-size:13px}
+html.swoop-android-tv .tv-catalog-rail{display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;padding:5px 5px 12px;scroll-snap-type:x proximity;scrollbar-width:thin}
+html.swoop-android-tv .tv-catalog-tile{display:block;flex:0 0 clamp(105px,10vw,155px);height:clamp(160px,16vw,225px);padding:0;overflow:hidden;border-radius:8px;background:#202b42;scroll-snap-align:start}
+html.swoop-android-tv .tv-catalog-tile img{width:100%;height:100%;object-fit:cover}
+html.swoop-android-tv .tv-catalog-tile span{padding:12px;display:block;font-size:13px}
+html.swoop-android-tv .tv-catalog-tile:focus{transform:scale(1.025)}
