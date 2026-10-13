@@ -187,7 +187,7 @@ def enrich_tmdb(updated):
     cache={}
     remaining=int(os.getenv("SWOOP_TMDB_MAX_PER_RUN","180"))
     total=0
-    for g in sorted(updated,key=lambda g: 0 if g.get("name")=="Trending TV Shows" else 1 if g.get("name")=="Trending Movies" else 2 if g.get("id") in ("new-movies-amazon","new-series-amazon","new-movies-apple-tv","new-series-apple-tv") else 3):
+    for g in sorted(updated,key=lambda g: 0 if g.get("name")=="Trending TV Shows" else 1 if g.get("name")=="Trending Movies" else 2 if g.get("id") in ("new-movies-amazon","new-series-amazon","new-movies-apple-tv","new-series-apple-tv","new-movies-disney","new-series-disney") else 3):
         t=g.get("type")
         if t not in ("movie","series"):continue
         for e in g.get("entries",[]):
@@ -485,6 +485,53 @@ def main():
         ordered=sorted(entries.values(),key=lambda e:e.get("providerAdded",0),reverse=True)
         updated.append({"id":group_id,"name":group_name,"type":kind,"entries":ordered})
         print(group_name,":",len(ordered),"titles from",len(apple_rows),"streams across",len(apple_ids),"categories")
+    # Disney+ provider categories, including documentary, kids, 4K and audio variants.
+    # Rebuilt on every scheduled catalogue sync; provider-added order is preserved.
+    for kind,source,source_cats,group_id,group_name in [
+        ("movie",vod,movie_cats,"new-movies-disney","New Movies on Disney+"),
+        ("series",series,cats,"new-series-disney","New Series on Disney+")
+    ]:
+        disney_ids={str(c.get("category_id")) for c in source_cats
+                    if re.match(r"^disney\+(?:\s|$)",norm(c.get("category_name"))) and "asia" not in norm(c.get("category_name"))}
+        prior_disney=next((g.get("entries",[]) for g in groups if g.get("type")==kind and g.get("id")==group_id),[])
+        if not disney_ids:
+            if prior_disney:updated.append({"id":group_id,"name":group_name,"type":kind,"entries":prior_disney})
+            print(group_name,": provider categories unavailable; retaining prior entries")
+            continue
+        disney_rows=[x for x in source if str(x.get("category_id")) in disney_ids or
+                     any(str(i) in disney_ids for i in (x.get("category_ids") or []))]
+        if not disney_rows and prior_disney:
+            updated.append({"id":group_id,"name":group_name,"type":kind,"entries":prior_disney})
+            print(group_name,": empty provider response; retaining prior entries")
+            continue
+        prior_by_stream={str(st.get("id")):e for e in prior_disney for st in e.get("streams",[])}
+        entries={}
+        def disney_added(x):
+            try:return int(x.get("added") or x.get("last_modified") or x.get("date_added") or 0)
+            except (ValueError,TypeError):return 0
+        for x in sorted(disney_rows,key=lambda x:(disney_added(x),identity(x,kind)),reverse=True):
+            sid=identity(x,kind)
+            old=prior_by_stream.get(sid)
+            tmdb=str(x.get("tmdb_id") or (old or {}).get("metadata",{}).get("tmdbId") or "")
+            clean_title=title_key((old or {}).get("name") or x.get("name"))
+            yr=year((old or {}).get("name") or x.get("name"))
+            ident=("tmdb",tmdb) if tmdb else ("title",clean_title,yr)
+            if not clean_title and not tmdb:continue
+            if ident not in entries:
+                e=record(x,kind)
+                if old:
+                    e["name"]=old.get("name") or e["name"]
+                    e["metadata"]={**e.get("metadata",{}),**{k:v for k,v in (old.get("metadata") or {}).items() if v not in (None,"",[])}}
+                e["providerAdded"]=disney_added(x)
+                entries[ident]=e
+            else:
+                e=entries[ident]
+                if sid not in {str(st.get("id")) for st in e["streams"]}:
+                    e["streams"].extend(record(x,kind)["streams"])
+                e["providerAdded"]=max(e.get("providerAdded",0),disney_added(x))
+        ordered=sorted(entries.values(),key=lambda e:e.get("providerAdded",0),reverse=True)
+        updated.append({"id":group_id,"name":group_name,"type":kind,"entries":ordered})
+        print(group_name,":",len(ordered),"titles from",len(disney_rows),"streams across",len(disney_ids),"categories")
     wanted={norm(n) for n in ["asia series (multi-subs)","disney+ asia series","disney+ asia series 4k 3840p dolby vision","netflix asia"]}
     asian_ids={str(c.get("category_id")) for c in cats if norm(c.get("category_name")) in wanted}
     asian=[x for x in series if str(x.get("category_id")) in asian_ids or any(str(i) in asian_ids for i in x.get("category_ids",[]) or [])]
