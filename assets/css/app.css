@@ -746,3 +746,18 @@ html.swoop-android-tv .nba-feature{min-height:150px!important;padding:14px!impor
 html.swoop-android-tv .sport-league-logo{width:78px!important;height:52px!important}
 html.swoop-android-tv .sport-epl-logo{width:86px!important}
 html.swoop-android-tv .sport-nba-logo{width:66px!important}
+
+
+/* Android TV Home — match STARmeter's 10-across card density and hero. */
+html.swoop-android-tv .home-cinema .tv-home-heading{display:flex!important;align-items:center!important;justify-content:space-between!important;min-height:116px!important;padding:14px 20px!important;margin:0 0 12px!important;background:radial-gradient(ellipse at 82% 20%,rgba(49,108,205,.45),transparent 55%),linear-gradient(115deg,#193a72,#101c37)!important;border-radius:12px!important}
+html.swoop-android-tv .tv-home-heading .star-hero-copy{max-width:none!important}
+html.swoop-android-tv .tv-home-heading .eyebrow{font-size:10px!important;letter-spacing:1.3px!important;color:#b7f54b!important}
+html.swoop-android-tv .tv-home-heading h1{font-size:36px!important;line-height:1!important;letter-spacing:-1px!important;margin:7px 0 5px!important}
+html.swoop-android-tv .tv-home-heading h1 span{color:#f4b24b!important}
+html.swoop-android-tv .tv-home-heading p{font-size:12px!important;margin:0!important;color:#d7e3f7!important}
+html.swoop-android-tv .tv-home-heading #home-search-open{position:relative!important;z-index:2!important;border:1px solid #799bd0!important;border-radius:999px!important;background:#205ab0!important;color:white!important;padding:8px 15px!important;font-size:12px!important}
+html.swoop-android-tv .home-cinema .home-rail{padding:2px 0 8px!important}
+html.swoop-android-tv .home-cinema .home-rail-title h2{font-size:17px!important}
+html.swoop-android-tv .home-cinema .home-poster-rail{display:flex!important;gap:7px!important;width:100%!important;overflow-x:auto!important}
+html.swoop-android-tv .home-cinema .home-poster{flex:0 0 calc((100% - 63px)/10)!important;width:calc((100% - 63px)/10)!important;min-width:0!important;aspect-ratio:2/3!important;border-radius:5px!important}
+html.swoop-android-tv .home-cinema .home-poster img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important}
