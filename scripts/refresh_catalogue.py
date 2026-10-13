@@ -192,7 +192,7 @@ def enrich_tmdb(updated):
         if t not in ("movie","series"):continue
         for e in g.get("entries",[]):
             m=e.setdefault("metadata",{})
-            if m.get("cast") and any(p.get("profile") for p in m.get("cast",[]) if isinstance(p,dict)) and m.get("poster") and m.get("tmdbId") and m.get("backdrop"):continue
+            if m.get("cast") and any(p.get("profile") for p in m.get("cast",[]) if isinstance(p,dict)) and m.get("poster") and m.get("tmdbId") and m.get("backdrop") and m.get("trailerKey"):continue
             ident=(t,key(e.get("name"),e.get("year")))
             if ident in cache:
                 e["metadata"]={**m,**cache[ident]}
@@ -213,7 +213,7 @@ def enrich_tmdb(updated):
                         continue
                     tmdb=chosen["id"]
                 try:
-                    details=request("https://api.themoviedb.org/3/"+endpoint+"/"+str(tmdb)+"?append_to_response=credits,images&language=en-US",headers)
+                    details=request("https://api.themoviedb.org/3/"+endpoint+"/"+str(tmdb)+"?append_to_response=credits,images,videos&language=en-US",headers)
                 except urllib.error.HTTPError as err:
                     if err.code not in (400,404) or not m.get("tmdbId"):raise
                     # Provider TMDb IDs can be stale or belong to a different media type.
@@ -227,7 +227,10 @@ def enrich_tmdb(updated):
                 images=details.get("images") or {}
                 logos=images.get("logos") or []
                 logo=next((x for x in logos if x.get("iso_639_1")=="en"),logos[0] if logos else None)
+                trailers=[v for v in (details.get("videos") or {}).get("results",[]) if v.get("site")=="YouTube" and v.get("type")=="Trailer" and v.get("key")]
+                trailer=next((v for v in trailers if v.get("official")),trailers[0] if trailers else None)
                 enriched={"tmdbId":tmdb,"cast":cast,"poster":"https://image.tmdb.org/t/p/w500"+details["poster_path"] if details.get("poster_path") else m.get("poster",""),"backdrop":"https://image.tmdb.org/t/p/w1280"+details["backdrop_path"] if details.get("backdrop_path") else m.get("backdrop",""),"overview":details.get("overview") or m.get("overview","")}
+                if trailer:enriched["trailerKey"]=trailer["key"]
                 if logo and logo.get("file_path"):enriched["logo"]="https://image.tmdb.org/t/p/w500"+logo["file_path"]
                 e["metadata"]={**m,**enriched};cache[ident]=enriched;total+=1;remaining-=1
             except Exception as exc:
