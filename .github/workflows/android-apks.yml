@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'android/**'
+      - 'assets/icons/**'
+      - 'apple-touch-icon.png'
       - '.github/workflows/android-apks.yml'
 permissions:
   contents: write
