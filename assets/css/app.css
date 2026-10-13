@@ -827,3 +827,15 @@ html.swoop-android-tv .live-preview{max-height:30vh!important;min-height:110px!i
 html.swoop-android-tv .guide-scroll,html.swoop-android-tv .guide{max-height:56vh!important}
 html.swoop-android-tv .sports-hero,html.swoop-android-tv .star-hero{padding:12px 16px!important}
 html.swoop-android-tv .wrap :is(button,a,input,select):focus-visible{outline:2px solid #b7ff47!important;outline-offset:2px!important}
+
+
+/* iPhone/mobile navigation: one thumb-reachable pill bar, never duplicated at top.
+   TV and desktop keep their existing top navigation. */
+@media (max-width:780px) and (pointer:coarse){
+ html:not(.swoop-android-tv) header{display:none!important}
+ html:not(.swoop-android-tv) header #topnav{display:none!important}
+ html:not(.swoop-android-tv) .bottom{display:flex!important;position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;z-index:100!important;justify-content:space-around!important;align-items:center!important;gap:3px!important;padding:8px 7px calc(8px + env(safe-area-inset-bottom,0px))!important;background:rgba(12,16,26,.97)!important;border-top:1px solid #344055!important;overflow-x:auto!important;box-sizing:border-box!important}
+ html:not(.swoop-android-tv) .bottom button{display:block!important;flex:1 1 0!important;min-width:0!important;border:1px solid #45546b!important;border-radius:999px!important;background:#1d2738!important;color:#dbe4f2!important;padding:11px 2px!important;font-size:clamp(9px,2.5vw,12px)!important;line-height:1.15!important;white-space:nowrap!important}
+ html:not(.swoop-android-tv) .bottom button.active{background:#a3e635!important;border-color:#a3e635!important;color:#131723!important;font-weight:800!important}
+ html:not(.swoop-android-tv) .wrap{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))!important}
+}
