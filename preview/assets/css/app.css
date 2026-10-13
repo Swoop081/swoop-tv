@@ -554,3 +554,9 @@ h2{margin:16px 0 9px}
 .swoop-tv-mode .vod-detail-body{padding:0 5vw 55px}
 .swoop-tv-mode .vod-actions button,.swoop-tv-mode .episode-item{min-height:58px;font-size:18px}
 .swoop-tv-mode :is(.vod-poster,.home-poster,.guide-channel,.guide-program,.live-category-item):focus-visible{outline:4px solid white!important;outline-offset:4px!important;transform:scale(1.025);z-index:5}
+
+/* Main navigation: Settings is a header-only cog. */
+.mobile-settings-cog{display:none;border:0;background:transparent;color:#e9edf5;font-size:26px;min-width:44px;min-height:44px;cursor:pointer;border-radius:10px}
+.mobile-settings-cog.active,.settings-cog.active{color:#f5b44c}
+#topnav .settings-cog{font-size:22px;padding:8px 12px}
+@media(max-width:780px){.mobile-settings-cog{display:flex;align-items:center;justify-content:center;margin-left:auto}header{gap:8px}}
