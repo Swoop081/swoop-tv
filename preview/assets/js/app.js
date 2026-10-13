@@ -395,7 +395,16 @@ function settings(){return '<h2>Settings</h2><div class="panel"><h3>Account</h3>
  document.addEventListener("keydown",e=>{if(!["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key))return;if(e.target.matches('input,textarea,select')&&e.key!=="ArrowDown"&&e.key!=="ArrowUp")return;e.preventDefault();lastKey=e.key;move(e.key)},true);
  document.addEventListener("focusin",e=>{if(e.target.matches(selector))e.target.classList.add("tv-focused")});
  document.addEventListener("focusout",e=>e.target.classList?.remove("tv-focused"));
- const observer=new MutationObserver(()=>{if(document.activeElement===document.body&&document.querySelector("#app button")){const target=document.querySelector('#xtreamform #server')||document.querySelector('#topnav button.active')||document.querySelector('#app button');if(target)target.focus({preventScroll:true})}});
+ let loginFocusSet=false;
+ function focusLoginFirst(){
+  const server=document.querySelector("#xtreamform #server");
+  if(!server){loginFocusSet=false;return}
+  if(loginFocusSet)return;
+  loginFocusSet=true;
+  server.readOnly=true;
+  server.focus({preventScroll:true});
+ }
+ const observer=new MutationObserver(()=>{if(document.querySelector("#xtreamform")){focusLoginFirst();return}if(document.activeElement===document.body&&document.querySelector("#app button")){const target=document.querySelector('#topnav button.active')||document.querySelector('#app button');if(target)target.focus({preventScroll:true})}});
  observer.observe(document.getElementById("app"),{childList:true});
- requestAnimationFrame(()=>{const target=document.querySelector('#xtreamform #server')||document.querySelector('#topnav button.active')||document.querySelector('#app button');if(target)target.focus({preventScroll:true})});
+ requestAnimationFrame(()=>{if(document.querySelector("#xtreamform")){focusLoginFirst();return}const target=document.querySelector('#topnav button.active')||document.querySelector('#app button');if(target)target.focus({preventScroll:true})});
 })();
