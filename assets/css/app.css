@@ -577,3 +577,9 @@ html.swoop-android-tv .vod-detail h1{font-size:clamp(26px,3.2vw,44px);line-heigh
 html.swoop-android-tv .vod-detail .vod-title-art img{max-width:400px;max-height:100px;object-fit:contain;object-position:left}
 html.swoop-android-tv .vod-detail .vod-overview{font-size:15px;line-height:1.45;max-width:700px}
 html.swoop-android-tv .vod-detail .vod-cast-section{margin-top:12px}
+
+html.swoop-android-tv .tv-preview-cast{display:flex;gap:10px;margin:10px 0;overflow:hidden}
+html.swoop-android-tv .tv-preview-person{width:66px;min-width:66px;font-size:10px;line-height:1.2;color:#dce4f2;text-align:center}
+html.swoop-android-tv .tv-preview-person img,html.swoop-android-tv .tv-preview-no-photo{display:block;width:49px;height:60px;object-fit:cover;border-radius:5px;background:#293448;margin:0 auto 4px}
+html.swoop-android-tv .tv-preview-actions{display:flex;gap:10px;flex-wrap:wrap}
+html.swoop-android-tv .tv-preview-actions button{font-size:12px;padding:9px 12px}
