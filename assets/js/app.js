@@ -68,15 +68,14 @@ function providerBackdrop(v){if(Array.isArray(v))return v.find(x=>typeof x==="st
 function seriesArtwork(item,info){if(!curatedChoice||String(curatedChoice.streams?.[0]?.id||"")!==String(item.series_id))return;const m=curatedChoice.metadata||(curatedChoice.metadata={}),provider=(xtream.series||[]).find(x=>String(x.series_id)===String(item.series_id))||{};const bg=providerBackdrop(info?.backdrop_path)||providerBackdrop(info?.backdrop)||providerBackdrop(provider.backdrop_path)||providerBackdrop(provider.backdrop);const poster=providerBackdrop(info?.cover_big)||providerBackdrop(info?.cover)||providerBackdrop(provider.cover_big)||providerBackdrop(provider.cover);if(bg&&!m.backdrop)m.backdrop=bg;if(poster&&!m.poster)m.poster=poster}
 function verifiedSeriesSources(entry){
  if(!entry)return [];
- const title=canonicalVodTitle(entry.name),year=canonicalVodYear(entry),seen=new Set(),result=[];
+ const seen=new Set(),result=[];
  for(const st of entry.streams||[]){
   const provider=(xtream.series||[]).find(x=>String(x.series_id)===String(st.id));
   if(!provider)continue;
-  if(canonicalVodTitle(provider.name||st.name||"")!==title)continue;
-  const sourceYear=canonicalVodYear(provider);
-  if(year&&sourceYear&&year!==sourceYear)continue;
-  const id=String(provider.series_id);if(seen.has(id))continue;
-  seen.add(id);result.push({...st,id,name:provider.name||st.name});
+  const id=String(provider.series_id);
+  if(!id||seen.has(id))continue;
+  seen.add(id);
+  result.push({...st,id,name:provider.name||st.name||entry.name});
  }
  return result;
 }
@@ -90,13 +89,9 @@ function curatedGroups(type){return (curated?.categories||[]).filter(g=>g.type==
 function curatedMovieSources(entry){
  if(!entry)return [];
  const sources=[],seen=new Set();
- const title=canonicalVodTitle(entry.name),year=canonicalVodYear(entry);
  for(const st of entry.streams||[]){
   const provider=(xtream.vod||[]).find(x=>String(x.stream_id)===String(st.id));
   if(!provider)continue;
-  if(canonicalVodTitle(provider.name||st.name||"")!==title)continue;
-  const sourceYear=canonicalVodYear(provider);
-  if(year&&sourceYear&&year!==sourceYear)continue;
   const id=String(provider.stream_id);
   if(!id||seen.has(id))continue;
   seen.add(id);
