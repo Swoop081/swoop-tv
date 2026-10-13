@@ -28,7 +28,7 @@ import java.io.ByteArrayOutputStream;
 import org.json.JSONObject;
 
 public class UpdateActivity extends Activity {
-    private static final String MANIFEST = "https://swoop081.github.io/swoop-tv/android-update.json";
+    private static final String MANIFEST = "https://raw.githubusercontent.com/Swoop081/swoop-tv/main/android-update.json";
     private final Handler main = new Handler(Looper.getMainLooper());
     private TextView status;
     private long downloadId = -1;
