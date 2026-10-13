@@ -1,0 +1,39 @@
+name: Generate SwoopTV app icons
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/icons/swooptv-icon.svg'
+      - '.github/workflows/app-icons.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  icons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install cairosvg
+      - name: Render icon PNG sizes
+        run: |
+          python - <<'PY'
+          import cairosvg
+          from pathlib import Path
+          source='assets/icons/swooptv-icon.svg'
+          for size in (192, 512, 1024):
+              target=Path(f'assets/icons/swooptv-{size}.png')
+              cairosvg.svg2png(url=source,write_to=str(target),output_width=size,output_height=size)
+          cairosvg.svg2png(url=source,write_to='apple-touch-icon.png',output_width=180,output_height=180)
+          PY
+      - name: Commit rendered icons
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/icons/swooptv-192.png assets/icons/swooptv-512.png assets/icons/swooptv-1024.png apple-touch-icon.png
+          if ! git diff --cached --quiet; then
+            git commit -m "Generate SwoopTV PNG app icons from master SVG"
+            git push
+          fi
