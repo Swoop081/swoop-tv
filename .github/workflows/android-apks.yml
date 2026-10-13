@@ -98,6 +98,16 @@ jobs:
         run: |
           cp phone/*.apk SwoopTV-Phone.apk
           cp tv/*.apk SwoopTV-AndroidTV.apk
+      - name: Validate both installable APKs before publishing
+        run: |
+          set -euo pipefail
+          for apk in SwoopTV-Phone.apk SwoopTV-AndroidTV.apk; do
+            test -s "$apk"
+            unzip -t "$apk" >/dev/null
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" | head -3
+            ls -lh "$apk"
+          done
       - name: Publish latest testing release
         env:
           GH_TOKEN: ${{ github.token }}
