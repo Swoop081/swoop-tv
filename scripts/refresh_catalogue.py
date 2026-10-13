@@ -187,7 +187,7 @@ def enrich_tmdb(updated):
     cache={}
     remaining=int(os.getenv("SWOOP_TMDB_MAX_PER_RUN","180"))
     total=0
-    for g in sorted(updated,key=lambda g: 0 if g.get("name")=="Trending TV Shows" else 1 if g.get("name")=="Trending Movies" else 2):
+    for g in sorted(updated,key=lambda g: 0 if g.get("name")=="Trending TV Shows" else 1 if g.get("name")=="Trending Movies" else 2 if g.get("id") in ("new-movies-amazon","new-series-amazon") else 3):
         t=g.get("type")
         if t not in ("movie","series"):continue
         for e in g.get("entries",[]):
