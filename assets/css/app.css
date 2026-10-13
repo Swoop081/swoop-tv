@@ -583,3 +583,7 @@ html.swoop-android-tv .tv-preview-person{width:66px;min-width:66px;font-size:10p
 html.swoop-android-tv .tv-preview-person img,html.swoop-android-tv .tv-preview-no-photo{display:block;width:49px;height:60px;object-fit:cover;border-radius:5px;background:#293448;margin:0 auto 4px}
 html.swoop-android-tv .tv-preview-actions{display:flex;gap:10px;flex-wrap:wrap}
 html.swoop-android-tv .tv-preview-actions button{font-size:12px;padding:9px 12px}
+
+/* Shared compact navigation across TV, mobile and desktop */
+header{height:auto;min-height:48px;padding:3px 5px;justify-content:center;gap:0}header .brand{display:none!important}header #topnav{display:flex;flex:1;justify-content:space-between;align-items:center;gap:2px;width:100%;min-width:0}header #topnav button{flex:1 1 auto;padding:8px 4px;border-radius:999px;white-space:nowrap;font-size:clamp(10px,1.3vw,15px)}header #topnav .settings-cog{display:none!important}header .mobile-settings-cog{display:none!important}.home-cinema{padding-top:0}.home-rail:first-child{margin-top:0}
+@media(max-width:780px){header{padding:3px 2px}header #topnav{gap:1px}header #topnav button{padding:8px 2px;font-size:10px}header #topnav button[data-page="STARmeter"]{font-size:9px}}
