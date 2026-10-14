@@ -352,11 +352,32 @@ function nflSports(){const day=nbaStartOfDay(nflDay),games=nflGames.filter(g=>nb
 let liveSportsLoading=false,liveSportsUpdated=0,liveSportsRefreshPromise=null;
 async function refreshLiveSports(){if(liveSportsRefreshPromise)return liveSportsRefreshPromise;liveSportsLoading=true;if(page==="Sports"&&sportLeague==="live")render();liveSportsRefreshPromise=(async()=>{try{await Promise.allSettled([loadNba(true),loadNfl(true),loadEpl(true),loadMlb(true),loadNhl(true),loadCfb(true),loadCbb(true),loadCombat(true)]);discoverWrestlingSchedule(true);liveSportsUpdated=Date.now()}finally{liveSportsLoading=false;liveSportsRefreshPromise=null;if(page==="Sports"&&sportLeague==="live")render()}})();return liveSportsRefreshPromise}
 function liveCurrentlyWatchable(id){const c=sportsMatchChannel(id);if(!c)return false;const now=Date.now();for(const [games,match,league] of [[nbaGames,nbaMatch,"nba"],[nflGames,nflMatch,"nfl"],[eplGames,eplMatch,"epl"],[mlbGames,mlbMatch,"mlb"],[nhlGames,nhlMatch,"nhl"]])for(const g of games){if(g.state!=="pre"&&Date.parse(g.date)<=now&&sportsWatchAvailable(g,league)&&String(match(g)?.stream_id)===String(id))return true}return wrestlingCurrentlyWatchable(id)}
-function liveSports(){const now=Date.now(),items=[],leagues=[["NBA",nbaGames,nbaMatch,"nba",nbaCard],["NFL",nflGames,nflMatch,"nfl",nflCard],["Premier League",eplGames,eplMatch,"epl",eplCard],["MLB",mlbGames,mlbMatch,"mlb",mlbCard],["NHL",nhlGames,nhlMatch,"nhl",nhlCard],["College Football",cfbGames,cfbMatch,"cfb",cfbCard],["College Basketball",cbbAllGames(),cbbMatch,"cbb",cbbCard]];
-for(const [name,games,match,league,card] of leagues)for(const g of games){const start=Date.parse(g.date);if(!Number.isFinite(start)||start>now||g.state==="post"||!sportsWatchAvailable(g,league))continue;const channel=match(g);if(!channel)continue;items.push({start,league:name,html:card(g)})}
-for(const event of combatEvents){const start=Date.parse(event.date);if(!Number.isFinite(start)||start>now||start<now-5*3600000)continue;const match=combatMatch(event);if(match)items.push({start,league:"Combat Sports",html:combatCard(event)})}
-const today=nbaLocalDay(new Date());for(const show of wrestlingShows){const channel=show.id==="raw"?wrestlingRawChannel():(xtream.channels||[]).find(c=>String(c.stream_id)===show.stream);if(!channel)continue;const epg=wrestlingEpgAiring(show,today),start=epg?epg.start:wrestlingOccurrence(show,today)?.getTime(),duration=epg?(epg.end-epg.start):show.duration*60000;if(!start||now<start-900000||now>start+duration+1800000)continue;items.push({start,league:"Wrestling",html:wrestlingCard(show.title,wrestlingClock(new Date(start)),channel,new Date(start),duration/60000)})}
-items.sort((a,b)=>a.start-b.start);const groups=new Map();for(const item of items){if(!groups.has(item.league))groups.set(item.league,[]);groups.get(item.league).push(item.html)}const cards=[...groups].map(([league,games])=>'<section class="live-league-group"><h2 class="live-league-heading">'+escapeHTML(league)+'</h2><div class="live-league-games">'+games.join("")+"</div></section>").join("");return '<div class="nba-hub"><div class="nba-header"><div class="nba-hero-content"><span class="eyebrow">LIVE SPORTS · ON NOW</span>'+sportsSwitch()+'<p></p></div></div><div class="nba-section-label"><span>LIVE NOW</span><span>'+items.length+' EVENTS</span></div><div class="nba-nav"><div class="nba-nav-actions"><button class="pill" id="livesportsrefresh">↻ REFRESH</button></div></div>'+(liveSportsLoading?'<p class="nba-footnote">Checking all sports schedules…</p>':'')+(cards?'<div class="live-league-list">'+cards+'</div>':'<div class="nba-empty"><strong>NO LIVE EVENTS AVAILABLE</strong><p>Only currently airing events with matched provider streams appear here.</p></div>')+'</div>'}
+function liveSports(){
+ const now=Date.now(),today=nbaLocalDay(new Date()),items=[];
+ const leagues=[["NBA",nbaGames,"nba",nbaCard],["NFL",nflGames,"nfl",nflCard],["Premier League",eplGames,"epl",eplCard],["MLB",mlbGames,"mlb",mlbCard],["NHL",nhlGames,"nhl",nhlCard],["College Football",cfbGames,"cfb",cfbCard],["College Basketball",cbbAllGames(),"cbb",cbbCard]];
+ for(const [name,games,league,card] of leagues)for(const g of games){
+  const start=Date.parse(g.date);
+  if(!Number.isFinite(start)||nbaLocalDay(new Date(start))!==today||g.state==="post")continue;
+  // Unknown completion times are bounded until the next schedule update.
+  const end=Date.parse(g.endDate||g.end||"")||(start+(league==="mlb"||league==="cfb"||league==="nfl"?4:league==="epl"?2.5:3)*3600000);
+  if(now>end)continue;
+  items.push({start,live:start<=now,league:name,html:card(g)});
+ }
+ for(const event of combatEvents){
+  const start=Date.parse(event.date);
+  if(!Number.isFinite(start)||nbaLocalDay(new Date(start))!==today||now>start+5*3600000)continue;
+  items.push({start,live:start<=now,league:"Combat Sports",html:combatCard(event)});
+ }
+ for(const show of wrestlingShows){
+  const occurrence=wrestlingOccurrence(show,today),start=occurrence?.getTime(),duration=show.duration*60000;
+  if(!start||nbaLocalDay(new Date(start))!==today||now>start+duration)continue;
+  const channel=show.id==="raw"?wrestlingRawChannel():(xtream.channels||[]).find(c=>String(c.stream_id)===show.stream);
+  items.push({start,live:start<=now,league:"Wrestling",html:wrestlingCard(show.title,wrestlingClock(new Date(start)),now>=start-900000?channel:null,new Date(start),show.duration)});
+ }
+ items.sort((a,b)=>Number(b.live)-Number(a.live)||a.start-b.start);
+ const cards=items.map(item=>'<section class="live-league-group"><h2 class="live-league-heading">'+escapeHTML(item.league)+(item.live?' · LIVE':'')+'</h2><div class="live-league-games">'+item.html+'</div></section>').join("");
+ return '<div class="nba-hub"><div class="nba-header"><div class="nba-hero-content"><span class="eyebrow">LIVE SPORTS · TODAY</span>'+sportsSwitch()+'</div></div><div class="nba-section-label"><span>TODAY’S SPORTS</span><span>'+items.length+' EVENTS</span></div><div class="nba-nav"><div class="nba-nav-actions"><button class="pill" id="livesportsrefresh">↻ REFRESH</button></div></div>'+(liveSportsLoading?'<p class="nba-footnote">Checking sports schedules…</p>':'')+(cards?'<div class="live-league-list">'+cards+'</div>':'<div class="nba-empty"><strong>NO UPCOMING EVENTS TODAY</strong><p>Completed events are removed from this view.</p></div>')+'</div>';
+}
 /* DWCS: verified 2026 UFC Season 10, Tuesdays Aug 11–Oct 13, 19:00 ET.
    Conference has no fixed published time; show it only when the provider EPG supplies one. */
 /* UFC schedule is fetched from ESPN's public MMA scoreboard, with DWCS
