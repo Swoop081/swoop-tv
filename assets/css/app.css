@@ -1094,3 +1094,21 @@ html.swoop-android-tv .nba-hub .live-league-games{grid-template-columns:repeat(4
 html.swoop-android-tv .nba-hub .live-league-games>.nba-game{min-height:110px!important;padding:7px!important;gap:5px!important}
 html.swoop-android-tv .nba-hub .live-league-games .nba-matchup{min-height:50px!important;gap:5px!important}
 html.swoop-android-tv .nba-hub .live-league-games .nba-matchup small{font-size:10px!important}
+
+
+/* Live cards: reset inherited centered/translated schedule time positioning. */
+.nba-hub .live-league-list .live-league-games>.nba-game>.nba-game-top>.nba-state{
+ position:relative!important;inset:auto!important;top:auto!important;right:auto!important;bottom:auto!important;left:auto!important;
+ transform:none!important;translate:none!important;margin:0!important;
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ max-width:100%!important;width:max-content!important;box-sizing:border-box!important;
+ flex:0 1 auto!important;white-space:nowrap!important;line-height:1.3!important;
+}
+.nba-hub .live-league-list .live-league-games>.nba-game>.nba-game-top{
+ position:relative!important;inset:auto!important;transform:none!important;
+ display:flex!important;flex-direction:row!important;justify-content:space-between!important;align-items:center!important;
+ width:100%!important;min-width:0!important;box-sizing:border-box!important;
+}
+.nba-hub .live-league-list .live-league-games>.nba-game>.nba-game-top>.action{
+ position:relative!important;inset:auto!important;transform:none!important;margin:0!important;flex:0 0 auto!important;
+}
