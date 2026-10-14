@@ -86,7 +86,7 @@ function vodCatalog(kind){const movies=kind==="Movies",items=movies?xtream.vod:x
 
 let curated=null,curatedGroup="all",curatedChoice=null;
 try{const d=JSON.parse(localStorage.getItem("swooptv-curated-preview")||"null");if(d?.format==="swooptv-curated-v1"&&Array.isArray(d.categories))curated=d}catch(e){}
-async function loadPublishedCatalogue(){try{const response=await fetch("./swooptv-curated.json",{cache:"default"});if(!response.ok){if(response.status!==404)console.warn("Curated catalogue HTTP",response.status);return}const data=await response.json();if(data.format!=="swooptv-curated-v1"||!Array.isArray(data.categories))throw Error("Invalid published catalogue");curated=data;curatedGroup="all";curatedChoice=null;vodSelected=null;render()}catch(err){console.warn("Published curated catalogue unavailable",err)}}
+async function loadPublishedCatalogue(){try{const response=await fetch("./swooptv-curated.json?ts="+Date.now(),{cache:"no-store"});if(!response.ok){if(response.status!==404)console.warn("Curated catalogue HTTP",response.status);return}const data=await response.json();if(data.format!=="swooptv-curated-v1"||!Array.isArray(data.categories))throw Error("Invalid published catalogue");curated=data;curatedGroup="all";curatedChoice=null;vodSelected=null;render()}catch(err){console.warn("Published curated catalogue unavailable",err)}}
 /* Never trust a curated stream ID alone: validate the live provider title and year. */
 function verifiedVodMatch(entry,provider){
  if(!entry||!provider)return false;
@@ -102,7 +102,7 @@ function curatedGroups(type){
  if(type==="live"){
   if(!connected||!curated?.categories)return [];
   const byId=new Map((xtream.channels||[]).map(c=>[String(c.stream_id),c]));
-  return curated.categories.filter(g=>g.type==="live").map(g=>({...g,entries:(g.entries||[]).map(e=>({...e,streams:(e.streams||[]).filter(st=>byId.has(String(st.id)))})).filter(e=>e.streams.length)})).filter(g=>g.entries.length);
+  return curated.categories.filter(g=>g.type==="live").map(g=>({...g,entries:(g.entries||[]).map(e=>({...e,streams:(e.streams||[]).filter(st=>byId.has(String(st.id)))})).filter(e=>e.streams.length)}));
  }
  const providerItems=type==="movie"?(xtream.vod||[]):(xtream.series||[]);
  const ids=new Set(providerItems.map(x=>String(type==="movie"?x.stream_id:x.series_id)).filter(Boolean));
