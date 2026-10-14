@@ -1047,3 +1047,26 @@ html.swoop-android-tv body{overflow-y:auto!important}
 @media(max-width:900px){.live-league-games{grid-template-columns:repeat(2,minmax(0,1fr))}}
 html.swoop-android-tv .live-league-games{grid-template-columns:repeat(4,minmax(0,1fr))!important}
 html.swoop-android-tv .live-league-list{padding-bottom:100px!important}
+
+
+/* Unified Android TV Sports density. All league schedules share .nba-slate. */
+html.swoop-android-tv .nba-hub{padding-bottom:160px!important}
+html.swoop-android-tv .nba-hub .nba-header{padding:3px 6px!important;margin:0 0 5px!important;min-height:0!important}
+html.swoop-android-tv .nba-hub .nba-header p{display:none!important}
+html.swoop-android-tv .nba-hub .nba-section-label{padding:2px 0!important;margin:3px 0!important;font-size:11px!important}
+html.swoop-android-tv .nba-hub .nba-nav{padding:0!important;margin:0 0 5px!important;min-height:25px!important}
+html.swoop-android-tv .nba-hub .nba-nav button{min-height:25px!important;padding:3px 8px!important;font-size:10px!important}
+html.swoop-android-tv .nba-hub .nba-slate{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;grid-auto-flow:row!important;grid-auto-rows:max-content!important;gap:7px!important;align-items:start!important}
+html.swoop-android-tv .nba-hub .nba-slate>.nba-game,html.swoop-android-tv .nba-hub .nba-slate>.nba-feature{grid-column:auto!important;grid-row:auto!important;width:auto!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;padding:7px 8px!important;border-radius:7px!important;overflow:visible!important}
+html.swoop-android-tv .nba-hub .nba-slate .nba-game-top{display:flex!important;align-items:center!important;gap:5px!important;margin:0!important;min-height:25px!important}
+html.swoop-android-tv .nba-hub .nba-slate .nba-game-top .nba-state{font-size:9px!important;padding:3px 5px!important;white-space:nowrap!important}
+html.swoop-android-tv .nba-hub .nba-slate .nba-game-top .action{font-size:10px!important;min-height:27px!important;padding:4px 7px!important;white-space:nowrap!important}
+html.swoop-android-tv .nba-hub .nba-slate .nba-matchup,html.swoop-android-tv .nba-hub .nba-slate .nba-feature .nba-matchup{display:flex!important;align-items:center!important;gap:3px!important;margin:6px 0 2px!important;min-height:66px!important}
+html.swoop-android-tv .nba-hub .nba-slate .nba-matchup>div{gap:2px!important;min-width:0!important}
+html.swoop-android-tv .nba-hub .nba-slate .nba-team-logo,html.swoop-android-tv .nba-hub .nba-slate .nba-feature .nba-team-logo{width:31px!important;height:31px!important;max-width:31px!important;max-height:31px!important;margin:0 auto 2px!important}
+html.swoop-android-tv .nba-hub .nba-slate .nba-matchup small{font-size:10px!important;line-height:1.12!important;margin:0!important;overflow-wrap:break-word!important}
+html.swoop-android-tv .nba-hub .nba-slate .nba-matchup>b,html.swoop-android-tv .nba-hub .nba-slate .nba-matchup>b.sports-result-score{font-size:18px!important;line-height:1.05!important;white-space:nowrap!important}
+html.swoop-android-tv .nba-hub .nba-slate .nba-game-bottom{padding-top:3px!important;margin-top:3px!important}
+html.swoop-android-tv .nba-hub .nba-slate .nba-game-bottom .action{min-height:26px!important;padding:4px 8px!important;font-size:10px!important}
+html.swoop-android-tv .nba-hub .nba-slate .nba-feature .nba-matchup strong{font-size:18px!important}
+html.swoop-android-tv main{scroll-padding-bottom:65px!important;overflow-y:auto!important;padding-bottom:160px!important}
