@@ -1112,3 +1112,18 @@ html.swoop-android-tv .nba-hub .live-league-games .nba-matchup small{font-size:1
 .nba-hub .live-league-list .live-league-games>.nba-game>.nba-game-top>.action{
  position:relative!important;inset:auto!important;transform:none!important;margin:0!important;flex:0 0 auto!important;
 }
+
+
+/* Mobile Live TV: category picker directly above the full guide. */
+@media(max-width:700px){
+ .live-premium{padding:0!important;margin:0!important}
+ .live-premium .live-title,.live-premium .live-category-sidebar,.live-premium .live-upper,.live-premium .guide-hint{display:none!important}
+ .live-premium .live-category-selector{display:flex!important;align-items:center!important;gap:10px!important;margin:8px 0 12px!important;padding:0!important}
+ .live-premium .live-category-selector label{font-size:13px!important;white-space:nowrap}
+ .live-premium .live-category-selector select{flex:1!important;min-width:0!important;width:100%!important;max-width:100%!important;min-height:42px!important;font-size:15px!important}
+ .live-premium .live-layout{display:block!important;margin:0!important;padding:0!important}
+ .live-premium .live-main{width:100%!important;min-width:0!important}
+ .live-premium .guide-controls{margin:0 0 8px!important;display:flex!important;flex-wrap:wrap!important;gap:6px!important}
+ .live-premium .guide-scroll{max-width:100%!important;overflow-x:auto!important;overflow-y:auto!important;max-height:calc(100dvh - 210px)!important}
+ .live-premium .live-empty-guide{padding:24px 12px;color:#aeb9c9;font-size:14px}
+}
