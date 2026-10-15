@@ -352,22 +352,43 @@ const mlsAliases={
  "fc dallas":"dallas","san diego fc":"san diego",
  "austin fc":"austin","real salt lake":"salt lake","dc united":"dc united"
 };
-function mlsKey(v){const n=eplNorm(String(v||"").replace(/_/g," ")).replace(/\b(?:cf|sc|fc|football club)\b/g,"").replace(/\s+/g," ").trim();return mlsAliases[n]||n}
+function mlsKey(v){
+ const norm=s=>String(s||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").replace(/\b(?:football club|soccer club|association football club|fc|sc|cf|the)\b/g," ").replace(/\s+/g," ").trim();
+ const n=norm(v);
+ // Normalize both the provider text and alias keys, rather than relying on exact raw keys.
+ for(const [alias,club] of Object.entries(mlsAliases))if(norm(alias)===n)return club;
+ return n;
+}
+function mlsIdentity(name,teams){
+ const raw=mlsKey(name);
+ const norm=s=>mlsKey(s);
+ const tokens=s=>new Set(norm(s).split(" ").filter(Boolean));
+ const candidates=[...new Set(teams.map(t=>norm(t)).filter(Boolean))];
+ if(candidates.includes(raw))return raw;
+ // Unambiguous, complete token-prefix/shortened club name matching only.
+ const a=tokens(raw);
+ const matches=candidates.filter(team=>{
+  const b=tokens(team);
+  if(a.size===0||b.size===0)return false;
+  if(a.size===1)return [...a][0].length>=4&&b.has([...a][0]);
+  const shared=[...a].filter(t=>b.has(t)).length;
+  return shared>=2&&(shared===a.size||shared===b.size);
+ });
+ return matches.length===1?matches[0]:raw;
+}
 function mlsMatch(g){
  const ids=new Set((xtream.groups||[]).filter(x=>/^\s*US\s*\|\s*MLS PPV\s*$/i.test(x.category_name||"")).map(x=>String(x.category_id)));
- const away=mlsKey(g.awayName),home=mlsKey(g.homeName);
  const channels=(xtream.channels||[]).filter(c=>ids.has(String(c.category_id)));
+ const teams=(mlsGames||[]).flatMap(x=>[x.awayName,x.homeName]);
+ const away=mlsIdentity(g.awayName,teams),home=mlsIdentity(g.homeName,teams);
  for(const c of channels){
   const raw=String(c.name||"");
   if(/\(\s*(?:spanish|espa[nñ]ol|esp)\s*\)/i.test(raw))continue;
-  // New provider category: "San Diego FC vs Houston Dynamo FC @ Oct 14 10:30 PM :MLS 17".
-  // Also tolerate optional Apple/MLS channel prefixes without using provider times.
-  const cleaned=raw.replace(/^\s*(?:\([^)]*\)\s*)*(?:\(?MLS\)?\s*)?\d+\s*\|\s*/i,"")
-   .replace(/\s*@\s*.*$/,"").replace(/\s*:\s*MLS\s*\d+\s*$/i,"").trim();
+  const cleaned=raw.replace(/^\s*(?:\([^)]*\)\s*)*(?:\(?MLS\)?\s*)?\d+\s*\|\s*/i,"").replace(/\s*@\s*.*$/,"").replace(/\s*:\s*MLS\s*\d+\s*$/i,"").trim();
   const parts=cleaned.split(/\s+vs\.?\s+/i);
   if(parts.length!==2)continue;
-  const a=mlsKey(parts[0]),b=mlsKey(parts[1]);
-  if((a===away&&b===home)||(a===home&&b===away))return c;
+  const x=mlsIdentity(parts[0],teams),y=mlsIdentity(parts[1],teams);
+  if((x===away&&y===home)||(x===home&&y===away))return c;
  }
  return null;
 }
