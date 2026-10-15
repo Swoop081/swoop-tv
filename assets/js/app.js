@@ -406,7 +406,7 @@ function tennisSame(a,b){
  return false;
 }
 function tennisMatch(g){
- const ids=new Set((xtream.groups||[]).filter(c=>/^\s*US\s*\|\s*TENNIS PPV\b/i.test(c.category_name||"")).map(c=>String(c.category_id)));
+ const ids=new Set((xtream.groups||[]).filter(c=>/\bTENNIS\b/i.test(c.category_name||"")).map(c=>String(c.category_id)));
  const a=g.awayName,b=g.homeName;
  return (xtream.channels||[]).find(c=>{
   if(!ids.has(String(c.category_id)))return false;
@@ -424,7 +424,7 @@ async function loadTennis(force=false){
   const base=new Date(nbaStartOfDay(tennisDay)+"T12:00:00Z");
   const dates=Array.from({length:7},(_,i)=>new Date(base.getTime()+(i-2)*86400000).toISOString().slice(0,10).replace(/-/g,""));
   const urls=dates.flatMap(date=>["atp","wta"].map(tour=>({tour,url:"https://site.api.espn.com/apis/site/v2/sports/tennis/"+tour+"/scoreboard?dates="+date+"&limit=200"})));
-  const results=await Promise.allSettled(urls.map(async item=>{const r=await fetch(item.url);if(!r.ok)throw Error("HTTP "+r.status);return {tour:item.tour,events:(await r.json()).events||[]}}));
+  const results=await Promise.allSettled(urls.map(async item=>{const r=await fetch(item.url,{signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error("HTTP "+r.status);const data=await r.json();return {tour:item.tour,events:data.events||data.leagues?.flatMap(l=>l.events||[])||[]}}));
   const good=results.filter(x=>x.status==="fulfilled");
   if(!good.length)throw Error("Tennis schedule unavailable");
   const map=new Map();
@@ -448,13 +448,13 @@ async function loadTennis(force=false){
 }
 
 function tennisProviderFixtures(){
- const ids=new Set((xtream.groups||[]).filter(c=>/^\s*US\s*\|\s*TENNIS PPV\b/i.test(c.category_name||"")).map(c=>String(c.category_id)));
+ const ids=new Set((xtream.groups||[]).filter(c=>/\bTENNIS\b/i.test(c.category_name||"")).map(c=>String(c.category_id)));
  const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
  const year=new Date().getFullYear();
  return (xtream.channels||[]).filter(c=>ids.has(String(c.category_id))).map(c=>{
   const raw=String(c.name||"");
   const parts=raw.split(/\s+@\s+/);if(parts.length<2)return null;
-  const players=parts[0].split(/\s+vs\.?\s+/i);if(players.length!==2)return null;
+  const players=parts[0].replace(/^\s*(?:ATP|WTA)\s*[:|–-]\s*/i,"").split(/\s+vs\.?\s+/i);if(players.length!==2)return null;
   const m=parts[1].match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{1,2}):(\d{2})\s*(AM|PM)\b/i);
   if(!m)return null;
   const h=Number(m[3])%12+(m[5].toUpperCase()==="PM"?12:0);
