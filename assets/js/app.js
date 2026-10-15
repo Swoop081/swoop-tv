@@ -407,14 +407,17 @@ function tennisSame(a,b){
 }
 function tennisMatch(g){
  const ids=new Set((xtream.groups||[]).filter(c=>/\bTENNIS\b/i.test(c.category_name||"")).map(c=>String(c.category_id)));
- const a=g.awayName,b=g.homeName;
- return (xtream.channels||[]).find(c=>{
-  if(!ids.has(String(c.category_id)))return false;
+ const same=(a,b)=>tennisSame(a,b);
+ const channels=(xtream.channels||[]).filter(c=>ids.has(String(c.category_id)));
+ return channels.find(c=>{
   const raw=String(c.name||"");
-  const title=raw.split(/\s+@\s+/)[0].replace(/^\s*(?:ATP|WTA)\s*[:|-]\s*/i,"").trim();
-  const sides=title.split(/\s+vs\.?\s+/i);
+  const sides=raw.split(/\s+@\s+/)[0].replace(/^\s*(?:ATP|WTA)\s*[:|–-]\s*/i,"").split(/\s+vs\.?\s+/i);
   if(sides.length!==2)return false;
-  return (tennisSame(sides[0],a)&&tennisSame(sides[1],b))||(tennisSame(sides[0],b)&&tennisSame(sides[1],a));
+  if(!((same(sides[0],g.awayName)&&same(sides[1],g.homeName))||(same(sides[0],g.homeName)&&same(sides[1],g.awayName))))return false;
+  // Provider's wall-clock listing is advisory; ESPN owns the fixture date.
+  // Avoid attaching a channel reused for a different day's match.
+  const p=tennisProviderFixtures().find(x=>x.providerChannelId===String(c.stream_id));
+  return !p||Math.abs(Date.parse(p.date)-Date.parse(g.date))<=48*3600000;
  })||null;
 }
 async function loadTennis(force=false){
@@ -484,10 +487,12 @@ function tennisCard(g){
  return '<article class="nba-game"><div class="nba-game-top"><span class="nba-state">'+escapeHTML(time)+' · '+escapeHTML(g.tour)+'</span>'+(channel?'<button class="action" data-tennisgame="'+escapeHTML(String(channel.stream_id))+'">▶ WATCH NOW</button>':'')+'</div><div class="nba-matchup"><div><small>'+escapeHTML(g.awayName)+'</small></div>'+sportsMatchScore(g)+'<div><small>'+escapeHTML(g.homeName)+'</small></div></div>'+(g.tournament?'<div class="tennis-tournament">'+escapeHTML(g.tournament)+'</div>':'')+'</article>';
 }
 function tennisSports(){
- const day=nbaStartOfDay(tennisDay),apiGames=tennisGames.filter(g=>nbaLocalDay(new Date(g.date))===day),providerGames=tennisProviderFixtures().filter(g=>nbaLocalDay(new Date(g.date))===day),games=[...apiGames];for(const g of providerGames){if(!games.some(x=>tennisSame(x.awayName,g.awayName)&&tennisSame(x.homeName,g.homeName)||tennisSame(x.awayName,g.homeName)&&tennisSame(x.homeName,g.awayName)))games.push(g)}games.sort((a,b)=>Date.parse(a.date)-Date.parse(b.date));
+ const day=nbaStartOfDay(tennisDay),apiGames=tennisGames.filter(g=>nbaLocalDay(new Date(g.date))===day);
+ // ESPN is authoritative. Provider-only fixtures are a fallback if ESPN returned none.
+ const games=apiGames.length?apiGames:tennisProviderFixtures().filter(g=>nbaLocalDay(new Date(g.date))===day);
+ games.sort((a,b)=>Date.parse(a.date)-Date.parse(b.date));
  return '<div class="nba-hub"><div class="nba-header"><div class="nba-hero-content"><span class="eyebrow">TENNIS · ATP & WTA</span>'+sportsSwitch()+'</div></div><div class="nba-nav"><strong>'+escapeHTML(day)+'</strong><div class="nba-nav-actions"><button class="pill" id="tennisprev">‹</button><button class="pill" id="tennistoday">TODAY</button><button class="pill" id="tennisnext">›</button><button class="pill" id="tennisrefresh">↻</button></div></div>'+(tennisError?'<p class="muted">'+escapeHTML(tennisError)+'</p>':'')+(games.length?'<div class="nba-slate">'+games.map(tennisCard).join("")+'</div>':'<div class="nba-empty">No tennis fixtures available for this date.</div>')+'</div>';
 }
-
 function mlsCard(g){
  const channel=sportsWatchAvailable(g,"mls")?mlsMatch(g):null;
  const time=new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Melbourne",hour:"numeric",minute:"2-digit",hour12:true,timeZoneName:"short"}).format(new Date(g.date));
