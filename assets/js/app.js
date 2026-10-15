@@ -447,6 +447,15 @@ async function loadTennis(force=false){
  finally{tennisLoading=false;if(page==="Sports"&&(sportLeague==="tennis"||sportLeague==="live"))render()}
 }
 
+// Provider tennis listings use US Eastern wall-clock times, not device-local time.
+function tennisEasternToUtc(year,month,day,hour,minute){
+ const wall=Date.UTC(year,month,day,hour,minute);
+ const fmt=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
+ const parts=ms=>{const p=fmt.formatToParts(new Date(ms));const v=k=>Number(p.find(x=>x.type===k)?.value);return Date.UTC(v("year"),v("month")-1,v("day"),v("hour"),v("minute"))};
+ let utc=wall+5*3600000;
+ for(let i=0;i<3;i++)utc+=wall-parts(utc);
+ return new Date(utc);
+}
 function tennisProviderFixtures(){
  const ids=new Set((xtream.groups||[]).filter(c=>/\bTENNIS\b/i.test(c.category_name||"")).map(c=>String(c.category_id)));
  const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
@@ -463,7 +472,7 @@ function tennisProviderFixtures(){
   // Select the closest year for a provider listing near New Year's Day.
   if(!m[3]){const candidates=[year-1,year,year+1];year=candidates.reduce((best,y)=>Math.abs(Date.UTC(y,month,day)-now.getTime())<Math.abs(Date.UTC(best,month,day)-now.getTime())?y:best,year)}
   const local=year+"-"+String(month+1).padStart(2,"0")+"-"+String(day).padStart(2,"0")+"T"+String(hour).padStart(2,"0")+":"+m[5]+":00";
-  const date=new Date(local);if(!Number.isFinite(date.getTime())||date.getMonth()!==month||date.getDate()!==day)return null;
+  const date=tennisEasternToUtc(year,month,day,hour,Number(m[5]));if(!Number.isFinite(date.getTime()))return null;
   const tournament=parts[1].slice(m.index+m[0].length).replace(/^\s*[-–:]\s*/,"").replace(/\s*:\s*Tennis\s*\d+.*$/i,"").trim();
   return {id:"provider-tennis-"+c.stream_id,date:date.toISOString(),awayName:players[0].trim(),homeName:players[1].trim(),awayScore:null,homeScore:null,state:"pre",statusDetail:"",tour:/\bWTA\b/i.test(raw)?"WTA":/\bATP\b/i.test(raw)?"ATP":"Tennis",tournament,providerChannelId:String(c.stream_id)};
  }).filter(Boolean);
