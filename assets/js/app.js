@@ -488,8 +488,8 @@ function tennisCard(g){
 }
 function tennisSports(){
  const day=nbaStartOfDay(tennisDay),apiGames=tennisGames.filter(g=>nbaLocalDay(new Date(g.date))===day);
- // ESPN is authoritative. Provider-only fixtures are a fallback if ESPN returned none.
- const games=apiGames.length?apiGames:tennisProviderFixtures().filter(g=>nbaLocalDay(new Date(g.date))===day);
+ // Only show ESPN fixtures that have a current provider stream match.
+ const games=apiGames.filter(g=>Boolean(tennisMatch(g)));
  games.sort((a,b)=>Date.parse(a.date)-Date.parse(b.date));
  return '<div class="nba-hub"><div class="nba-header"><div class="nba-hero-content"><span class="eyebrow">TENNIS · ATP & WTA</span>'+sportsSwitch()+'</div></div><div class="nba-nav"><strong>'+escapeHTML(day)+'</strong><div class="nba-nav-actions"><button class="pill" id="tennisprev">‹</button><button class="pill" id="tennistoday">TODAY</button><button class="pill" id="tennisnext">›</button><button class="pill" id="tennisrefresh">↻</button></div></div>'+(tennisError?'<p class="muted">'+escapeHTML(tennisError)+'</p>':'')+(games.length?'<div class="nba-slate">'+games.map(tennisCard).join("")+'</div>':'<div class="nba-empty">No tennis fixtures available for this date.</div>')+'</div>';
 }
