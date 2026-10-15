@@ -424,19 +424,15 @@ async function loadTennis(force=false){
  if(tennisLoading||(!force&&Date.now()-tennisUpdated<900000))return;
  tennisLoading=true;
  try{
-  const base=new Date(nbaStartOfDay(tennisDay)+"T12:00:00Z");
-  const from=new Date(base.getTime()-3*86400000).toISOString().slice(0,10).replace(/-/g,"");
-  const to=new Date(base.getTime()+3*86400000).toISOString().slice(0,10).replace(/-/g,"");
-  // Tournament scoreboards contain individual singles/doubles competitions.
-  const urls=["atp","wta"].flatMap(tour=>[
-   {tour,url:"https://site.api.espn.com/apis/site/v2/sports/tennis/"+tour+"/scoreboard?dates="+from+"-"+to+"&limit=500"},
-   {tour,url:"https://site.web.api.espn.com/apis/site/v2/sports/tennis/"+tour+"/scoreboard?dates="+from+"-"+to+"&limit=500"}
-  ]);
+  // ESPN tennis scoreboards are season/tournament based, not daily slates.
+  const year=Number(nbaStartOfDay(tennisDay).slice(0,4));
+  const urls=["atp","wta"].map(tour=>({tour,url:"https://site.api.espn.com/apis/site/v2/sports/tennis/"+tour+"/scoreboard?dates="+year+"&limit=1000"}));
   const results=await Promise.allSettled(urls.map(async item=>{
-   const r=await fetch(item.url,{signal:AbortSignal.timeout(12000)});
+   const r=await fetch(item.url,{signal:AbortSignal.timeout(25000)});
    if(!r.ok)throw Error("HTTP "+r.status);
    const data=await r.json();
-   return {tour:item.tour,events:data.events||data.leagues?.flatMap(l=>l.events||[])||[]};
+   const events=data.events||data.leagues?.flatMap(l=>l.events||[])||[];
+   return {tour:item.tour,events};
   }));
   const good=results.filter(x=>x.status==="fulfilled").map(x=>x.value);
   if(!good.length)throw Error("ESPN tennis schedule unavailable");
@@ -448,14 +444,14 @@ async function loadTennis(force=false){
    return playerName(p);
   };
   for(const {tour,events} of good)for(const event of events){
-   const competitions=event.competitions?.length?event.competitions:[event];
+   const competitions=event.competitions?.length?event.competitions:(event.matches?.length?event.matches:[event]);
    for(const match of competitions){
-    const players=match.competitors||[];
+    const players=match.competitors||match.players||[];
     if(players.length!==2)continue;
     const first=players[0],second=players[1];
     const awayName=competitorName(first),homeName=competitorName(second);
     if(!awayName||!homeName)continue;
-    const date=match.date||match.startDate||event.date;
+    const date=match.date||match.startDate||match.startTime||event.date;
     if(!date||!Number.isFinite(Date.parse(date)))continue;
     const id=String(match.id||event.id+"-"+awayName+"-"+homeName);
     const state=match.status?.type?.state||event.status?.type?.state||"pre";
@@ -466,7 +462,7 @@ async function loadTennis(force=false){
   }
   tennisGames=[...map.values()].sort((a,b)=>Date.parse(a.date)-Date.parse(b.date));
   tennisUpdated=Date.now();
-  tennisError=tennisGames.length?"":"ESPN returned no individual tennis matches for this date range.";
+  tennisError=tennisGames.length?"":"ESPN returned no individual tennis matches for the selected season.";
  }catch(e){tennisError=String(e.message||e)}
  finally{tennisLoading=false;if(page==="Sports"&&(sportLeague==="tennis"||sportLeague==="live"))render()}
 }
