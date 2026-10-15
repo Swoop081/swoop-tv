@@ -335,7 +335,7 @@ const mlsAliases={
  "new york city":"nyc","new york city fc":"nyc","new york city football club":"nyc","nyc":"nyc",
  "new york red bulls":"ny red bulls","new york rb":"ny red bulls","ny red bulls":"ny red bulls",
  "la galaxy":"la galaxy","los angeles galaxy":"la galaxy","galaxy":"la galaxy","la":"la galaxy",
- "los angeles fc":"lafc","lafc":"lafc",
+ "los angeles fc":"lafc","los angeles football club":"lafc","los angeles":"lafc","lafc":"lafc",
  "st louis city":"st louis","saint louis city":"st louis","st louis":"st louis",
  "cf montreal":"montreal","montreal":"montreal",
  "sporting kansas city":"kansas city","sporting kc":"kansas city",
