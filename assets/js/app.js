@@ -425,31 +425,51 @@ async function loadTennis(force=false){
  tennisLoading=true;
  try{
   const base=new Date(nbaStartOfDay(tennisDay)+"T12:00:00Z");
-  const dates=Array.from({length:7},(_,i)=>new Date(base.getTime()+(i-2)*86400000).toISOString().slice(0,10).replace(/-/g,""));
-  const urls=dates.flatMap(date=>["atp","wta"].map(tour=>({tour,url:"https://site.api.espn.com/apis/site/v2/sports/tennis/"+tour+"/scoreboard?dates="+date+"&limit=200"})));
-  const results=await Promise.allSettled(urls.map(async item=>{const r=await fetch(item.url,{signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error("HTTP "+r.status);const data=await r.json();return {tour:item.tour,events:data.events||data.leagues?.flatMap(l=>l.events||[])||[]}}));
-  const good=results.filter(x=>x.status==="fulfilled");
-  if(!good.length)throw Error("Tennis schedule unavailable");
+  const from=new Date(base.getTime()-3*86400000).toISOString().slice(0,10).replace(/-/g,"");
+  const to=new Date(base.getTime()+3*86400000).toISOString().slice(0,10).replace(/-/g,"");
+  // Tournament scoreboards contain individual singles/doubles competitions.
+  const urls=["atp","wta"].flatMap(tour=>[
+   {tour,url:"https://site.api.espn.com/apis/site/v2/sports/tennis/"+tour+"/scoreboard?dates="+from+"-"+to+"&limit=500"},
+   {tour,url:"https://site.web.api.espn.com/apis/site/v2/sports/tennis/"+tour+"/scoreboard?dates="+from+"-"+to+"&limit=500"}
+  ]);
+  const results=await Promise.allSettled(urls.map(async item=>{
+   const r=await fetch(item.url,{signal:AbortSignal.timeout(12000)});
+   if(!r.ok)throw Error("HTTP "+r.status);
+   const data=await r.json();
+   return {tour:item.tour,events:data.events||data.leagues?.flatMap(l=>l.events||[])||[]};
+  }));
+  const good=results.filter(x=>x.status==="fulfilled").map(x=>x.value);
+  if(!good.length)throw Error("ESPN tennis schedule unavailable");
   const map=new Map();
-  for(const {tour,events} of good.map(x=>x.value))for(const event of events){
+  const playerName=p=>p?.athlete?.displayName||p?.team?.displayName||p?.displayName||p?.name||"";
+  const competitorName=p=>{
+   const athletes=p?.athletes||p?.roster?.athletes;
+   if(Array.isArray(athletes)&&athletes.length)return athletes.map(x=>playerName(x.athlete||x)).filter(Boolean).join(" / ");
+   return playerName(p);
+  };
+  for(const {tour,events} of good)for(const event of events){
    const competitions=event.competitions?.length?event.competitions:[event];
    for(const match of competitions){
     const players=match.competitors||[];
     if(players.length!==2)continue;
     const first=players[0],second=players[1];
-    const name=c=>c.athlete?.displayName||c.team?.displayName||c.displayName||"";
-    if(!name(first)||!name(second))continue;
-    const id=String(event.id)+"-"+String(match.id||name(first)+"-"+name(second));
-    const date=match.date||event.date;if(!date||!Number.isFinite(Date.parse(date)))continue;
+    const awayName=competitorName(first),homeName=competitorName(second);
+    if(!awayName||!homeName)continue;
+    const date=match.date||match.startDate||event.date;
+    if(!date||!Number.isFinite(Date.parse(date)))continue;
+    const id=String(match.id||event.id+"-"+awayName+"-"+homeName);
     const state=match.status?.type?.state||event.status?.type?.state||"pre";
-    map.set(id,{id,date,awayName:name(first),homeName:name(second),awayScore:first.score??null,homeScore:second.score??null,state,statusDetail:match.status?.type?.shortDetail||event.status?.type?.shortDetail||"",tour:tour.toUpperCase(),tournament:event.name||event.shortName||""});
+    const game={id,date,awayName,homeName,awayScore:first.score??null,homeScore:second.score??null,state,statusDetail:match.status?.type?.shortDetail||event.status?.type?.shortDetail||"",tour:tour.toUpperCase(),tournament:event.name||event.shortName||""};
+    const key=tour+":"+id;
+    if(!map.has(key))map.set(key,game);
    }
   }
-  tennisGames=[...map.values()].sort((a,b)=>Date.parse(a.date)-Date.parse(b.date));tennisUpdated=Date.now();tennisError="";
+  tennisGames=[...map.values()].sort((a,b)=>Date.parse(a.date)-Date.parse(b.date));
+  tennisUpdated=Date.now();
+  tennisError=tennisGames.length?"":"ESPN returned no individual tennis matches for this date range.";
  }catch(e){tennisError=String(e.message||e)}
  finally{tennisLoading=false;if(page==="Sports"&&(sportLeague==="tennis"||sportLeague==="live"))render()}
 }
-
 // Provider tennis listings use US Eastern wall-clock times, not device-local time.
 function tennisEasternToUtc(year,month,day,hour,minute){
  const wall=Date.UTC(year,month,day,hour,minute);
