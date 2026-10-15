@@ -450,18 +450,21 @@ async function loadTennis(force=false){
 function tennisProviderFixtures(){
  const ids=new Set((xtream.groups||[]).filter(c=>/\bTENNIS\b/i.test(c.category_name||"")).map(c=>String(c.category_id)));
  const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
- const year=new Date().getFullYear();
+ const now=new Date();
  return (xtream.channels||[]).filter(c=>ids.has(String(c.category_id))).map(c=>{
-  const raw=String(c.name||"");
+  const raw=String(c.name||"").trim();
   const parts=raw.split(/\s+@\s+/);if(parts.length<2)return null;
-  const players=parts[0].replace(/^\s*(?:ATP|WTA)\s*[:|–-]\s*/i,"").split(/\s+vs\.?\s+/i);if(players.length!==2)return null;
-  const m=parts[1].match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{1,2}):(\d{2})\s*(AM|PM)\b/i);
+  const players=parts[0].replace(/^\s*(?:ATP|WTA)\s*[:|–-]\s*/i,"").split(/\s+vs\.?\s+/i);
+  if(players.length!==2)return null;
+  const m=parts[1].match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})(?:\s+(\d{4}))?\s+(\d{1,2}):(\d{2})\s*(AM|PM)\b/i);
   if(!m)return null;
-  const h=Number(m[3])%12+(m[5].toUpperCase()==="PM"?12:0);
-  // Provider fixture times are shown as local Australian times in Admin Studio.
-  const dateStr=year+"-"+String(months[m[1].toLowerCase()]+1).padStart(2,"0")+"-"+m[2].padStart(2,"0")+"T"+String(h).padStart(2,"0")+":"+m[4]+":00";
-  const date=new Date(dateStr);if(!Number.isFinite(date.getTime()))return null;
-  const tournament=(parts[1].split(/\s*[-–]\s*/).slice(1).join(" - ")||"").replace(/:\s*Tennis\s*\d+.*$/i,"").trim();
+  const month=months[m[1].toLowerCase()],day=Number(m[2]),hour=Number(m[4])%12+(m[6].toUpperCase()==="PM"?12:0);
+  let year=m[3]?Number(m[3]):now.getFullYear();
+  // Select the closest year for a provider listing near New Year's Day.
+  if(!m[3]){const candidates=[year-1,year,year+1];year=candidates.reduce((best,y)=>Math.abs(Date.UTC(y,month,day)-now.getTime())<Math.abs(Date.UTC(best,month,day)-now.getTime())?y:best,year)}
+  const local=year+"-"+String(month+1).padStart(2,"0")+"-"+String(day).padStart(2,"0")+"T"+String(hour).padStart(2,"0")+":"+m[5]+":00";
+  const date=new Date(local);if(!Number.isFinite(date.getTime())||date.getMonth()!==month||date.getDate()!==day)return null;
+  const tournament=parts[1].slice(m.index+m[0].length).replace(/^\s*[-–:]\s*/,"").replace(/\s*:\s*Tennis\s*\d+.*$/i,"").trim();
   return {id:"provider-tennis-"+c.stream_id,date:date.toISOString(),awayName:players[0].trim(),homeName:players[1].trim(),awayScore:null,homeScore:null,state:"pre",statusDetail:"",tour:/\bWTA\b/i.test(raw)?"WTA":/\bATP\b/i.test(raw)?"ATP":"Tennis",tournament,providerChannelId:String(c.stream_id)};
  }).filter(Boolean);
 }
