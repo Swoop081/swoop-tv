@@ -334,7 +334,7 @@ const mlsAliases={
  "inter miami":"miami","inter miami cf":"miami","miami":"miami",
  "new york city":"nyc","new york city fc":"nyc","new york city football club":"nyc","nyc":"nyc",
  "new york red bulls":"ny red bulls","new york rb":"ny red bulls","ny red bulls":"ny red bulls",
- "la galaxy":"la galaxy","los angeles galaxy":"la galaxy","galaxy":"la galaxy",
+ "la galaxy":"la galaxy","los angeles galaxy":"la galaxy","galaxy":"la galaxy","la":"la galaxy",
  "los angeles fc":"lafc","lafc":"lafc",
  "st louis city":"st louis","saint louis city":"st louis","st louis":"st louis",
  "cf montreal":"montreal","montreal":"montreal",
@@ -360,7 +360,7 @@ function mlsMatch(g){
   if(!ids.has(String(c.category_id)))return false;
   const raw=String(c.name||"");
   if(/\(\s*(?:spanish|espa[nñ]ol|esp)\s*\)/i.test(raw))return false;
-  const cleaned=raw.replace(/^\s*(?:\([^)]*\)\s*)*(?:MLS\s*)?(?:\|\s*)?\d+\s*\|\s*/i,"").replace(/^\s*(?:\([^)]*\)\s*)*MLS\s*\d+\s*[-|:]\s*/i,"").replace(/\(\s*\d{4}-\d{2}-\d{2}[^)]*\)/g,"").trim();
+  const cleaned=raw.replace(/^\s*(?:\([^)]*\)\s*)*(?:MLS\s*)?(?:\|\s*)?\d+\s*\|\s*/i,"").replace(/^\s*(?:\([^)]*\)\s*)*MLS\s*\d+\s*[-|:]\s*/i,"").replace(/\(\s*\d{4}-\d{2}-\d{2}[^)]*\)/g,"").replace(/\s*\([^)]*\)\s*$/g,"").trim();
   const parts=cleaned.split(/\s+vs\.?\s+/i);
   if(parts.length!==2)return false;
   const a=mlsKey(parts[0]),b=mlsKey(parts[1]);
