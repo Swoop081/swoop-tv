@@ -482,7 +482,7 @@ function tennisProviderFixtures(){
 }
 
 function tennisCard(g){
- const channel=sportsWatchAvailable(g,"tennis")?(g.providerChannelId?(xtream.channels||[]).find(c=>String(c.stream_id)===g.providerChannelId):tennisMatch(g)):null;
+ const start=Date.parse(g.date),now=Date.now(),espnFixture=!g.providerChannelId;const live=espnFixture&&g.state!=="post"&&Number.isFinite(start)&&now>=start-15*60000&&now<=start+5*3600000;const channel=live?tennisMatch(g):null;
  const time=new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Melbourne",hour:"numeric",minute:"2-digit",hour12:true,timeZoneName:"short"}).format(new Date(g.date));
  return '<article class="nba-game"><div class="nba-game-top"><span class="nba-state">'+escapeHTML(time)+' · '+escapeHTML(g.tour)+'</span>'+(channel?'<button class="action" data-tennisgame="'+escapeHTML(String(channel.stream_id))+'">▶ WATCH NOW</button>':'')+'</div><div class="nba-matchup"><div><small>'+escapeHTML(g.awayName)+'</small></div>'+sportsMatchScore(g)+'<div><small>'+escapeHTML(g.homeName)+'</small></div></div>'+(g.tournament?'<div class="tennis-tournament">'+escapeHTML(g.tournament)+'</div>':'')+'</article>';
 }
